@@ -169,14 +169,49 @@ class NotifyForm {
   }
 
   async #submitEmail(email) {
-    const response = await fetch(this.#endpoint, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, timestamp: new Date().toISOString() }),
+    return new Promise((resolve, reject) => {
+      // Use a hidden iframe + form for bulletproof cross-origin submission
+      var iframeName = 'invisible_submit_' + Date.now();
+      var iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = this.#endpoint;
+      form.target = iframeName;
+      form.style.display = 'none';
+
+      var emailField = document.createElement('input');
+      emailField.name = 'email';
+      emailField.value = email;
+      form.appendChild(emailField);
+
+      var tsField = document.createElement('input');
+      tsField.name = 'timestamp';
+      tsField.value = new Date().toISOString();
+      form.appendChild(tsField);
+
+      document.body.appendChild(form);
+
+      iframe.addEventListener('load', function() {
+        // Clean up after submission
+        setTimeout(function() {
+          document.body.removeChild(form);
+          document.body.removeChild(iframe);
+        }, 500);
+        resolve();
+      });
+
+      iframe.addEventListener('error', function() {
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+        reject(new Error('Submission failed'));
+      });
+
+      form.submit();
     });
-    // no-cors means response is opaque, so we trust it went through
-    return response;
   }
 }
 
@@ -309,15 +344,22 @@ class CardGlow {
 
 /* ── Initialize ── */
 document.addEventListener('DOMContentLoaded', () => {
-  // Set target date to 5 days from today for the countdown
-  const target = new Date();
-  target.setDate(target.getDate() + 5);
-  const targetISO = target.toISOString();
+  // Calculate next Friday at midnight as the countdown target
+  function getNextFriday() {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+    let daysUntilFriday = 5 - dayOfWeek;
+    if (daysUntilFriday <= 0) daysUntilFriday += 7;
+    const friday = new Date(now);
+    friday.setDate(friday.getDate() + daysUntilFriday);
+    friday.setHours(0, 0, 0, 0);
+    return friday;
+  }
 
-  const countdown = new LaunchCountdown(targetISO, '#countdown');
+  const countdown = new LaunchCountdown(getNextFriday().toISOString(), '#countdown');
   countdown.start();
 
-  const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwZRZm6f3eCuYf1lIF2_nJPwEDrddccpzmbbpSksyhL4eFjDTX-SLjQpDN8SIE4fkR5/exec';
+  const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwXpN43kM6hYc_PcicES71o9iwjr5SebHQNNndu-fjw-AKXZNA7FmfRqY5-V-jzsm6h/exec';
 
   const notifyForm = new NotifyForm('#notifyForm', SHEETS_ENDPOINT);
 
