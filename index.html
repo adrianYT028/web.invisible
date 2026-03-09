@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invisible AI — The Intelligence They Can't See</title>
+  <meta name="description" content="A 100% invisible AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Noise / Scanline / Particles Overlay -->
+  <canvas class="particles-canvas" id="particles" aria-hidden="true"></canvas>
+  <div class="noise-overlay" aria-hidden="true"></div>
+  <div class="scanline-overlay" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <nav class="nav-container">
+      <a href="#" class="logo" aria-label="Invisible AI Home">
+        <span class="logo-icon">&#9670;</span>
+        <span class="logo-text">INVISIBLE<span class="logo-accent">AI</span></span>
+      </a>
+      <ul class="nav-links" role="list">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#notify">Early Access</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ════════════════ HERO ════════════════ -->
+    <section class="hero" id="hero">
+      <div class="hero-content">
+        <p class="hero-tag">STEALTH-MODE AI OVERLAY</p>
+        <h1 class="hero-headline">The Intelligence<br>They Can't See.</h1>
+        <p class="hero-sub">
+          A 100% invisible AI assistant for high-stakes interviews and meetings.<br>
+          Bypasses all screen-capture pipelines.
+        </p>
+
+        <div class="countdown-container glass-panel" aria-label="Launch countdown">
+          <p class="countdown-label">LAUNCH IN</p>
+          <div class="countdown" id="countdown" role="timer">
+            <div class="countdown-segment">
+              <span class="countdown-value" data-unit="days">00</span>
+              <span class="countdown-unit">DAYS</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-segment">
+              <span class="countdown-value" data-unit="hours">00</span>
+              <span class="countdown-unit">HRS</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-segment">
+              <span class="countdown-value" data-unit="minutes">00</span>
+              <span class="countdown-unit">MIN</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-segment">
+              <span class="countdown-value" data-unit="seconds">00</span>
+              <span class="countdown-unit">SEC</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="#notify" class="cta-button">Get Early Access</a>
+      </div>
+      <div class="hero-glow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ════════════════ FEATURES ════════════════ -->
+    <section class="features" id="features">
+      <div class="section-container">
+        <p class="section-tag">PRODUCT CAPABILITIES</p>
+        <h2 class="section-title">Engineered to be Unseen</h2>
+        <p class="section-sub">Three core subsystems working in concert to deliver invisible intelligence.</p>
+
+        <div class="features-grid">
+          <article class="feature-card glass-panel">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8"/>
+                <path d="M12 17v4"/>
+                <path d="M2 8h20"/>
+                <line x1="6" y1="12" x2="6" y2="12.01"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Stealth Execution</h3>
+            <p class="feature-api"><code>WDA_EXCLUDEFROMCAPTURE</code></p>
+            <p class="feature-desc">
+              Leverages the Windows Display Affinity API to make the overlay completely invisible
+              to all screen-capture and screen-share pipelines — OBS, Zoom, Teams, Discord.
+            </p>
+          </article>
+
+          <article class="feature-card glass-panel">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Audio Loopback</h3>
+            <p class="feature-api"><code>WASAPI Integration</code></p>
+            <p class="feature-desc">
+              Captures system audio through the Windows Audio Session API loopback device.
+              Real-time transcription of meeting audio without any virtual cable hacks.
+            </p>
+          </article>
+
+          <article class="feature-card glass-panel">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Vision Context</h3>
+            <p class="feature-api"><code>Region Capture API</code></p>
+            <p class="feature-desc">
+              Selective region capture feeds visual context to the model — code editors,
+              terminal output, documentation — without exposing your full desktop.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+    <div class="section-divider" aria-hidden="true"></div>
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- ════════════════ HOW IT WORKS ════════════════ -->
+    <section class="how-it-works" id="how-it-works">
+      <div class="section-container">
+        <p class="section-tag">HOW IT WORKS</p>
+        <h2 class="section-title">Three Steps. Zero Traces.</h2>
+        <p class="section-sub">
+          From launch to live intelligence — the entire pipeline runs silently in under 2 seconds.
+        </p>
+
+        <div class="steps-grid">
+          <article class="step-card glass-panel">
+            <div class="step-number">01</div>
+            <h3 class="step-title">Launch the Overlay</h3>
+            <p class="step-desc">
+              Start the assistant with a single hotkey. The overlay attaches to your display
+              and immediately becomes invisible to every screen-capture and screen-share pipeline.
+            </p>
+          </article>
+
+          <article class="step-card glass-panel">
+            <div class="step-number">02</div>
+            <h3 class="step-title">Capture Context</h3>
+            <p class="step-desc">
+              The system silently captures meeting audio and selected screen regions,
+              feeding real-time context to the AI model — no virtual cables, no plugins.
+            </p>
+          </article>
+
+          <article class="step-card glass-panel">
+            <div class="step-number">03</div>
+            <h3 class="step-title">Get Live Intelligence</h3>
+            <p class="step-desc">
+              AI-generated suggestions, answers, and talking points appear directly on your screen.
+              Only you can see them. Screen recorders and participants see nothing.
+            </p>
+          </article>
+        </div>
+
+        <div class="tech-note glass-panel">
+          <p>
+            <strong>Compatibility:</strong> Requires Windows 10 version 2004 or later.
+            Works with Zoom, Teams, Google Meet, Discord, OBS, and all DXGI-based capture tools.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- ════════════════ NOTIFY / CTA ════════════════ -->
+    <section class="notify-section" id="notify">
+      <div class="section-container">
+        <p class="section-tag">EARLY ACCESS</p>
+        <h2 class="section-title">Be First in the Queue</h2>
+        <p class="section-sub">
+          Join the waitlist for priority access when we launch. No spam — only launch updates.
+        </p>
+
+        <form class="notify-form glass-panel" id="notifyForm" novalidate>
+          <div class="form-group">
+            <div class="input-wrapper">
+              <input
+                type="email"
+                id="emailInput"
+                name="email"
+                placeholder="you@company.com"
+                required
+                autocomplete="email"
+                aria-label="Email address"
+              >
+              <button type="submit" class="submit-btn" id="submitBtn">
+                <span class="btn-text">Notify Me</span>
+                <span class="btn-loader" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                </span>
+                <span class="btn-check" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <p class="form-error" id="formError" role="alert" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p class="footer-copy">&copy; <time datetime="2026">2026</time> Invisible AI. All rights reserved.</p>
+      <p class="footer-note">Built for those who operate in the margins.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
