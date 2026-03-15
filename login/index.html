@@ -123,6 +123,12 @@
         resetForm.style.display = 'grid';
       }
 
+      function getRedirectBase() {
+        const host = window.location.hostname;
+        const isLocal = host === 'localhost' || host === '127.0.0.1';
+        return isLocal ? window.location.origin : 'https://www.unviewable.online';
+      }
+
       function setAuthCookie(token) {
         if (!token) return;
         const secure = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -160,7 +166,7 @@
         }
         try {
           const { error } = await sb.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/login/reset/'
+            redirectTo: getRedirectBase() + '/login/reset/'
           });
           if (error) throw error;
           errorEl.textContent = 'Password reset email sent.';
@@ -232,7 +238,7 @@
         try {
           const { error } = await sb.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: window.location.origin + '/' }
+            options: { redirectTo: getRedirectBase() + '/' }
           });
           if (error) throw error;
         } catch (err) {
@@ -272,7 +278,7 @@
           const { data, error } = await sb.auth.signUp({
             email,
             password,
-            options: { emailRedirectTo: window.location.origin + '/' }
+            options: { emailRedirectTo: getRedirectBase() + '/' }
           });
           if (error) throw error;
 
