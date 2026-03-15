@@ -3,103 +3,86 @@
    ES6 Classes · Constraint Validation · IntersectionObserver
    ═══════════════════════════════════════════════════ */
 
-/**
- * LaunchCountdown
- * Encapsulates all countdown timer logic.
- * Calculates remaining time from a fixed target date.
- */
-class LaunchCountdown {
-  #targetDate;
-  #elements;
-  #intervalId;
+const SUPABASE_URL = 'https://kqyezzrlvtzbfenfqvau.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxeWV6enJsdnR6YmZlbmZxdmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDMwNzgsImV4cCI6MjA4OTA3OTA3OH0.JeDliElsw_a6F-kvspqII3Nub3fUvjkgkv0Xm0mjPD8';
 
-  constructor(targetDateISO, containerSelector) {
-    this.#targetDate = new Date(targetDateISO).getTime();
-    const container = document.querySelector(containerSelector);
-    this.#elements = {
-      days:    container.querySelector('[data-unit="days"]'),
-      hours:   container.querySelector('[data-unit="hours"]'),
-      minutes: container.querySelector('[data-unit="minutes"]'),
-      seconds: container.querySelector('[data-unit="seconds"]'),
-    };
-    this.#intervalId = null;
-  }
-
-  #pad(value) {
-    return String(value).padStart(2, '0');
-  }
-
-  #calculateRemaining() {
-    const now = Date.now();
-    const diff = this.#targetDate - now;
-
-    if (diff <= 0) {
-      return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+let supabaseClient = null;
+function getSupabase() {
+  if (!supabaseClient) {
+    if (!window.supabase) {
+      throw new Error('Supabase client library not loaded');
     }
-
-    const seconds = Math.floor(diff / 1000);
-    return {
-      days:    Math.floor(seconds / 86400),
-      hours:   Math.floor((seconds % 86400) / 3600),
-      minutes: Math.floor((seconds % 3600) / 60),
-      seconds: seconds % 60,
-      expired: false,
-    };
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
-
-  #render(time) {
-    this.#elements.days.textContent    = this.#pad(time.days);
-    this.#elements.hours.textContent   = this.#pad(time.hours);
-    this.#elements.minutes.textContent = this.#pad(time.minutes);
-    this.#elements.seconds.textContent = this.#pad(time.seconds);
-  }
-
-  start() {
-    // Render immediately to avoid flash of "00"
-    this.#render(this.#calculateRemaining());
-
-    this.#intervalId = setInterval(() => {
-      const time = this.#calculateRemaining();
-      this.#render(time);
-
-      if (time.expired) {
-        this.stop();
-      }
-    }, 1000);
-  }
-
-  stop() {
-    if (this.#intervalId !== null) {
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
-    }
-  }
+  return supabaseClient;
 }
 
+async function requireAuth() {
+  const sb = getSupabase();
+  const { data, error } = await sb.auth.getSession();
+  if (error || !data?.session) {
+    window.location.href = '/login/';
+    return false;
+  }
+  return true;
+}
+
+async function ensureSignupRecord() {
+  const sb = getSupabase();
+  const { data } = await sb.auth.getSession();
+  const user = data?.session?.user;
+  if (!user) return;
+
+  const name = (user.user_metadata?.full_name || user.user_metadata?.name || user.email || '').split('@')[0];
+  const email = (user.email || '').toLowerCase();
+  if (!email) return;
+
+  await sb
+    .from('signups')
+    .upsert({
+      name: name || 'User',
+      email,
+      user_id: user.id
+    }, { onConflict: 'email' });
+}
+
+async function bindLogout() {
+  const btn = document.getElementById('logoutBtn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    try {
+      const sb = getSupabase();
+      await sb.auth.signOut();
+    } finally {
+      document.cookie = 'sb_access_token=; Max-Age=0; Path=/; SameSite=Lax';
+      window.location.href = '/login/';
+    }
+  });
+}
 
 /**
- * NotifyForm
- * Handles subscription form with Constraint Validation API,
- * loading state, success micro-animation, and Google Sheets storage.
+ * ReviewForm
+ * Captures rating + qualitative feedback with email for follow-up.
  */
-class NotifyForm {
+class ReviewForm {
   #form;
-  #input;
+  #email;
+  #ratingInputs;
+  #ratingLabels;
+  #message;
   #button;
   #errorEl;
-  #endpoint;
 
-  /**
-   * @param {string} formSelector  — CSS selector for the form
-   * @param {string} endpoint      — Google Apps Script web app URL
-   */
-  constructor(formSelector, endpoint) {
+  constructor(formSelector) {
     this.#form     = document.querySelector(formSelector);
-    this.#input    = this.#form.querySelector('input[type="email"]');
+    this.#email    = this.#form.querySelector('input[type="email"]');
+    this.#ratingInputs = Array.from(this.#form.querySelectorAll('input[name="rating"]'));
+    this.#ratingLabels = Array.from(this.#form.querySelectorAll('.rating-group label'));
+    this.#message  = this.#form.querySelector('textarea[name="review"]');
     this.#button   = this.#form.querySelector('.submit-btn');
     this.#errorEl  = this.#form.querySelector('.form-error');
-    this.#endpoint = endpoint;
     this.#bind();
+    this.#prefillEmail();
   }
 
   #bind() {
@@ -108,33 +91,65 @@ class NotifyForm {
       this.#handleSubmit();
     });
 
-    // Clear error on input
-    this.#input.addEventListener('input', () => {
-      this.#clearError();
+    [this.#email, this.#message].forEach((field) => {
+      field.addEventListener('input', () => this.#clearError());
+      field.addEventListener('change', () => this.#clearError());
     });
+
+    this.#ratingInputs.forEach((input) => {
+      input.addEventListener('change', () => {
+        this.#clearError();
+        this.#syncStars(input.value);
+      });
+      input.addEventListener('focus', () => this.#clearError());
+    });
+
+    this.#ratingLabels.forEach((label) => {
+      label.addEventListener('mouseenter', () => this.#syncStars(label.dataset.value));
+      label.addEventListener('mouseleave', () => this.#syncStars(this.#getRating()));
+      label.addEventListener('focus', () => this.#syncStars(label.dataset.value));
+      label.addEventListener('blur', () => this.#syncStars(this.#getRating()));
+    });
+
+    this.#syncStars(this.#getRating());
   }
 
   #validate() {
-    // Use Constraint Validation API
-    if (this.#input.validity.valueMissing) {
-      this.#showError('Email address is required.');
+    var selectedRating = this.#getRating();
+    if (!selectedRating) {
+      this.#showError('Add a rating so we know severity.');
       return false;
     }
-    if (this.#input.validity.typeMismatch) {
-      this.#showError('Please enter a valid email address.');
+
+    if (this.#message.value.trim().length < 7) {
+      this.#showError('Please add a few details (at least 7 characters).');
       return false;
     }
+
     return true;
+  }
+
+  async #prefillEmail() {
+    try {
+      const sb = getSupabase();
+      const { data } = await sb.auth.getSession();
+      const email = data?.session?.user?.email || '';
+      if (email) {
+        this.#email.value = email;
+      }
+    } catch {
+      // ignore prefill failures
+    }
   }
 
   #showError(message) {
     this.#errorEl.textContent = message;
-    this.#input.closest('.input-wrapper').classList.add('has-error');
+    this.#form.classList.add('has-error');
   }
 
   #clearError() {
     this.#errorEl.textContent = '';
-    this.#input.closest('.input-wrapper').classList.remove('has-error');
+    this.#form.classList.remove('has-error');
   }
 
   async #handleSubmit() {
@@ -144,73 +159,68 @@ class NotifyForm {
       return;
     }
 
-    // Enter loading state
+    var selectedRating = this.#getRating();
+
     this.#button.classList.add('is-loading');
     this.#button.disabled = true;
 
     try {
-      await this.#submitEmail(this.#input.value);
+      await this.#submitReview({
+        email: this.#email.value,
+        rating: selectedRating,
+        review: this.#message.value.trim(),
+      });
 
-      // Exit loading → success
       this.#button.classList.remove('is-loading');
       this.#button.classList.add('is-success');
 
-      // Reset after animation
       setTimeout(() => {
         this.#button.classList.remove('is-success');
         this.#button.disabled = false;
-        this.#input.value = '';
+        this.#form.reset();
+        this.#syncStars('');
       }, 2500);
     } catch {
       this.#button.classList.remove('is-loading');
       this.#button.disabled = false;
-      this.#showError('Something went wrong. Please try again.');
+      this.#showError('Could not save your review. Please try again.');
     }
   }
 
-  async #submitEmail(email) {
-    return new Promise((resolve, reject) => {
-      // Use a hidden iframe + form for bulletproof cross-origin submission
-      var iframeName = 'invisible_submit_' + Date.now();
-      var iframe = document.createElement('iframe');
-      iframe.name = iframeName;
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+  async #submitReview(payload) {
+    const sb = getSupabase();
+    const { data } = await sb.auth.getSession();
+    const user = data?.session?.user;
+    if (!user?.id || !user?.email) {
+      throw new Error('You must be signed in to submit feedback.');
+    }
 
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = this.#endpoint;
-      form.target = iframeName;
-      form.style.display = 'none';
-
-      var emailField = document.createElement('input');
-      emailField.name = 'email';
-      emailField.value = email;
-      form.appendChild(emailField);
-
-      var tsField = document.createElement('input');
-      tsField.name = 'timestamp';
-      tsField.value = new Date().toISOString();
-      form.appendChild(tsField);
-
-      document.body.appendChild(form);
-
-      iframe.addEventListener('load', function() {
-        // Clean up after submission
-        setTimeout(function() {
-          document.body.removeChild(form);
-          document.body.removeChild(iframe);
-        }, 500);
-        resolve();
+    const { error } = await sb
+      .from('reviews')
+      .insert({
+        email: user.email.toLowerCase(),
+        user_id: user.id,
+        rating: Number(payload.rating),
+        review: payload.review,
+        source: 'review'
       });
+    if (error) throw new Error(error.message || 'Something went wrong.');
+  }
 
-      iframe.addEventListener('error', function() {
-        document.body.removeChild(form);
-        document.body.removeChild(iframe);
-        reject(new Error('Submission failed'));
-      });
+  #getRating() {
+    var checked = this.#ratingInputs.find((input) => input.checked);
+    return checked ? checked.value : '';
+  }
 
-      form.submit();
+  #syncStars(value) {
+    var target = Number(value || 0);
+    this.#ratingLabels.forEach((label) => {
+      var starValue = Number(label.dataset.value || 0);
+      if (starValue <= target) {
+        label.classList.add('active');
+      } else {
+        label.classList.remove('active');
+      }
     });
   }
 }
@@ -344,48 +354,37 @@ class CardGlow {
 
 /* ── Initialize ── */
 document.addEventListener('DOMContentLoaded', () => {
-  // Calculate next Friday at midnight as the countdown target
-  function getNextFriday() {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
-    let daysUntilFriday = 5 - dayOfWeek;
-    if (daysUntilFriday <= 0) daysUntilFriday += 7;
-    const friday = new Date(now);
-    friday.setDate(friday.getDate() + daysUntilFriday);
-    friday.setHours(0, 0, 0, 0);
-    return friday;
-  }
+  requireAuth().then((ok) => {
+    if (!ok) return;
+    const reviewForm = new ReviewForm('#reviewForm');
+    bindLogout();
+    ensureSignupRecord();
 
-  const countdown = new LaunchCountdown(getNextFriday().toISOString(), '#countdown');
-  countdown.start();
+    // Floating particle background
+    const particles = new ParticleField('#particles', 45);
 
-  const SHEETS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwXpN43kM6hYc_PcicES71o9iwjr5SebHQNNndu-fjw-AKXZNA7FmfRqY5-V-jzsm6h/exec';
+    // Mouse-tracking glow on feature cards
+    const cardGlow = new CardGlow('.feature-card');
 
-  const notifyForm = new NotifyForm('#notifyForm', SHEETS_ENDPOINT);
+    // Tag animatable elements with varied animation types
+    const animConfigs = [
+      { selector: '.section-tag',     cls: 'fade-in-up',   baseDelay: 0 },
+      { selector: '.section-title',   cls: 'fade-in-up',   baseDelay: 80 },
+      { selector: '.section-sub',     cls: 'fade-in-up',   baseDelay: 160 },
+      { selector: '.feature-card',    cls: 'fade-in-up',   baseDelay: 0, stagger: 120 },
+      { selector: '.step-card',       cls: 'fade-in-up',   baseDelay: 0, stagger: 150 },
+      { selector: '.tech-note',       cls: 'scale-in',     baseDelay: 200 },
+      { selector: '.review-form',     cls: 'scale-in',     baseDelay: 80 },
+      { selector: '.notify-form',     cls: 'scale-in',     baseDelay: 100 },
+    ];
 
-  // Floating particle background
-  const particles = new ParticleField('#particles', 45);
-
-  // Mouse-tracking glow on feature cards
-  const cardGlow = new CardGlow('.feature-card');
-
-  // Tag animatable elements with varied animation types
-  const animConfigs = [
-    { selector: '.section-tag',     cls: 'fade-in-up',   baseDelay: 0 },
-    { selector: '.section-title',   cls: 'fade-in-up',   baseDelay: 80 },
-    { selector: '.section-sub',     cls: 'fade-in-up',   baseDelay: 160 },
-    { selector: '.feature-card',    cls: 'fade-in-up',   baseDelay: 0, stagger: 120 },
-    { selector: '.step-card',       cls: 'fade-in-up',   baseDelay: 0, stagger: 150 },
-    { selector: '.tech-note',       cls: 'scale-in',     baseDelay: 200 },
-    { selector: '.notify-form',     cls: 'scale-in',     baseDelay: 100 },
-  ];
-
-  animConfigs.forEach(({ selector, cls, baseDelay, stagger = 0 }) => {
-    document.querySelectorAll(selector).forEach((el, i) => {
-      el.classList.add(cls);
-      el.style.transitionDelay = `${baseDelay + i * stagger}ms`;
+    animConfigs.forEach(({ selector, cls, baseDelay, stagger = 0 }) => {
+      document.querySelectorAll(selector).forEach((el, i) => {
+        el.classList.add(cls);
+        el.style.transitionDelay = `${baseDelay + i * stagger}ms`;
+      });
     });
-  });
 
-  const scrollReveal = new ScrollReveal();
+    const scrollReveal = new ScrollReveal();
+  });
 });

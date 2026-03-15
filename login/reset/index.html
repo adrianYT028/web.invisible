@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password — Invisible AI</title>
+  <meta name="description" content="Update your Invisible AI password.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+  <style>
+    .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: var(--space-2xl); }
+    .auth-card { max-width: 520px; width: 100%; padding: var(--space-2xl); border-radius: 8px; border: 1px solid var(--glass-border); box-shadow: 0 20px 80px rgba(0,0,0,0.35); text-align: center; }
+    .auth-title { font-size: var(--fs-2xl); font-weight: 700; margin-bottom: var(--space-sm); }
+    .auth-sub { color: var(--color-text-muted); margin-bottom: var(--space-lg); }
+    .auth-form { display: grid; gap: var(--space-md); margin-top: var(--space-lg); }
+    .auth-input { width: 100%; padding: var(--space-md) var(--space-lg); border-radius: 6px; border: 1px solid var(--color-border); background: rgba(var(--color-obsidian-rgb), 0.7); color: var(--color-text); }
+    .auth-input:focus { border-color: rgba(var(--color-cyan-rgb), 0.4); box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2); }
+    .auth-primary { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); width: 100%; padding: var(--space-md) var(--space-lg); background: #ffffff; color: #1f1f1f; border-radius: 6px; font-weight: 600; cursor: pointer; transition: transform var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out); }
+    .auth-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .auth-error { color: var(--color-error); font-size: var(--fs-sm); min-height: 1.2em; margin-top: var(--space-md); }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card glass-panel">
+      <p class="section-tag" style="text-align:center;">RESET</p>
+      <h1 class="auth-title">Set a new password</h1>
+      <p class="auth-sub">Enter a new password to regain access.</p>
+
+      <form id="resetForm" class="auth-form" novalidate>
+        <input class="auth-input" type="password" id="newPassword" placeholder="New password" required autocomplete="new-password" aria-label="New password">
+        <button type="submit" class="auth-primary">Update password</button>
+      </form>
+      <p id="resetError" class="auth-error" role="alert"></p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kqyezzrlvtzbfenfqvau.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxeWV6enJsdnR6YmZlbmZxdmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDMwNzgsImV4cCI6MjA4OTA3OTA3OH0.JeDliElsw_a6F-kvspqII3Nub3fUvjkgkv0Xm0mjPD8';
+
+    function waitForSupabase(attempts = 0) {
+      if (window.supabase) {
+        initReset();
+        return;
+      }
+      if (attempts > 50) return;
+      setTimeout(() => waitForSupabase(attempts + 1), 100);
+    }
+
+    async function initReset() {
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const errorEl = document.getElementById('resetError');
+      const url = window.location.href;
+      const hasCode = url.includes('code=');
+
+      function setAuthCookie(token) {
+        if (!token) return;
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `sb_access_token=${token}; Path=/; SameSite=Lax${secure}`;
+      }
+
+      if (hasCode) {
+        const { data, error } = await sb.auth.exchangeCodeForSession(url);
+        if (error) {
+          errorEl.textContent = 'Auth session missing. Please request a new reset link.';
+          return;
+        }
+        if (data?.session?.access_token) {
+          setAuthCookie(data.session.access_token);
+        }
+      }
+
+      document.getElementById('resetForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.textContent = '';
+        const newPassword = document.getElementById('newPassword').value;
+        try {
+          const { error } = await sb.auth.updateUser({ password: newPassword });
+          if (error) throw error;
+          window.location.href = '/login/';
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Password update failed.';
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => waitForSupabase());
+    } else {
+      waitForSupabase();
+    }
+  </script>
+</body>
+</html>

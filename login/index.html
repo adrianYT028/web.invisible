@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome — Invisible AI</title>
+  <meta name="description" content="Log in or sign up to access Invisible AI.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+  <style>
+    .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: var(--space-2xl); }
+    .auth-card { max-width: 520px; width: 100%; padding: var(--space-2xl); border-radius: 8px; border: 1px solid var(--glass-border); box-shadow: 0 20px 80px rgba(0,0,0,0.35); text-align: center; }
+    .auth-title { font-size: var(--fs-2xl); font-weight: 700; margin-bottom: var(--space-sm); }
+    .auth-sub { color: var(--color-text-muted); margin-bottom: var(--space-lg); }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+    .auth-tab { padding: var(--space-sm) var(--space-md); border-radius: 6px; border: 1px solid var(--color-border); background: rgba(var(--color-obsidian-rgb), 0.6); color: var(--color-text-muted); cursor: pointer; transition: all var(--duration) var(--ease-out); }
+    .auth-tab.is-active { border-color: rgba(var(--color-cyan-rgb), 0.5); color: #fff; box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2); }
+    .auth-form { display: grid; gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .auth-input { width: 100%; padding: var(--space-md) var(--space-lg); border-radius: 6px; border: 1px solid var(--color-border); background: rgba(var(--color-obsidian-rgb), 0.7); color: var(--color-text); }
+    .auth-input:focus { border-color: rgba(var(--color-cyan-rgb), 0.4); box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2); }
+    .auth-actions { display: grid; gap: var(--space-sm); }
+    .auth-primary { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); width: 100%; padding: var(--space-md) var(--space-lg); background: #ffffff; color: #1f1f1f; border-radius: 6px; font-weight: 600; cursor: pointer; transition: transform var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out); }
+    .auth-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .auth-secondary { background: transparent; color: var(--color-cyan); border: 1px solid rgba(var(--color-cyan-rgb), 0.6); }
+    .google-icon { width: 20px; height: 20px; }
+    .auth-note { margin-top: var(--space-md); font-size: var(--fs-xs); color: var(--color-text-dim); }
+    .auth-error { color: var(--color-error); font-size: var(--fs-sm); min-height: 1.2em; margin-top: var(--space-md); }
+    .auth-hidden { display: none; }
+    .auth-link { font-size: var(--fs-xs); color: var(--color-cyan); text-align: right; cursor: pointer; }
+    .auth-link:hover { text-decoration: underline; }
+    .auth-reset { display: grid; gap: var(--space-md); margin-top: var(--space-lg); }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card glass-panel">
+      <p class="section-tag" style="text-align:center;">ACCESS</p>
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Log in or create an account to access Invisible AI.</p>
+
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab is-active" data-tab="login">Log in</button>
+        <button type="button" class="auth-tab" data-tab="signup">Sign up</button>
+      </div>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <input class="auth-input" type="email" id="loginEmail" placeholder="you@company.com" required autocomplete="email" aria-label="Email address">
+        <input class="auth-input" type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" aria-label="Password">
+        <button type="button" class="auth-link" id="resetPassword">Forgot password?</button>
+        <button type="submit" class="auth-primary">Log in with email</button>
+      </form>
+
+      <form id="signupForm" class="auth-form auth-hidden" novalidate>
+        <input class="auth-input" type="text" id="signupName" placeholder="Full name" required aria-label="Full name">
+        <input class="auth-input" type="email" id="signupEmail" placeholder="you@company.com" required autocomplete="email" aria-label="Email address">
+        <input class="auth-input" type="password" id="signupPassword" placeholder="Create password" required autocomplete="new-password" aria-label="Password">
+        <button type="submit" class="auth-primary">Create account</button>
+      </form>
+
+      <form id="resetForm" class="auth-reset auth-hidden" novalidate style="display:none;">
+        <input class="auth-input" type="password" id="resetNewPassword" placeholder="New password" required autocomplete="new-password" aria-label="New password">
+        <button type="submit" class="auth-primary">Update password</button>
+        <button type="button" id="backToLogin" class="auth-primary auth-secondary">Back to login</button>
+      </form>
+
+      <div class="auth-actions">
+        <button id="googleSignIn" class="auth-primary auth-secondary" type="button">
+          <img class="google-icon" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <p id="authError" class="auth-error" role="alert"></p>
+      <p class="auth-note">By continuing, you agree to our terms and privacy policy.</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://kqyezzrlvtzbfenfqvau.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxeWV6enJsdnR6YmZlbmZxdmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDMwNzgsImV4cCI6MjA4OTA3OTA3OH0.JeDliElsw_a6F-kvspqII3Nub3fUvjkgkv0Xm0mjPD8';
+
+    function waitForSupabase(attempts = 0) {
+      if (window.supabase) {
+        initAuth();
+        return;
+      }
+      if (attempts > 50) return;
+      setTimeout(() => waitForSupabase(attempts + 1), 100);
+    }
+
+    function initAuth() {
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const errorEl = document.getElementById('authError');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const resetForm = document.getElementById('resetForm');
+      const tabs = document.querySelectorAll('.auth-tab');
+      const resetBtn = document.getElementById('resetPassword');
+      const backToLogin = document.getElementById('backToLogin');
+      resetForm.classList.add('auth-hidden');
+
+      function showLogin() {
+        loginForm.classList.remove('auth-hidden');
+        signupForm.classList.add('auth-hidden');
+        resetForm.classList.add('auth-hidden');
+        resetForm.style.display = 'none';
+      }
+
+      function showSignup() {
+        signupForm.classList.remove('auth-hidden');
+        loginForm.classList.add('auth-hidden');
+        resetForm.classList.add('auth-hidden');
+        resetForm.style.display = 'none';
+      }
+
+      function showReset() {
+        resetForm.classList.remove('auth-hidden');
+        loginForm.classList.add('auth-hidden');
+        signupForm.classList.add('auth-hidden');
+        resetForm.style.display = 'grid';
+      }
+
+      function setAuthCookie(token) {
+        if (!token) return;
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `sb_access_token=${token}; Path=/; SameSite=Lax${secure}`;
+      }
+
+      function isRecovery() {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+        return hash.includes('type=recovery') || hash.includes('type=magiclink') || search.includes('type=recovery');
+      }
+
+      function hasRecoveryCode() {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+        return hash.includes('code=') || search.includes('code=');
+      }
+
+      async function ensureRecoverySession() {
+        if (!hasRecoveryCode()) return false;
+        const { data, error } = await sb.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          console.error(error);
+          errorEl.textContent = 'Auth session missing. Please request a new reset link.';
+          return false;
+        }
+        return Boolean(data?.session);
+      }
+      resetBtn.addEventListener('click', async () => {
+        errorEl.textContent = '';
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        if (!email) {
+          errorEl.textContent = 'Enter your email to reset your password.';
+          return;
+        }
+        try {
+          const { error } = await sb.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/login/reset/'
+          });
+          if (error) throw error;
+          errorEl.textContent = 'Password reset email sent.';
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Password reset failed.';
+        }
+      });
+
+      resetForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.textContent = '';
+        const newPassword = document.getElementById('resetNewPassword').value;
+        try {
+          const { error } = await sb.auth.updateUser({ password: newPassword });
+          if (error) throw error;
+          window.location.href = '/login/';
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Password update failed.';
+        }
+      });
+
+      backToLogin.addEventListener('click', () => {
+        tabs.forEach((t) => t.classList.remove('is-active'));
+        tabs[0].classList.add('is-active');
+        showLogin();
+        errorEl.textContent = '';
+      });
+
+      (async () => {
+        showLogin();
+
+        if (isRecovery()) {
+          const ok = await ensureRecoverySession();
+          if (ok) {
+            showReset();
+          }
+          return;
+        }
+
+        if (window.location.hash) {
+          history.replaceState(null, '', window.location.pathname);
+        }
+
+        const { data } = await sb.auth.getSession();
+        if (data?.session) {
+          setAuthCookie(data.session.access_token);
+          window.location.href = '/';
+        }
+      })();
+
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach((t) => t.classList.remove('is-active'));
+          tab.classList.add('is-active');
+          const target = tab.dataset.tab;
+          if (target === 'login') {
+            showLogin();
+          } else {
+            showSignup();
+          }
+          errorEl.textContent = '';
+        });
+      });
+
+      document.getElementById('googleSignIn').addEventListener('click', async () => {
+        errorEl.textContent = '';
+        try {
+          const { error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + '/' }
+          });
+          if (error) throw error;
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Could not sign in. Try again.';
+        }
+      });
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.textContent = '';
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        const password = document.getElementById('loginPassword').value;
+        try {
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          const { data } = await sb.auth.getSession();
+          setAuthCookie(data?.session?.access_token);
+          window.location.href = '/';
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Email login failed.';
+        }
+      });
+
+      signupForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.textContent = '';
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+        const password = document.getElementById('signupPassword').value;
+        if (!name) {
+          errorEl.textContent = 'Name is required.';
+          return;
+        }
+        try {
+          const { data, error } = await sb.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: window.location.origin + '/' }
+          });
+          if (error) throw error;
+
+          const { error: insertError } = await sb.from('signups').upsert({
+            name,
+            email,
+            user_id: data?.user?.id
+          }, { onConflict: 'email' });
+          if (insertError) console.warn('Signup insert failed', insertError);
+
+          if (data?.session) {
+            setAuthCookie(data.session.access_token);
+            window.location.href = '/';
+            return;
+          }
+
+          errorEl.textContent = 'Check your email to confirm the signup.';
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = err?.message || 'Email signup failed.';
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => waitForSupabase());
+    } else {
+      waitForSupabase();
+    }
+  </script>
+</body>
+</html>
