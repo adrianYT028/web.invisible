@@ -17,12 +17,17 @@ function required(name: string, value: EnvValue): string {
 }
 
 export const env = {
-  supabaseUrl: required(
-    'NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)',
-    pick(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_URL)
-  ),
-  supabaseAnonKey: required(
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY)',
-    pick(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, process.env.SUPABASE_ANON_KEY)
-  ),
+  get supabaseUrl() {
+    return required(
+      'NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)',
+      pick(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_URL)
+    );
+  },
+  get supabaseAnonKey() {
+    return required(
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY)',
+      pick(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, process.env.SUPABASE_ANON_KEY)
+    );
+  },
 };
+
