@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   const supabase = await createSupabaseRouteClient();
 
