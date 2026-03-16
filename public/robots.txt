@@ -1,0 +1,8 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /login/reset
+
+Sitemap: https://www.unviewable.online/sitemap.xml

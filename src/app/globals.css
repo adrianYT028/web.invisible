@@ -163,8 +163,8 @@
   --glass-blur:         16px;
 
   /* Typography */
-  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono:  'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --font-sans:  var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:  var(--font-mono), 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   --fs-xs:     0.75rem;
   --fs-sm:     0.875rem;
   --fs-base:   1rem;
@@ -243,6 +243,36 @@ button, input {
 
 code {
   font-family: var(--font-mono);
+}
+
+/* — Skip to content (accessibility) — */
+.skip-to-content {
+  position: fixed;
+  top: -100%;
+  left: var(--space-md);
+  z-index: 10000;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-cyan);
+  color: var(--color-obsidian);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  border-radius: 0 0 6px 6px;
+  transition: top var(--duration) var(--ease-out);
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* — Focus visible (keyboard navigation) — */
+:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+}
+
+/* — Scroll margin for anchor links below fixed nav — */
+[id] {
+  scroll-margin-top: calc(var(--nav-height) + var(--space-lg));
 }
 
 /* ΓöÇΓöÇ Noise Overlay ΓöÇΓöÇ */

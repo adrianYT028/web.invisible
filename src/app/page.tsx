@@ -222,11 +222,12 @@ export default function Home() {
 
   return (
     <>
+      <a href="#main-content" className="skip-to-content">Skip to content</a>
       <canvas className="particles-canvas" id="particles" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
       <div className="scanline-overlay" aria-hidden="true" />
 
-      <header className="site-header">
+      <header className="site-header" role="banner">
         <nav className="nav-container">
           <a href="#" className="logo" aria-label="Invisible AI Home">
             <span className="logo-icon">&#9670;</span>
@@ -271,7 +272,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main>
+      <main id="main-content">
         <section className="hero" id="hero">
           <div className="hero-content">
             <p className="hero-tag">STEALTH-MODE AI OVERLAY</p>
