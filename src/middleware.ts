@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 import { env } from '@/lib/env';
 
 function isPublicPath(pathname: string) {
+  if (pathname === '/') return true;
   if (pathname === '/login') return true;
   if (pathname === '/login/reset') return true;
   if (pathname === '/auth/callback') return true;

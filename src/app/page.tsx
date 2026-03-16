@@ -130,6 +130,7 @@ export default function Home() {
   useScrollReveal();
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
@@ -137,17 +138,17 @@ export default function Home() {
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [formError, setFormError] = useState('');
 
+  const downloadUrl =
+    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/v1.0.0/AIMeetingAssistant_Setup_1.1.0.exe';
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       const { data, error } = await supabase.auth.getUser();
       if (cancelled) return;
-      if (error || !data?.user) {
-        // Middleware should catch this, but keep a safe fallback.
-        window.location.href = '/login';
-        return;
-      }
+      if (error || !data?.user) return; // Not logged in — that's fine, page is public
+      setIsLoggedIn(true);
       setUserEmail(data.user.email || '');
 
       // Ensure signup row exists (server-side route inserts with RLS).
@@ -158,6 +159,13 @@ export default function Home() {
       cancelled = true;
     };
   }, [supabase]);
+
+  function handleDownload(e: React.MouseEvent) {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      window.location.href = '/login?redirectedFrom=%2F';
+    }
+  }
 
   async function handleLogout() {
     try {
@@ -239,17 +247,26 @@ export default function Home() {
             <li>
               <a href="#how-it-works">How It Works</a>
             </li>
-            <li>
-              <a href="#reviews">Feedback</a>
-            </li>
-            <li>
-              <a href="#account">Account</a>
-            </li>
-            <li>
-              <button className="logout-link" onClick={handleLogout} type="button">
-                Logout
-              </button>
-            </li>
+            {isLoggedIn && (
+              <>
+                <li>
+                  <a href="#reviews">Feedback</a>
+                </li>
+                <li>
+                  <a href="#account">Account</a>
+                </li>
+                <li>
+                  <button className="logout-link" onClick={handleLogout} type="button">
+                    Logout
+                  </button>
+                </li>
+              </>
+            )}
+            {!isLoggedIn && (
+              <li>
+                <a href="/login">Login</a>
+              </li>
+            )}
           </ul>
         </nav>
       </header>
@@ -269,9 +286,10 @@ export default function Home() {
 
             <div className="hero-buttons">
               <a
-                href="https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/v1.0.0/AIMeetingAssistant_Setup_1.1.0.exe"
+                href={downloadUrl}
                 className="download-button"
                 download
+                onClick={handleDownload}
               >
                 <svg
                   className="download-icon"
@@ -560,6 +578,8 @@ export default function Home() {
           </div>
         </section>
 
+        {isLoggedIn && (
+        <>
         <div className="section-divider" aria-hidden="true" />
 
         <section className="reviews" id="reviews">
@@ -691,6 +711,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+        </>
+        )}
       </main>
 
       <footer className="site-footer">
