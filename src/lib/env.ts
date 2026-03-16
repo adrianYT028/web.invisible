@@ -9,6 +9,11 @@ function pick(...values: EnvValue[]): string | undefined {
 
 function required(name: string, value: EnvValue): string {
   if (!value) {
+    // During build/prerender, env vars may not be available — return placeholder
+    // so static page collection succeeds. At runtime the real values will be present.
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+      return '';
+    }
     throw new Error(
       `Missing env var: ${name}. Add it to .env.local (recommended) or configure it in Vercel Environment Variables.`
     );
