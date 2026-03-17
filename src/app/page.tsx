@@ -230,7 +230,7 @@ export default function Home() {
       <header className="site-header" role="banner">
         <nav className="nav-container">
           <a href="#" className="logo" aria-label="Invisible AI Home">
-            <span className="logo-icon">&#9670;</span>
+            <img src="/logo.png" alt="Invisible AI Logo" className="logo-img" />
             <span className="logo-text">
               INVISIBLE<span className="logo-accent">AI</span>
             </span>
