@@ -248,6 +248,9 @@ export default function Home() {
             <li>
               <a href="#how-it-works">How It Works</a>
             </li>
+            <li>
+              <a href="#contact">Contact</a>
+            </li>
             {isLoggedIn && (
               <>
                 <li>
@@ -718,6 +721,26 @@ export default function Home() {
 
       <footer className="site-footer">
         <div className="footer-container">
+          <div className="footer-contact" id="contact">
+            <h3 className="footer-contact-title">Contact Us</h3>
+            <div className="footer-contact-links">
+              <a href="mailto:join.invisibleai@gmail.com" className="footer-contact-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="M22 4L12 13 2 4" />
+                </svg>
+                join.invisibleai@gmail.com
+              </a>
+              <a href="https://www.instagram.com/invisible_application?igsh=bHEzYmdtajdqYjhx" target="_blank" rel="noopener noreferrer" className="footer-contact-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+                @invisible_application
+              </a>
+            </div>
+          </div>
           <p className="footer-copy">
             &copy; <time dateTime="2026">2026</time> Invisible AI. All rights reserved.
           </p>
