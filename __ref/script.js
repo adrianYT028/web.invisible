@@ -1,7 +1,7 @@
-﻿/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   INVISIBLE AI ΓÇö JavaScript
-   ES6 Classes ┬╖ Constraint Validation ┬╖ IntersectionObserver
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
+   UNVIEWABLE G�� JavaScript
+   ES6 Classes -+ Constraint Validation -+ IntersectionObserver
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 const SUPABASE_URL = 'https://kqyezzrlvtzbfenfqvau.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxeWV6enJsdnR6YmZlbmZxdmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDMwNzgsImV4cCI6MjA4OTA3OTA3OH0.JeDliElsw_a6F-kvspqII3Nub3fUvjkgkv0Xm0mjPD8';
@@ -258,7 +258,7 @@ class ScrollReveal {
 /**
  * ParticleField
  * Renders floating cyan dots on a <canvas> for atmosphere.
- * Lightweight ΓÇö uses requestAnimationFrame with throttling.
+ * Lightweight G�� uses requestAnimationFrame with throttling.
  */
 class ParticleField {
   #canvas;
@@ -352,7 +352,7 @@ class CardGlow {
 }
 
 
-/* ΓöÇΓöÇ Initialize ΓöÇΓöÇ */
+/* G��G�� Initialize G��G�� */
 document.addEventListener('DOMContentLoaded', () => {
   requireAuth().then((ok) => {
     if (!ok) return;

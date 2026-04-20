@@ -1,9 +1,9 @@
-﻿/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   INVISIBLE AI ΓÇö Design System & Styles
-   Vanilla CSS ┬╖ CSS Variables ┬╖ Grid/Flex ┬╖ Responsive
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
+   UNVIEWABLE G�� Design System & Styles
+   Vanilla CSS -+ CSS Variables -+ Grid/Flex -+ Responsive
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
-/* ΓöÇΓöÇ CSS Variables (Design Tokens) ΓöÇΓöÇ */
+/* G��G�� CSS Variables (Design Tokens) G��G�� */
 :root {
   /* Palette */
   --color-obsidian:     #0A0C12;
@@ -66,7 +66,7 @@
   --duration-slow: 400ms;
 }
 
-/* ΓöÇΓöÇ Reset ΓöÇΓöÇ */
+/* G��G�� Reset G��G�� */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -111,7 +111,7 @@ code {
   font-family: var(--font-mono);
 }
 
-/* ΓöÇΓöÇ Noise Overlay ΓöÇΓöÇ */
+/* G��G�� Noise Overlay G��G�� */
 .noise-overlay {
   position: fixed;
   inset: 0;
@@ -123,7 +123,7 @@ code {
   background-size: 256px 256px;
 }
 
-/* ΓöÇΓöÇ Scanline Overlay ΓöÇΓöÇ */
+/* G��G�� Scanline Overlay G��G�� */
 .scanline-overlay {
   position: fixed;
   inset: 0;
@@ -138,7 +138,7 @@ code {
   );
 }
 
-/* ΓöÇΓöÇ Glass Panel Utility ΓöÇΓöÇ */
+/* G��G�� Glass Panel Utility G��G�� */
 .glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -146,9 +146,9 @@ code {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    HEADER / NAV
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .site-header {
   position: fixed;
@@ -244,9 +244,9 @@ code {
   width: 100%;
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    HERO SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .hero {
   position: relative;
@@ -265,7 +265,7 @@ code {
   max-width: 800px;
 }
 
-/* ΓöÇΓöÇ Hero Entrance Sequence ΓöÇΓöÇ */
+/* G��G�� Hero Entrance Sequence G��G�� */
 .hero-tag {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
@@ -314,7 +314,7 @@ code {
   animation: heroFadeUp 0.8s var(--ease-out) 0.6s forwards;
 }
 
-/* ΓöÇΓöÇ Hero Buttons Container ΓöÇΓöÇ */
+/* G��G�� Hero Buttons Container G��G�� */
 .hero-buttons {
   display: flex;
   align-items: center;
@@ -326,7 +326,7 @@ code {
   animation: heroFadeUp 0.7s var(--ease-out) 0.8s forwards;
 }
 
-/* ΓöÇΓöÇ Download Button (Primary) ΓöÇΓöÇ */
+/* G��G�� Download Button (Primary) G��G�� */
 .download-button {
   display: inline-flex;
   align-items: center;
@@ -430,7 +430,7 @@ code {
   border: 1px solid rgba(var(--color-text-dim), 0.3);
 }
 
-/* ΓöÇΓöÇ Mac Button (Disabled/Coming Soon) ΓöÇΓöÇ */
+/* G��G�� Mac Button (Disabled/Coming Soon) G��G�� */
 .mac-button {
   opacity: 0.6;
   cursor: not-allowed;
@@ -493,7 +493,7 @@ code {
   animation: none;
 }
 
-/* ΓöÇΓöÇ Secondary Button ΓöÇΓöÇ */
+/* G��G�� Secondary Button G��G�� */
 .secondary-button {
   display: inline-flex;
   align-items: center;
@@ -552,7 +552,7 @@ code {
   50% { left: 100%; }
 }
 
-/* Hero glow ΓÇö breathing animation */
+/* Hero glow G�� breathing animation */
 .hero-glow {
   position: absolute;
   top: 30%;
@@ -572,9 +572,9 @@ code {
   50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.15); }
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    FEATURES SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .video-section {
   padding: var(--space-section) var(--space-xl);
@@ -700,7 +700,7 @@ code {
   margin: 0 auto var(--space-3xl);
 }
 
-/* ΓöÇΓöÇ Feature Grid ΓöÇΓöÇ */
+/* G��G�� Feature Grid G��G�� */
 .features-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -794,16 +794,16 @@ code {
   color: var(--color-text-muted);
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    HOW IT WORKS SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .how-it-works {
   padding: var(--space-section) var(--space-xl);
   background: linear-gradient(180deg, transparent 0%, rgba(var(--color-surface-rgb), 0.4) 50%, transparent 100%);
 }
 
-/* ΓöÇΓöÇ Steps Grid ΓöÇΓöÇ */
+/* G��G�� Steps Grid G��G�� */
 .steps-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -884,7 +884,7 @@ code {
   }
 }
 
-/* ΓöÇΓöÇ Code Block (unused ΓÇö kept for reference) ΓöÇΓöÇ */
+/* G��G�� Code Block (unused G�� kept for reference) G��G�� */
 .code-block {
   max-width: 720px;
   margin: 0 auto var(--space-xl);
@@ -938,7 +938,7 @@ code {
 .code-keyword   { color: #C678DD; }
 .code-const     { color: var(--color-cyan); }
 
-/* ΓöÇΓöÇ Tech Note ΓöÇΓöÇ */
+/* G��G�� Tech Note G��G�� */
 .tech-note {
   max-width: 720px;
   margin: 0 auto;
@@ -962,9 +962,9 @@ code {
   border-radius: 2px;
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    REVIEWS SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .reviews {
   padding: var(--space-section) var(--space-xl);
@@ -1127,9 +1127,9 @@ code {
   border-color: var(--color-error);
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    NOTIFY / CTA SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .notify-section {
   padding: var(--space-section) var(--space-xl);
@@ -1263,9 +1263,9 @@ code {
   border-color: var(--color-error);
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    FOOTER
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .site-footer {
   padding: var(--space-2xl) var(--space-xl);
@@ -1292,9 +1292,9 @@ code {
   opacity: 0.6;
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    SCROLL ANIMATIONS (Intersection Observer)
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 .fade-in-up {
   opacity: 0;
@@ -1340,7 +1340,7 @@ code {
   transform: scale(1);
 }
 
-/* ΓöÇΓöÇ Floating particles canvas ΓöÇΓöÇ */
+/* G��G�� Floating particles canvas G��G�� */
 .particles-canvas {
   position: fixed;
   inset: 0;
@@ -1348,7 +1348,7 @@ code {
   pointer-events: none;
 }
 
-/* ΓöÇΓöÇ Horizontal divider line animation ΓöÇΓöÇ */
+/* G��G�� Horizontal divider line animation G��G�� */
 .section-divider {
   width: 0;
   height: 1px;
@@ -1361,7 +1361,7 @@ code {
   width: 120px;
 }
 
-/* ΓöÇΓöÇ Feature card glow on hover ΓöÇΓöÇ */
+/* G��G�� Feature card glow on hover G��G�� */
 .feature-card::after {
   content: '';
   position: absolute;
@@ -1376,7 +1376,7 @@ code {
   opacity: 1;
 }
 
-/* ΓöÇΓöÇ Step card connector line ΓöÇΓöÇ */
+/* G��G�� Step card connector line G��G�� */
 .step-card::after {
   content: '';
   position: absolute;
@@ -1393,7 +1393,7 @@ code {
   width: 40%;
 }
 
-/* ΓöÇΓöÇ Logo icon pulse ΓöÇΓöÇ */
+/* G��G�� Logo icon pulse G��G�� */
 .logo-icon {
   animation: logoPulse 3s ease-in-out infinite;
 }
@@ -1403,7 +1403,7 @@ code {
   50% { opacity: 0.6; }
 }
 
-/* ΓöÇΓöÇ Nav appear on load ΓöÇΓöÇ */
+/* G��G�� Nav appear on load G��G�� */
 .site-header {
   animation: navSlideDown 0.6s var(--ease-out) forwards;
 }
@@ -1419,7 +1419,7 @@ code {
   }
 }
 
-/* ΓöÇΓöÇ Reduced motion ΓöÇΓöÇ */
+/* G��G�� Reduced motion G��G�� */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -1432,9 +1432,9 @@ code {
   }
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+/* G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
    RESPONSIVE
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+   G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G�� */
 
 /* Desktop - Ensure buttons stay side by side */
 @media (min-width: 769px) {

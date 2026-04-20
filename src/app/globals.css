@@ -132,12 +132,12 @@
 .auth-link:hover {
   text-decoration: underline;
 }
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   INVISIBLE AI ΓÇö Design System & Styles
-   Vanilla CSS ┬╖ CSS Variables ┬╖ Grid/Flex ┬╖ Responsive
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* ──────────────────────────────────────────────────────────────────────────
+   UNVIEWABLE — Design System & Styles
+   Vanilla CSS ∙ CSS Variables ∙ Grid/Flex ∙ Responsive
+   ────────────────────────────────────────────────────────────────────────── */
 
-/* ΓöÇΓöÇ CSS Variables (Design Tokens) ΓöÇΓöÇ */
+/* ── CSS Variables (Design Tokens) ── */
 :root {
   /* Palette */
   --color-obsidian:     #0A0C12;
@@ -350,8 +350,7 @@ code {
   height: 36px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(var(--color-cyan-rgb), 0.4));
-  animation: logoPulse 3s ease-in-out infinite;
+  mix-blend-mode: lighten;
 }
 
 .logo-text {
@@ -1472,6 +1471,42 @@ code {
   color: var(--color-text-dim);
   letter-spacing: 0.1em;
   opacity: 0.6;
+}
+
+.footer-contact {
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.footer-contact-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-md);
+}
+
+.footer-contact-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xl);
+  flex-wrap: wrap;
+}
+
+.footer-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  transition: color var(--duration) var(--ease-out);
+}
+
+.footer-contact-link:hover {
+  color: var(--color-cyan);
 }
 
 /* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ

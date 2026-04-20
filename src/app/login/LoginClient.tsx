@@ -170,11 +170,15 @@ export default function LoginClient() {
   return (
     <div className="auth-shell">
       <div className="auth-card glass-panel">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: 'var(--space-md)' }}>
+          <img src="/logo.png" alt="Unviewable Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '0.12em' }}>UNVIEWABLE</span>
+        </div>
         <p className="section-tag" style={{ textAlign: 'center' }}>
           ACCESS
         </p>
         <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-sub">Log in or create an account to access Invisible AI.</p>
+        <p className="auth-sub">Log in or create an account to access Unviewable.</p>
 
         <div className="auth-tabs" role="tablist">
           <button

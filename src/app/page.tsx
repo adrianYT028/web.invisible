@@ -229,10 +229,10 @@ export default function Home() {
 
       <header className="site-header" role="banner">
         <nav className="nav-container">
-          <a href="#" className="logo" aria-label="Invisible AI Home">
-            <img src="/logo.png" alt="Invisible AI Logo" className="logo-img" />
+          <a href="#" className="logo" aria-label="Unviewable Home">
+            <img src="/logo.png" alt="Unviewable Logo" className="logo-img" />
             <span className="logo-text">
-              INVISIBLE<span className="logo-accent">AI</span>
+              UNVIEWABLE<span className="logo-accent"></span>
             </span>
           </a>
           <ul className="nav-links" role="list">
@@ -280,7 +280,7 @@ export default function Home() {
               The Intelligence<br />They Can't See.
             </h1>
             <p className="hero-sub">
-              A 100% invisible AI assistant for high-stakes interviews and meetings.
+              A 100% unviewable AI assistant for high-stakes interviews and meetings.
               <br />
               Bypasses all screen-capture pipelines.
             </p>
@@ -337,7 +337,7 @@ export default function Home() {
             <p className="section-tag">INSTALL &amp; RUN</p>
             <h2 className="section-title">Watch the 2-minute setup</h2>
             <p className="section-sub">
-              Follow along to download, install, and launch Invisible AI on Windows without showing a trace.
+              Follow along to download, install, and launch Unviewable on Windows without showing a trace.
             </p>
 
             <div className="video-grid glass-panel">
@@ -345,7 +345,7 @@ export default function Home() {
                 <div className="video-embed">
                   <iframe
                     src="https://drive.google.com/file/d/12cv5t8-Q46hb2Pd6CVomRuMNd4DvCCKf/preview"
-                    title="Invisible AI install and run tutorial"
+                    title="Unviewable install and run tutorial"
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                     loading="lazy"
@@ -387,7 +387,7 @@ export default function Home() {
                 <div className="video-embed">
                   <iframe
                     src="https://drive.google.com/file/d/1uAdBSS_QJXy_S8nrLbvTpp887MvXjpBg/preview"
-                    title="Invisible AI usage guide"
+                    title="Unviewable usage guide"
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                     loading="lazy"
@@ -422,7 +422,7 @@ export default function Home() {
           <div className="section-container">
             <p className="section-tag">PRODUCT CAPABILITIES</p>
             <h2 className="section-title">Engineered to be Unseen</h2>
-            <p className="section-sub">Three core subsystems working in concert to deliver invisible intelligence.</p>
+            <p className="section-sub">Three core subsystems working in concert to deliver unviewable intelligence.</p>
 
             <div className="features-grid">
               <article
@@ -456,7 +456,7 @@ export default function Home() {
                 </div>
                 <h3 className="feature-title">Stealth Execution</h3>
                 <p className="feature-desc">
-                  Leverages the Windows Display Affinity API to make the overlay completely invisible to all screen-capture
+                  Leverages the Windows Display Affinity API to make the overlay completely unviewable to all screen-capture
                   and screen-share pipelines — OBS, Zoom, Teams, Discord.
                 </p>
               </article>
@@ -547,7 +547,7 @@ export default function Home() {
                 <h3 className="step-title">Launch the Overlay</h3>
                 <p className="step-desc">
                   Start the assistant with a single hotkey. The overlay attaches to your display and immediately becomes
-                  invisible to every screen-capture and screen-share pipeline.
+                  unviewable to every screen-capture and screen-share pipeline.
                 </p>
               </article>
 
@@ -718,8 +718,28 @@ export default function Home() {
 
       <footer className="site-footer">
         <div className="footer-container">
+          <div className="footer-contact" id="contact">
+            <h3 className="footer-contact-title">Contact Us</h3>
+            <div className="footer-contact-links">
+              <a href="mailto:join.invisibleai@gmail.com" className="footer-contact-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="M22 4L12 13 2 4" />
+                </svg>
+                join.invisibleai@gmail.com
+              </a>
+              <a href="https://www.instagram.com/unviewable.online/" target="_blank" rel="noopener noreferrer" className="footer-contact-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+                @unviewable.online
+              </a>
+            </div>
+          </div>
           <p className="footer-copy">
-            &copy; <time dateTime="2026">2026</time> Invisible AI. All rights reserved.
+            &copy; <time dateTime="2026">2026</time> Unviewable. All rights reserved.
           </p>
           <p className="footer-note">Built for those who operate in the margins.</p>
         </div>

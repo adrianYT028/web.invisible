@@ -19,13 +19,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Invisible AI — The Intelligence They Can\'t See',
-    template: '%s | Invisible AI',
+    default: 'Unviewable — The Intelligence They Can\'t See',
+    template: '%s | Unviewable',
   },
   description:
-    'A 100% invisible AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines using Windows Display Affinity API.',
+    'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines using Windows Display Affinity API.',
   keywords: [
-    'invisible AI',
+    'unviewable',
     'AI overlay',
     'screen capture bypass',
     'meeting assistant',
@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     'AI assistant',
     'undetectable AI',
   ],
-  authors: [{ name: 'Invisible AI' }],
-  creator: 'Invisible AI',
-  publisher: 'Invisible AI',
+  authors: [{ name: 'Unviewable' }],
+  creator: 'Unviewable',
+  publisher: 'Unviewable',
   robots: {
     index: true,
     follow: true,
@@ -58,18 +58,18 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    siteName: 'Invisible AI',
-    title: 'Invisible AI — The Intelligence They Can\'t See',
+    siteName: 'Unviewable',
+    title: 'Unviewable — The Intelligence They Can\'t See',
     description:
-      'A 100% invisible AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
     url: '/',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Invisible AI — The Intelligence They Can\'t See',
+    title: 'Unviewable — The Intelligence They Can\'t See',
     description:
-      'A 100% invisible AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
   },
 };
 
@@ -81,11 +81,11 @@ export default function RootLayout({
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Invisible AI',
+    name: 'Unviewable',
     applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'Windows 10+',
     description:
-      'A 100% invisible AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
     url: siteUrl,
     offers: {
       '@type': 'Offer',
