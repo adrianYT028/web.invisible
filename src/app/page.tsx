@@ -139,7 +139,7 @@ export default function Home() {
   const [formError, setFormError] = useState('');
 
   const downloadUrl =
-    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/1.1.0/InvisibleOverlay.exe';
+    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe';
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +308,7 @@ export default function Home() {
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
                 <span>Download for Windows</span>
-                <span className="version-badge">v1.1.0</span>
+                <span className="version-badge">v2.0.0</span>
               </a>
               <button className="download-button mac-button" disabled>
                 <svg
@@ -358,7 +358,7 @@ export default function Home() {
                 <h3 className="video-steps-title">Checklist</h3>
                 <ol className="video-steps-list">
                   <li>
-                    <strong>Download</strong> the Windows installer (v1.1.0) from the hero CTA.
+                    <strong>Download</strong> the Windows installer (v2.0.0) from the hero CTA.
                   </li>
                   <li>
                     <strong>Run</strong> the setup and approve Windows SmartScreen prompts.
