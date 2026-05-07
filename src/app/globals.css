@@ -863,6 +863,8 @@ code {
 .section-container {
   max-width: var(--max-width);
   margin: 0 auto;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
 }
 
 .section-tag {

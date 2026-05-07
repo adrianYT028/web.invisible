@@ -228,9 +228,9 @@ export default function Home() {
       <div className="scanline-overlay" aria-hidden="true" />
 
       <header className="site-header" role="banner">
-        <nav className="nav-container">
+        <nav className="nav-container" aria-label="Main navigation">
           <a href="#" className="logo" aria-label="Unviewable Home">
-            <img src="/logo.png" alt="Unviewable Logo" className="logo-img" />
+            <img src="/logo.png" alt="Unviewable Logo" className="logo-img" width={36} height={36} />
             <span className="logo-text">
               UNVIEWABLE<span className="logo-accent"></span>
             </span>
@@ -302,6 +302,8 @@ export default function Home() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  role="img"
+                  aria-label="Download icon"
                 >
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
@@ -320,6 +322,8 @@ export default function Home() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  role="img"
+                  aria-label="Apple icon"
                 >
                   <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.09997 22C7.78997 22.05 6.79997 20.68 5.95997 19.47C4.24997 17 2.93997 12.45 4.69997 9.39C5.56997 7.87 7.12997 6.91 8.81997 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5Z" />
                   <path d="M13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z" />
@@ -446,6 +450,7 @@ export default function Home() {
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <rect x="2" y="3" width="20" height="14" rx="2" />
                     <path d="M8 21h8" />
@@ -482,6 +487,7 @@ export default function Home() {
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -722,14 +728,14 @@ export default function Home() {
             <h3 className="footer-contact-title">Contact Us</h3>
             <div className="footer-contact-links">
               <a href="mailto:join.invisibleai@gmail.com" className="footer-contact-link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="2" y="4" width="20" height="16" rx="2" />
                   <path d="M22 4L12 13 2 4" />
                 </svg>
                 join.invisibleai@gmail.com
               </a>
               <a href="https://www.instagram.com/unviewable.online/" target="_blank" rel="noopener noreferrer" className="footer-contact-link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="2" y="2" width="20" height="20" rx="5" />
                   <circle cx="12" cy="12" r="5" />
                   <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />

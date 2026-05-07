@@ -4,5 +4,6 @@ Allow: /
 Disallow: /api/
 Disallow: /auth/
 Disallow: /login/reset
+Disallow: /account
 
 Sitemap: https://www.unviewable.online/sitemap.xml

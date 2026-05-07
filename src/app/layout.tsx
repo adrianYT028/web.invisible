@@ -78,26 +78,74 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Unviewable',
-    applicationCategory: 'UtilitiesApplication',
-    operatingSystem: 'Windows 10+',
-    description:
-      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
-    url: siteUrl,
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Unviewable',
+      url: siteUrl,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${siteUrl}/?q={search_term_string}`
+        },
+        'query-input': 'required name=search_term_string'
+      }
     },
-  };
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Unviewable',
+      url: siteUrl,
+      logo: `${siteUrl}/logo.png`,
+      sameAs: [
+        'https://www.instagram.com/unviewable.online/'
+      ]
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SiteNavigationElement',
+      name: ['Downloads', 'Setup Guide', 'Usage Guide', 'Feedback', 'Login'],
+      url: [
+        `${siteUrl}/downloads`,
+        `${siteUrl}/guides/setup`,
+        `${siteUrl}/guides/usage`,
+        `${siteUrl}/feedback`,
+        `${siteUrl}/login`
+      ]
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Unviewable',
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Windows 10+',
+      softwareVersion: '2.0.0',
+      description: 'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+      url: siteUrl,
+      downloadUrl: 'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe',
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.9',
+        ratingCount: '124'
+      },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+    }
+  ];
 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="theme-color" content="#0A0C12" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://github.com" />
+        <link rel="dns-prefetch" href="https://drive.google.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
