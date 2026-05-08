@@ -338,89 +338,71 @@ export default function Home() {
 
         <section className="video-section" id="install">
           <div className="section-container">
-            <p className="section-tag">INSTALL &amp; RUN</p>
-            <h2 className="section-title">Watch the 2-minute setup</h2>
+            <p className="section-tag">GUIDES</p>
+            <h2 className="section-title">Get Started in Minutes</h2>
             <p className="section-sub">
-              Follow along to download, install, and launch Unviewable on Windows without showing a trace.
+              Clear, step-by-step documentation with visuals — no videos needed.
             </p>
 
-            <div className="video-grid glass-panel">
-              <div className="video-frame fade-in-up">
-                <div className="video-embed">
-                  <iframe
-                    src="https://drive.google.com/file/d/12cv5t8-Q46hb2Pd6CVomRuMNd4DvCCKf/preview"
-                    title="Unviewable install and run tutorial"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
+            <div className="guide-cta-grid">
+              {/* Setup Guide CTA */}
+              <div className="guide-cta-card">
+                <div className="guide-cta-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
                 </div>
+                <h3 className="guide-cta-title">Setup Guide</h3>
+                <p className="guide-cta-desc">
+                  Download, install, and launch Unviewable on Windows — takes under 2 minutes.
+                </p>
+                <ul className="guide-cta-steps">
+                  <li>Download the Windows installer</li>
+                  <li>Approve SmartScreen &amp; run setup</li>
+                  <li>Launch the stealth overlay</li>
+                  <li>Verify invisibility in Zoom / OBS</li>
+                </ul>
+                <a href="/guides/setup" className="guide-cta-link">
+                  Read the Setup Guide
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </a>
               </div>
 
-              <div className="video-steps fade-in-up">
-                <h3 className="video-steps-title">Checklist</h3>
-                <ol className="video-steps-list">
-                  <li>
-                    <strong>Download</strong> the Windows installer (v2.0.0) from the hero CTA.
-                  </li>
-                  <li>
-                    <strong>Run</strong> the setup and approve Windows SmartScreen prompts.
-                  </li>
-                  <li>
-                    <strong>Launch</strong> the app and trigger the overlay with the hotkey shown.
-                  </li>
-                  <li>
-                    <strong>Test</strong> in Zoom/Teams/OBS — capture tools will see nothing.
-                  </li>
-                </ol>
-                <p className="video-note">Tip: If antivirus blocks the installer, whitelist it and rerun the setup.</p>
+              {/* Usage Guide CTA */}
+              <div className="guide-cta-card" id="usage-guide">
+                <div className="guide-cta-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </div>
+                <h3 className="guide-cta-title">Usage Guide</h3>
+                <p className="guide-cta-desc">
+                  How to use the overlay during live meetings and interviews — discreetly.
+                </p>
+                <ul className="guide-cta-steps">
+                  <li>Launch before the call starts</li>
+                  <li>Select your context region</li>
+                  <li>Control with keyboard hotkeys</li>
+                  <li>Review AI suggestions in real time</li>
+                </ul>
+                <a href="/guides/usage" className="guide-cta-link">
+                  Read the Usage Guide
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="video-section" id="usage-guide">
-          <div className="section-container">
-            <p className="section-tag">USAGE GUIDE</p>
-            <h2 className="section-title">How to run it live</h2>
-            <p className="section-sub">A quick walkthrough on using the overlay during live meetings and interviews.</p>
-
-            <div className="video-grid glass-panel">
-              <div className="video-frame fade-in-up">
-                <div className="video-embed">
-                  <iframe
-                    src="https://drive.google.com/file/d/1uAdBSS_QJXy_S8nrLbvTpp887MvXjpBg/preview"
-                    title="Unviewable usage guide"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              </div>
-
-              <div className="video-steps fade-in-up">
-                <h3 className="video-steps-title">In-session flow</h3>
-                <ol className="video-steps-list">
-                  <li>
-                    <strong>Launch</strong> the overlay before the call starts.
-                  </li>
-                  <li>
-                    <strong>Select</strong> the screen region you want the AI to watch.
-                  </li>
-                  <li>
-                    <strong>Use</strong> the hotkeys to reposition or hide the panel.
-                  </li>
-                  <li>
-                    <strong>Review</strong> suggestions discreetly while you speak.
-                  </li>
-                </ol>
-                <p className="video-note">Tip: Keep the overlay near your eyeline for natural delivery.</p>
-              </div>
-            </div>
-          </div>
-        </section>
 
         <section className="features" id="features">
           <div className="section-container">
