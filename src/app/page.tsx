@@ -15,12 +15,17 @@
  *   - All five public sections (hero, trust strip, features, how-it-works,
  *     guide cards) render deterministic markup. The only client islands
  *     mounted from this tree are <HeroSpotlight> (inside HeroSection,
- *     gated on the `spotlight` prop), <Header> + <ThemeToggle> +
- *     <MobileMenu> (inside SiteShell), and <HomeClient> (the auth-gated
- *     review-form lazy island below). Anonymous visitors never download
- *     the review-form chunk because <HomeClient> short-circuits to `null`
- *     until `supabase.auth.getUser()` resolves with a signed-in user
- *     (Req 13.7).
+ *     gated on the `spotlight` prop), <HeroAntigravity> (inside
+ *     HeroSection, gated on the `antigravity` prop — the cursor-repelled
+ *     mass layer that complements the spotlight glow), <Header> +
+ *     <ThemeToggle> + <MobileMenu> (inside SiteShell), and <HomeClient>
+ *     (the auth-gated review-form lazy island below). Anonymous visitors
+ *     never download the review-form chunk because <HomeClient> short-
+ *     circuits to `null` until `supabase.auth.getUser()` resolves with a
+ *     signed-in user (Req 13.7). The `antigravity` prop is set only on
+ *     this route — every other surface that renders <HeroSection>
+ *     (downloads, feedback) omits the prop, so the antigravity DOM and
+ *     its physics client bundle never reach those routes.
  *
  * Hero copy (preserved positioning, restyled chrome — Req 1.1, 6.1, 6.2):
  *   - eyebrow         → "Stealth-mode AI overlay"
@@ -114,6 +119,45 @@ export default function HomePage() {
           trailing: <span className="cta-version">Coming soon</span>,
         }}
         spotlight
+        antigravity={{
+          // Constellation-style ambient layer: many small glowing points
+          // distributed across the hero via a low-discrepancy sequence,
+          // fleeing the cursor with soft momentum. Smaller and more
+          // numerous than the original blob design — reads as ambient
+          // light specks against the spotlight glow rather than discrete
+          // shapes (Req 6.5, 9.4). Color is left as the design-system
+          // `var(--accent)` token by omission so the layer auto-themes
+          // with light/dark mode. Ambient drift + cursor repulsion =
+          // constant gentle flow: the rAF loop adds a tiny per-particle
+          // sine-wave force every frame, so the layer never freezes
+          // when the cursor leaves the hero.
+          count: 18,
+          repulsionRadius: 180,        // smaller — particles only react when the cursor is close
+          repulsionStrength: 220,      // gentler push so the motion stays graceful
+          damping: 0.95,               // longer coast for fluid momentum
+          maxVelocity: 5,              // gentler max speed
+          bounceCoefficient: 0.5,      // softer wall rebounds
+          elements: [
+            { size: 10, opacity: 0.7 },
+            { size: 6,  opacity: 0.45 },
+            { size: 14, opacity: 0.75 },
+            { size: 5,  opacity: 0.4 },
+            { size: 8,  opacity: 0.6 },
+            { size: 8,  opacity: 0.55 },
+            { size: 12, opacity: 0.7 },
+            { size: 6,  opacity: 0.5 },
+            { size: 10, opacity: 0.65 },
+            { size: 5,  opacity: 0.4 },
+            { size: 16, opacity: 0.8 },
+            { size: 8,  opacity: 0.55 },
+            { size: 9,  opacity: 0.6 },
+            { size: 6,  opacity: 0.5 },
+            { size: 14, opacity: 0.75 },
+            { size: 5,  opacity: 0.4 },
+            { size: 11, opacity: 0.65 },
+            { size: 8,  opacity: 0.55 },
+          ],
+        }}
       />
       <Reveal><TrustStrip /></Reveal>
       <Reveal><FeatureGrid /></Reveal>

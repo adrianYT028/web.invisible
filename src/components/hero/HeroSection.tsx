@@ -35,6 +35,17 @@
  *   `--mx`/`--my` interpolation, and the pointer-tracking client bundle
  *   never reach the other routes.
  *
+ * Antigravity scoping (Req 1.3, 8.x):
+ *   `<HeroAntigravity />` is mounted only when the `antigravity` prop is
+ *   truthy. Passing `true` opts into the defaults; passing an object
+ *   forwards it as `HeroAntigravityProps` so callers can tune count,
+ *   physics, and per-element styling without forking the component. The
+ *   layer is positioned in DOM order between `<HeroSpotlight />` and
+ *   `<div className="hero-content">` so the painter's algorithm produces
+ *   the intended stacking — spotlight glow at the back, antigravity mass
+ *   in the middle, headline + CTAs in front — without any z-index changes
+ *   to the existing two layers (Req 1.3).
+ *
  * What this component intentionally does NOT do:
  *   - No `<header>` or `<footer>` chrome — those live in <SiteShell />.
  *   - No `text-transform: uppercase` on `<h1>` (Req 3.7). The eyebrow caption
@@ -48,6 +59,10 @@ import type { ReactNode } from 'react';
 
 import { CtaButton } from '@/components/sections/CtaButton';
 import { HeroSpotlight } from '@/components/hero/HeroSpotlight';
+import {
+  HeroAntigravity,
+  type HeroAntigravityProps,
+} from '@/components/hero/HeroAntigravity';
 
 /**
  * Variant of the secondary action that links somewhere. `href` is optional
@@ -86,6 +101,15 @@ export type HeroSectionProps = {
   };
   secondary?: SecondaryNav | SecondaryComingSoon;
   spotlight?: boolean;
+  /**
+   * Controls the optional cursor-repelled mass layer rendered between the
+   * spotlight glow and the hero content. Pass `true` to mount with
+   * defaults, or pass a `HeroAntigravityProps` object to tune count,
+   * physics, and per-element styling. Falsy values (the default) skip
+   * the mount entirely so non-home routes never ship the antigravity
+   * DOM or its client bundle (Req 8.1, 8.2, 8.3).
+   */
+  antigravity?: boolean | HeroAntigravityProps;
 };
 
 /**
@@ -106,6 +130,7 @@ export function HeroSection({
   primary,
   secondary,
   spotlight,
+  antigravity,
 }: HeroSectionProps) {
   return (
     <section className="hero">
@@ -115,6 +140,18 @@ export function HeroSection({
           on the `spotlight` prop so non-home routes never ship the
           decoration or the client bundle that drives it (Req 2.5). */}
       {spotlight ? <HeroSpotlight /> : null}
+
+      {/* Antigravity layer. DOM order matters: this sits *after* the
+          spotlight and *before* `.hero-content`, so the painter's
+          algorithm puts the mass on top of the spotlight glow and behind
+          the headline + CTAs (Req 1.3). Passing `true` mounts with
+          defaults; passing an object forwards it as props (Req 8.1, 8.2,
+          8.3); falsy values skip the mount entirely. */}
+      {antigravity ? (
+        <HeroAntigravity
+          {...(typeof antigravity === 'object' ? antigravity : {})}
+        />
+      ) : null}
 
       <div className="hero-content">
         {/* Eyebrow caption — mono, uppercase, tracked. Req 3.7's no-uppercase

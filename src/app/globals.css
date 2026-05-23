@@ -706,7 +706,9 @@ body {
    pointer.
 
    `::before` is the foreground layer:
-     - 720px circle in the brand accent at 0.32× the spotlight alpha
+     - 520px circle in the brand accent mixed at 35% (subtle ambient
+       wash, deliberately not a dominant glow — the headline must read
+       cleanly above it)
      - tracks at full magnitude (`var(--mx)`, `var(--my)`)
      - `mix-blend-mode: screen` gives it that aurora-style additive blend
        so the glow brightens the obsidian background without flattening
@@ -715,7 +717,9 @@ body {
        when the cursor is still — 18s, ease-in-out, infinite
 
    `::after` is the background layer:
-     - 1100px circle in a complementary cool teal at 0.5× the spotlight alpha
+     - 900px circle in a complementary cool teal mixed at 30% (the
+       background wash sits even softer than the foreground so the two
+       layers never fight the type)
      - tracks at 45% magnitude (`var(--mx2)`, `var(--my2)`) so it drifts
        behind the foreground glow on the parallax axis
      - same screen blend so the two glows can overlap without visual
@@ -761,18 +765,18 @@ body {
   will-change: transform;
 }
 
-/* Foreground layer — 720px circle, brand accent, full cursor tracking. */
+/* Foreground layer — 520px circle, brand accent at 35% mix, full cursor tracking. */
 .hero-spotlight::before {
   background:
     radial-gradient(
-      720px circle at var(--mx, 50%) var(--my, 35%),
-      color-mix(in oklch, var(--accent) calc(var(--spotlight-alpha) * 32%), transparent),
-      transparent 55%
+      520px circle at var(--mx, 50%) var(--my, 35%),
+      color-mix(in oklch, var(--accent) 35%, transparent),
+      transparent 60%
     );
   animation: aurora-drift-fg 18s ease-in-out infinite;
 }
 
-/* Background layer — 1100px circle, cool teal, 45% magnitude tracking.
+/* Background layer — 900px circle, cool teal at 30% mix, 45% magnitude tracking.
    The hue offset is computed at compile time by mixing the brand accent
    with a small amount of cyan so the two layers blend into a third
    tone where they overlap. The result is the aurora-style color shift
@@ -780,13 +784,13 @@ body {
 .hero-spotlight::after {
   background:
     radial-gradient(
-      1100px circle at var(--mx2, 50%) var(--my2, 30%),
+      900px circle at var(--mx2, 50%) var(--my2, 30%),
       color-mix(in oklch,
         color-mix(in oklch, var(--accent) 70%, hsl(195 80% 60%) 30%)
-        calc(var(--spotlight-alpha) * 50%),
+        30%,
         transparent
       ),
-      transparent 60%
+      transparent 65%
     );
   animation: aurora-drift-bg 26s ease-in-out infinite reverse;
 }
@@ -819,6 +823,89 @@ body {
   .hero-spotlight::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   <HeroAntigravity /> companion layer (Req 1.4, 1.5, 5.4, 6.1, 6.2, 6.3, 6.4).
+   The inverse of the spotlight: where the spotlight is light following the
+   cursor, the antigravity layer is matter dodging it. One absolutely
+   positioned wrapper (`.hero-antigravity`) clipped to the hero bounds, plus
+   one or more soft circular elements (`.hero-antigravity__el`) whose
+   positions are owned entirely by JS via `transform: translate3d(...)`.
+
+   Stacking is purely DOM-order: both `.hero-spotlight` and
+   `.hero-antigravity` live at `z-index: 0`, but the antigravity layer is
+   mounted *after* the spotlight inside `<HeroSection />`, so the painter's
+   algorithm puts it on top of the wash and behind `.hero-content` (z:1).
+   This keeps the headline and CTAs visually dominant while the decoration
+   floats between the gradient and the type.
+
+   Each element renders as a soft, blurred radial-gradient disc using the
+   brand `--accent` token through `color-mix(in oklch, ...)` so the layer
+   re-themes automatically alongside the rest of the design system. The
+   `blur(8px)` plus `opacity: 0.45` keep the visual subtle â€” it reads as
+   ambient mass rather than a foreground sticker.
+
+   `will-change: transform` puts each element on its own GPU layer so the
+   per-frame `translate3d` writes from the React shell never trigger paint
+   on the underlying hero text. The reduced-motion override drops the hint
+   back to `auto` because the React shell short-circuits the rAF loop in
+   that case â€” the GPU layer would just sit idle and waste memory.
+
+   `pointer-events: none` on the wrapper (paired with `aria-hidden="true"`
+   on the React node) keeps the layer out of hit-testing and the
+   accessibility tree.
+   -------------------------------------------------------------------------- */
+.hero-antigravity {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.hero-antigravity .hero-antigravity__el {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  /* Tight, bright core that fades to transparent — reads as a glowing
+     point of light rather than a smudged blob. The bright core is small
+     (~30%) so each particle is visibly round and crisp at the centre,
+     even at small sizes. */
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in oklch, var(--accent) 100%, transparent) 0%,
+    color-mix(in oklch, var(--accent) 60%, transparent) 30%,
+    color-mix(in oklch, var(--accent) 0%, transparent) 70%
+  );
+  /* Layered box-shadow stack replaces the previous `filter: blur(8px)`.
+     Filter blur softens the core into a splotch and is expensive to
+     composite; three falloff shadows give the same "glowing point"
+     effect with a crisper centre and cheaper paint. Tuned softer than
+     the original (50/25/10 vs 60/35/15) so the particle layer reads as
+     a subtle ambient sparkle alongside the toned-down spotlight wash. */
+  box-shadow:
+    0 0 6px color-mix(in oklch, var(--accent) 50%, transparent),
+    0 0 16px color-mix(in oklch, var(--accent) 25%, transparent),
+    0 0 32px color-mix(in oklch, var(--accent) 10%, transparent);
+  opacity: 0.6;
+  /* Hint to the compositor: only `transform` changes, never layout. The
+     React shell writes `translate3d(x, y, 0)` per frame; the GPU layer
+     keeps that paint off the underlying hero text. */
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Reduced-motion override. The React shell short-circuits the rAF loop in
+   this case and writes a single static rest position, so we drop the
+   `will-change` hint back to `auto` â€” no point keeping a GPU layer alive
+   for a layer that no longer animates. The blur and opacity are kept so
+   the visual still matches the design. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-antigravity .hero-antigravity__el {
+    will-change: auto;
   }
 }
 
