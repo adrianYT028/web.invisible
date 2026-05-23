@@ -53,6 +53,7 @@
  */
 
 import { FeatureCard } from './FeatureCard';
+import { Reveal } from '@/components/motion/Reveal';
 
 /**
  * Stealth Execution — Windows Display Affinity API renders the overlay on
@@ -149,21 +150,27 @@ export function FeatureGrid() {
           screen-share.
         </p>
         <div className="features-grid">
-          <FeatureCard
-            icon={<StealthIcon />}
-            title="Stealth Execution"
-            description="Built on the Windows Display Affinity API, the overlay is invisible to every screen-capture and screen-share pipeline — OBS, Zoom, Teams, Discord, browser share. Interviewers see only your face and shared desktop while the assistant runs locally, on your screen alone."
-          />
-          <FeatureCard
-            icon={<AudioIcon />}
-            title="Audio Loopback"
-            description="WASAPI loopback taps your system audio directly for real-time transcription — every voice in the call, including yours. No virtual cables, no plugins, no audio routing. Install once and the assistant hears the meeting exactly as your speakers do."
-          />
-          <FeatureCard
-            icon={<VisionIcon />}
-            title="Vision Context"
-            description="Selective region capture sends only the pixels you mark — a code editor, a terminal pane, an open spec — to the model. The rest of your desktop stays private. Visual context arrives without ever exposing the full screen or background tabs."
-          />
+          <Reveal delay={0}>
+            <FeatureCard
+              icon={<StealthIcon />}
+              title="Stealth Execution"
+              description="Built on the Windows Display Affinity API, the overlay is invisible to every screen-capture and screen-share pipeline — OBS, Zoom, Teams, Discord, browser share. Interviewers see only your face and shared desktop while the assistant runs locally, on your screen alone."
+            />
+          </Reveal>
+          <Reveal delay={120}>
+            <FeatureCard
+              icon={<AudioIcon />}
+              title="Audio Loopback"
+              description="WASAPI loopback taps your system audio directly for real-time transcription — every voice in the call, including yours. No virtual cables, no plugins, no audio routing. Install once and the assistant hears the meeting exactly as your speakers do."
+            />
+          </Reveal>
+          <Reveal delay={240}>
+            <FeatureCard
+              icon={<VisionIcon />}
+              title="Vision Context"
+              description="Selective region capture sends only the pixels you mark — a code editor, a terminal pane, an open spec — to the model. The rest of your desktop stays private. Visual context arrives without ever exposing the full screen or background tabs."
+            />
+          </Reveal>
         </div>
       </div>
     </section>

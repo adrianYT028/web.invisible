@@ -3544,3 +3544,120 @@ kbd,
    End of design system.
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   Reveal animation (premium scroll-in, Stripe/Linear/Anthropic-style).
+
+   The `<Reveal />` wrapper composes this rule on its outermost <div>.
+   Until the wrapper has `is-visible` applied, content sits at
+   `opacity: 0` translated 12px down. Once the IntersectionObserver
+   triggers, the wrapper transitions to its final state over 600ms with
+   a generous ease-out curve — calm, deliberate, no bounce, no parallax.
+
+   The transition only animates `opacity` and `transform`, which the GPU
+   composites without forcing layout, so the reveal stays smooth even
+   on busy pages. `will-change: opacity, transform` hints the compositor
+   while the reveal is pending; we drop the hint with `is-visible` so
+   the GPU can release the layer once the animation is done.
+
+   `prefers-reduced-motion: reduce`: the global override at the top of
+   this file already neutralises every transition. Doubling up here with
+   `transition: none` and `transform: none` keeps the wrapper visible at
+   all times for users who opt out, regardless of whether the JS managed
+   to flip `is-visible` (e.g. on slow first-render).
+   -------------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0);
+  transition:
+    opacity   600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-visible {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hero entrance — first-paint reveal for above-the-fold headline + CTA.
+
+   Used only on the home hero (`.hero` parent). Stripe/Linear pattern: the
+   eyebrow, headline, sub, and CTA fade up in sequence on first paint with
+   a ~120ms stagger. Server-rendered HTML still has the elements in their
+   final positions (so SEO and LCP are unaffected); the `@keyframes` runs
+   immediately on first frame. Every animation respects the reduced-motion
+   override at the top of this file (durations clamp to 0.01ms).
+
+   Element-by-element: each receives a `--hero-stagger` index multiplied
+   by 80ms so the wave reads as eyebrow → headline → sub → CTAs without
+   per-element keyframe duplication. The final state matches the static
+   token-driven typography rules higher in this file.
+   -------------------------------------------------------------------------- */
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.hero .eyebrow,
+.hero .hero-headline,
+.hero .hero-sub,
+.hero .hero-ctas {
+  animation: hero-fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero .eyebrow      { animation-delay: 0ms;   }
+.hero .hero-headline { animation-delay: 80ms;  }
+.hero .hero-sub      { animation-delay: 160ms; }
+.hero .hero-ctas     { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero .eyebrow,
+  .hero .hero-headline,
+  .hero .hero-sub,
+  .hero .hero-ctas {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Screenshot frame size cap.
+
+   The original 1024×1024 PNGs in `public/guides/` rendered too large
+   inside the redesigned guide content column — a single screenshot
+   occupied most of the fold and pushed body copy below the visible
+   area on a 1440px laptop. We clamp the rendered width with a
+   `max-width: min(560px, 100%)` so the frame sizes itself to the
+   smaller of "comfortable reading width" and "the available column".
+   `next/image` already serves a responsive `srcset`, so this is purely
+   a presentation cap; no image resize on the asset itself.
+
+   The image inside scales proportionally via the existing
+   `.screenshot-frame img { max-width: 100%; height: auto; }` rule, so
+   the aspect ratio is preserved on every viewport.
+
+   Centered horizontally inside the body column via `margin: 0 auto`
+   so the frame reads as a calm, contained visual rather than a
+   full-bleed billboard.
+   -------------------------------------------------------------------------- */
+.screenshot-frame {
+  max-width: min(560px, 100%);
+  margin: 0 auto;
+}
+

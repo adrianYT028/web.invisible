@@ -1,4 +1,5 @@
 import { GuideCard } from './GuideCard';
+import { Reveal } from '@/components/motion/Reveal';
 
 /**
  * GuideCards — the "Get Started" two-card surface on the home page.
@@ -55,30 +56,34 @@ export function GuideCards() {
         </p>
 
         <div className="guide-cards-grid">
-          <GuideCard
-            href="/guides/setup"
-            icon={<SetupIcon />}
-            title="Setup Guide"
-            description="Download, install, and launch Unviewable on Windows in under two minutes — straight from the installer to a working stealth overlay."
-            bullets={[
-              'Download the Windows installer',
-              'Approve SmartScreen and run setup',
-              'Launch the stealth overlay',
-              'Verify invisibility in Zoom or OBS',
-            ]}
-          />
-          <GuideCard
-            href="/guides/usage"
-            icon={<UsageIcon />}
-            title="Usage Guide"
-            description="Run the overlay discreetly during a live call — capture context, drive it with hotkeys, and read AI suggestions without anyone noticing."
-            bullets={[
-              'Launch before the call starts',
-              'Select your context region',
-              'Control with keyboard hotkeys',
-              'Review AI suggestions in real time',
-            ]}
-          />
+          <Reveal delay={0}>
+            <GuideCard
+              href="/guides/setup"
+              icon={<SetupIcon />}
+              title="Setup Guide"
+              description="Download, install, and launch Unviewable on Windows in under two minutes — straight from the installer to a working stealth overlay."
+              bullets={[
+                'Download the Windows installer',
+                'Approve SmartScreen and run setup',
+                'Launch the stealth overlay',
+                'Verify invisibility in Zoom or OBS',
+              ]}
+            />
+          </Reveal>
+          <Reveal delay={120}>
+            <GuideCard
+              href="/guides/usage"
+              icon={<UsageIcon />}
+              title="Usage Guide"
+              description="Run the overlay discreetly during a live call — capture context, drive it with hotkeys, and read AI suggestions without anyone noticing."
+              bullets={[
+                'Launch before the call starts',
+                'Select your context region',
+                'Control with keyboard hotkeys',
+                'Review AI suggestions in real time',
+              ]}
+            />
+          </Reveal>
         </div>
       </div>
     </section>

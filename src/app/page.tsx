@@ -82,6 +82,7 @@ import { FeatureGrid } from '@/components/sections/FeatureGrid';
 import { HowItWorks } from '@/components/sections/HowItWorks';
 import { GuideCards } from '@/components/sections/GuideCards';
 import { SITE_META } from '@/components/constants/site-meta';
+import { Reveal } from '@/components/motion/Reveal';
 
 import { HomeClient } from './HomeClient';
 
@@ -114,10 +115,10 @@ export default function HomePage() {
         }}
         spotlight
       />
-      <TrustStrip />
-      <FeatureGrid />
-      <HowItWorks />
-      <GuideCards />
+      <Reveal><TrustStrip /></Reveal>
+      <Reveal><FeatureGrid /></Reveal>
+      <Reveal><HowItWorks /></Reveal>
+      <Reveal><GuideCards /></Reveal>
       <HomeClient />
     </SiteShell>
   );

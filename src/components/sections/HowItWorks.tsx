@@ -33,6 +33,7 @@
  */
 
 import { StepCard } from './StepCard';
+import { Reveal } from '@/components/motion/Reveal';
 
 export function HowItWorks() {
   return (
@@ -45,21 +46,27 @@ export function HowItWorks() {
         </p>
         <div className="steps">
           <div className="steps-connector" aria-hidden="true" />
-          <StepCard
-            number="01"
-            title="Launch the Overlay"
-            description="Start the assistant with a single hotkey. The overlay attaches to your display and immediately becomes unviewable to every screen-capture and screen-share pipeline."
-          />
-          <StepCard
-            number="02"
-            title="Capture Context"
-            description="The system silently captures meeting audio and selected screen regions, feeding real-time context to the AI model — no virtual cables, no plugins."
-          />
-          <StepCard
-            number="03"
-            title="Get Live Intelligence"
-            description="AI-generated suggestions, answers, and talking points appear directly on your screen. Only you can see them. Screen recorders and participants see nothing."
-          />
+          <Reveal delay={0}>
+            <StepCard
+              number="01"
+              title="Launch the Overlay"
+              description="Start the assistant with a single hotkey. The overlay attaches to your display and immediately becomes unviewable to every screen-capture and screen-share pipeline."
+            />
+          </Reveal>
+          <Reveal delay={120}>
+            <StepCard
+              number="02"
+              title="Capture Context"
+              description="The system silently captures meeting audio and selected screen regions, feeding real-time context to the AI model — no virtual cables, no plugins."
+            />
+          </Reveal>
+          <Reveal delay={240}>
+            <StepCard
+              number="03"
+              title="Get Live Intelligence"
+              description="AI-generated suggestions, answers, and talking points appear directly on your screen. Only you can see them. Screen recorders and participants see nothing."
+            />
+          </Reveal>
         </div>
         <div className="callout">
           <p>
