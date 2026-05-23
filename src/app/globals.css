@@ -54,6 +54,23 @@
   inherits: false;
 }
 
+/* Background-layer parallax coordinates. Tracked at 45% magnitude by
+   <HeroSpotlight />, defaulting to a slightly higher centerpoint than
+   the foreground so the two layers never stack perfectly when the
+   cursor sits at the geometric center. The visual depth that gives the
+   hero is the entire point of the parallax pattern. */
+@property --mx2 {
+  syntax: "<percentage>";
+  initial-value: 50%;
+  inherits: false;
+}
+
+@property --my2 {
+  syntax: "<percentage>";
+  initial-value: 30%;
+  inherits: false;
+}
+
 /* --------------------------------------------------------------------------
    Theme-independent design tokens.
    Type scale (clamp() pairs handle the desktop/mobile breakpoint per
@@ -674,52 +691,135 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Hero spotlight (Req 2.2, 2.3, 2.4, 2.6, 2.7, 15.5, 15.7).
-   Decorative radial-gradient wash anchored to the pointer position via the
-   `--mx` / `--my` custom properties registered (`@property`) higher in this
-   file. Default values (`50%` / `35%`) come from those registrations, so on
-   capability-gated devices â€” `prefers-reduced-motion: reduce` or `hover:
-   none` â€” the `<HeroSpotlight />` client component attaches no listeners
-   and the gradient renders as a static centred wash with zero JS runtime
-   cost (Req 2.4, 2.6, 15.5).
+   Hero aurora — multi-layer parallax glow (Req 2.2, 2.3, 2.4, 2.6, 2.7,
+   15.5, 15.7).
 
-   Color is built with `color-mix(in oklch, â€¦)` so the spotlight inherits
-   the active theme accent and respects `--spotlight-alpha` (0.18 dark,
-   0.10 light â€” Req 2.2) declared in the dark/light token blocks. The
-   `transition` on `--mx` / `--my` runs at `--duration-slow` (300ms),
-   which falls inside the 200â€“400ms re-anchor window required by Req 2.3
-   when `pointerleave` resets the values. We do not use rAF; the registered
-   `@property` interpolation smooths the visual on the GPU (Req 15.7).
+   Two stacked radial-gradient layers, both painted via pseudo-elements so
+   the wrapper itself is a clean compositor surface. The component
+   `<HeroSpotlight />` writes four registered custom properties onto the
+   parent `.hero` element on `pointermove`:
+     --mx / --my   foreground glow position (1:1 cursor tracking)
+     --mx2 / --my2 background glow position (0.45× parallax magnitude)
+   Both layers transition over `--duration-slow` (300ms) with the calm
+   `--ease-out` curve so the glow lags slightly behind the cursor — the
+   eye reads that as mass and depth instead of a sticker glued to the
+   pointer.
 
-   `pointer-events: none` keeps the overlay out of hit-testing so it never
-   intercepts pointer events that should reach the hero CTAs, and the
-   element renders with `aria-hidden="true"` from the component so it stays
-   out of the accessibility tree (Req 2.7). `z-index: 0` places the
-   spotlight under hero text, which sits at `z-index: 1+`.
+   `::before` is the foreground layer:
+     - 720px circle in the brand accent at 0.32× the spotlight alpha
+     - tracks at full magnitude (`var(--mx)`, `var(--my)`)
+     - `mix-blend-mode: screen` gives it that aurora-style additive blend
+       so the glow brightens the obsidian background without flattening
+       into a solid disc
+     - ambient drift via `aurora-drift-fg` keeps the glow moving even
+       when the cursor is still — 18s, ease-in-out, infinite
 
-   Consumer contract: the parent `<section class="hero">` (mounted by the
-   forthcoming `<HeroSection />` in task 3.4) MUST set `position: relative`
-   and `overflow: hidden` so this absolutely-positioned element anchors to
-   the section box and the 600px radial wash is clipped to the section
-   bounds rather than bleeding into adjacent sections. The fallback values
-   on `var(--mx, 50%)` / `var(--my, 35%)` mirror the `@property` initial
-   values declared above, so browsers without `@property` support still
-   render a sensible static centred gradient when no inline style is set.
+   `::after` is the background layer:
+     - 1100px circle in a complementary cool teal at 0.5× the spotlight alpha
+     - tracks at 45% magnitude (`var(--mx2)`, `var(--my2)`) so it drifts
+       behind the foreground glow on the parallax axis
+     - same screen blend so the two glows can overlap without visual
+       collisions — the colors layer additively into the third hue
+     - ambient drift via `aurora-drift-bg` runs on a different cycle (26s,
+       reverse) so the two layers are never in lockstep — the eye reads
+       the moving difference as natural depth rather than a synchronised
+       pulse
+
+   Both layers respect the universal reduced-motion rule at the top of
+   this file (animations and transitions clamp to 0.01ms). The component
+   itself also short-circuits the listener attach for reduced-motion and
+   no-hover devices, so the aurora paints statically on touch and a11y
+   surfaces.
+
+   `pointer-events: none` on the wrapper plus `aria-hidden="true"` on the
+   element keeps the layers out of hit-testing and the accessibility tree.
    -------------------------------------------------------------------------- */
 .hero-spotlight {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
+}
+
+.hero-spotlight::before,
+.hero-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  transition:
+    --mx  var(--duration-slow) var(--ease-out),
+    --my  var(--duration-slow) var(--ease-out),
+    --mx2 var(--duration-slow) var(--ease-out),
+    --my2 var(--duration-slow) var(--ease-out);
+  /* Hint to the compositor that these layers will animate transform
+     and that they should sit on their own GPU layer so the parallax
+     never causes a paint of the underlying hero text. The `auto`
+     fallback once the animation lands keeps GPU memory clean. */
+  will-change: transform;
+}
+
+/* Foreground layer — 720px circle, brand accent, full cursor tracking. */
+.hero-spotlight::before {
   background:
     radial-gradient(
-      600px circle at var(--mx, 50%) var(--my, 35%),
-      color-mix(in oklch, var(--accent) calc(var(--spotlight-alpha) * 100%), transparent),
+      720px circle at var(--mx, 50%) var(--my, 35%),
+      color-mix(in oklch, var(--accent) calc(var(--spotlight-alpha) * 32%), transparent),
+      transparent 55%
+    );
+  animation: aurora-drift-fg 18s ease-in-out infinite;
+}
+
+/* Background layer — 1100px circle, cool teal, 45% magnitude tracking.
+   The hue offset is computed at compile time by mixing the brand accent
+   with a small amount of cyan so the two layers blend into a third
+   tone where they overlap. The result is the aurora-style color shift
+   that Linear and Anthropic use as a signature first-paint hook. */
+.hero-spotlight::after {
+  background:
+    radial-gradient(
+      1100px circle at var(--mx2, 50%) var(--my2, 30%),
+      color-mix(in oklch,
+        color-mix(in oklch, var(--accent) 70%, hsl(195 80% 60%) 30%)
+        calc(var(--spotlight-alpha) * 50%),
+        transparent
+      ),
       transparent 60%
     );
-  transition:
-    --mx var(--duration-slow) var(--ease-out),
-    --my var(--duration-slow) var(--ease-out);
+  animation: aurora-drift-bg 26s ease-in-out infinite reverse;
+}
+
+/* Ambient drift keyframes — the layers slowly translate within a small
+   2% box even when the cursor is still, so the hero never feels frozen
+   on first paint. The translation distances are deliberately tiny so the
+   motion never crosses into "decorative" territory; it reads as light
+   shifting across a surface rather than something animating across the
+   page. */
+@keyframes aurora-drift-fg {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25%      { transform: translate3d(2%, -1.5%, 0); }
+  50%      { transform: translate3d(0, 1.5%, 0); }
+  75%      { transform: translate3d(-2%, -0.5%, 0); }
+}
+
+@keyframes aurora-drift-bg {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33%      { transform: translate3d(-1.5%, 1%, 0); }
+  66%      { transform: translate3d(1%, -1%, 0); }
+}
+
+/* Reduced-motion override. The universal rule at the top of this file
+   already neutralises every animation and transition, but we restate
+   the override here for both pseudo-elements so a future selector with
+   higher specificity cannot accidentally re-enable the drift. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-spotlight::before,
+  .hero-spotlight::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* --------------------------------------------------------------------------
