@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
+import { ThemeScript } from '@/components/theme/theme-script';
+import { SITE_META } from '@/components/constants/site-meta';
 import './globals.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.unviewable.online';
@@ -121,14 +123,14 @@ export default function RootLayout({
       name: 'Unviewable',
       applicationCategory: 'UtilitiesApplication',
       operatingSystem: 'Windows 10+',
-      softwareVersion: '2.0.0',
+      softwareVersion: SITE_META.softwareVersion,
       description: 'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
       url: siteUrl,
       downloadUrl: 'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe',
       aggregateRating: {
         '@type': 'AggregateRating',
-        ratingValue: '4.9',
-        ratingCount: '124'
+        ratingValue: SITE_META.ratingValue,
+        ratingCount: SITE_META.ratingCount
       },
       offers: {
         '@type': 'Offer',
@@ -139,9 +141,13 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="theme-color" content="#0A0C12" />
+        {/* ThemeScript MUST appear before any <link> to a stylesheet so the
+            synchronous IIFE writes data-theme on <html> before stylesheets
+            evaluate — eliminates FOUC and the hydration mismatch warning. */}
+        <ThemeScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://github.com" />

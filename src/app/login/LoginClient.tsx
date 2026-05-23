@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
@@ -169,141 +170,146 @@ export default function LoginClient() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-card glass-panel">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: 'var(--space-md)' }}>
-          <img src="/logo.png" alt="Unviewable Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-          <span style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '0.12em' }}>UNVIEWABLE</span>
-        </div>
-        <p className="section-tag" style={{ textAlign: 'center' }}>
-          ACCESS
-        </p>
-        <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-sub">Log in or create an account to access Unviewable.</p>
-
-        <div className="auth-tabs" role="tablist">
-          <button
-            type="button"
-            className={`auth-tab ${tab === 'login' ? 'is-active' : ''}`}
-            onClick={() => {
-              setTab('login');
-              setError('');
-              setInfo('');
-            }}
-            disabled={loading}
-          >
-            Log in
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${tab === 'signup' ? 'is-active' : ''}`}
-            onClick={() => {
-              setTab('signup');
-              setError('');
-              setInfo('');
-            }}
-            disabled={loading}
-          >
-            Sign up
-          </button>
-        </div>
-
-        {tab === 'login' ? (
-          <form className="auth-form" onSubmit={handleLogin} noValidate>
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="you@company.com"
-              required
-              autoComplete="email"
-              aria-label="Email address"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              disabled={loading}
+      <div className="auth-card">
+          <div className="auth-logo">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={40}
+              height={40}
+              priority
+              className="auth-logo-img"
             />
-            <input
-              className="auth-input"
-              type="password"
-              placeholder="Password"
-              required
-              autoComplete="current-password"
-              aria-label="Password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              disabled={loading}
-            />
+            <span className="auth-logo-text">UNVIEWABLE</span>
+          </div>
+          <p className="eyebrow">ACCESS</p>
+          <h1 className="auth-title">Welcome back</h1>
+          <p className="auth-sub">Log in or create an account to access Unviewable.</p>
+
+          <div className="auth-tabs" role="tablist">
             <button
               type="button"
-              className="auth-link"
-              onClick={handleForgotPassword}
+              className={`auth-tab ${tab === 'login' ? 'is-active' : ''}`}
+              onClick={() => {
+                setTab('login');
+                setError('');
+                setInfo('');
+              }}
               disabled={loading}
             >
-              Forgot password?
+              Log in
             </button>
-            <button type="submit" className="auth-primary" disabled={loading}>
-              Log in with email
+            <button
+              type="button"
+              className={`auth-tab ${tab === 'signup' ? 'is-active' : ''}`}
+              onClick={() => {
+                setTab('signup');
+                setError('');
+                setInfo('');
+              }}
+              disabled={loading}
+            >
+              Sign up
             </button>
-          </form>
-        ) : (
-          <form className="auth-form" onSubmit={handleSignup} noValidate>
-            <input
-              className="auth-input"
-              type="text"
-              placeholder="Full name"
-              required
-              aria-label="Full name"
-              value={signupName}
-              onChange={(e) => setSignupName(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="you@company.com"
-              required
-              autoComplete="email"
-              aria-label="Email address"
-              value={signupEmail}
-              onChange={(e) => setSignupEmail(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              className="auth-input"
-              type="password"
-              placeholder="Create password"
-              required
-              autoComplete="new-password"
-              aria-label="Password"
-              value={signupPassword}
-              onChange={(e) => setSignupPassword(e.target.value)}
-              disabled={loading}
-            />
-            <button type="submit" className="auth-primary" disabled={loading}>
-              Create account
-            </button>
-          </form>
-        )}
+          </div>
 
-        <div className="auth-actions">
-          <button
-            className="auth-primary auth-secondary"
-            type="button"
-            onClick={handleGoogle}
-            disabled={loading}
-          >
-            <img
-              className="google-icon"
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              alt="Google logo"
-            />
-            <span>Continue with Google</span>
-          </button>
+          {tab === 'login' ? (
+            <form className="auth-form" onSubmit={handleLogin} noValidate>
+              <input
+                className="auth-input"
+                type="email"
+                placeholder="you@company.com"
+                required
+                autoComplete="email"
+                aria-label="Email address"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                disabled={loading}
+              />
+              <input
+                className="auth-input"
+                type="password"
+                placeholder="Password"
+                required
+                autoComplete="current-password"
+                aria-label="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="auth-link"
+                onClick={handleForgotPassword}
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+              <button type="submit" className="auth-primary" disabled={loading}>
+                Log in with email
+              </button>
+            </form>
+          ) : (
+            <form className="auth-form" onSubmit={handleSignup} noValidate>
+              <input
+                className="auth-input"
+                type="text"
+                placeholder="Full name"
+                required
+                aria-label="Full name"
+                value={signupName}
+                onChange={(e) => setSignupName(e.target.value)}
+                disabled={loading}
+              />
+              <input
+                className="auth-input"
+                type="email"
+                placeholder="you@company.com"
+                required
+                autoComplete="email"
+                aria-label="Email address"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                disabled={loading}
+              />
+              <input
+                className="auth-input"
+                type="password"
+                placeholder="Create password"
+                required
+                autoComplete="new-password"
+                aria-label="Password"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                disabled={loading}
+              />
+              <button type="submit" className="auth-primary" disabled={loading}>
+                Create account
+              </button>
+            </form>
+          )}
+
+          <div className="auth-actions">
+            <button
+              className="auth-primary auth-secondary"
+              type="button"
+              onClick={handleGoogle}
+              disabled={loading}
+            >
+              <img
+                className="google-icon"
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google logo"
+              />
+              <span>Continue with Google</span>
+            </button>
+          </div>
+
+          <p className="auth-error" role="alert">
+            {error || info}
+          </p>
+          <p className="auth-note">By continuing, you agree to our terms and privacy policy.</p>
         </div>
-
-        <p className="auth-error" role="alert">
-          {error || info}
-        </p>
-        <p className="auth-note">By continuing, you agree to our terms and privacy policy.</p>
       </div>
-    </div>
   );
 }

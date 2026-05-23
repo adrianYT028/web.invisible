@@ -1,0 +1,172 @@
+/**
+ * HeroSection — the structural shell for the top-of-page hero on `/` and the
+ * single-CTA hero band on every other public route.
+ *
+ * The component is a server component (no `'use client'`) because all of its
+ * output is static markup driven by props — the only interactive piece, the
+ * optional pointer-tracked spotlight, is mounted as the dedicated
+ * <HeroSpotlight /> client island and only when the caller opts in via the
+ * `spotlight` prop. Keeping HeroSection on the server is what makes the
+ * `<h1>` the LCP candidate paintable without any JS evaluating first
+ * (Req 1.1).
+ *
+ * Slot composition (Req 6.1):
+ *   - exactly one `eyebrow` (mono caption, tracking 0.10em)
+ *   - exactly one display headline rendered as `<h1>` (≤80 chars at the
+ *     copy layer; the type system intentionally accepts ReactNode so home
+ *     callers can insert a `<br/>` between the two display lines)
+ *   - exactly one sub-headline rendered as `<p class="hero-sub lede">`
+ *     (≤160 chars at the copy layer)
+ *   - exactly one primary CTA in the CTA group
+ *   - at most one secondary CTA in the CTA group, which can either be a
+ *     navigational `secondary` variant or the inert `coming-soon` state
+ *     used for the Mac CTA on the home hero (Req 6.2)
+ *
+ * The secondary action discriminator distinguishes a real navigational
+ * secondary (carries `href`) from the disabled `coming-soon` state (carries
+ * `state: 'coming-soon'`) at the type level so callers cannot accidentally
+ * mix the two — that prevents the bug class where a "Coming Soon" pill
+ * silently navigates somewhere because someone added an `href`.
+ *
+ * Spotlight scoping (Req 2.5):
+ *   `<HeroSpotlight />` is mounted only when `spotlight === true`. The home
+ *   page passes `spotlight`; downloads, feedback, login, account, and the
+ *   guide pages omit it. As a result, the spotlight DOM, its registered
+ *   `--mx`/`--my` interpolation, and the pointer-tracking client bundle
+ *   never reach the other routes.
+ *
+ * What this component intentionally does NOT do:
+ *   - No `<header>` or `<footer>` chrome — those live in <SiteShell />.
+ *   - No `text-transform: uppercase` on `<h1>` (Req 3.7). The eyebrow caption
+ *     keeps `text-transform: uppercase` because Req 3.7 scopes the rule to
+ *     display/h1 sizes only.
+ *   - No legacy `.hero-glow`, `.fade-in-up`, or scroll-reveal hooks. The
+ *     hero paints in its final visual state on first frame.
+ */
+
+import type { ReactNode } from 'react';
+
+import { CtaButton } from '@/components/sections/CtaButton';
+import { HeroSpotlight } from '@/components/hero/HeroSpotlight';
+
+/**
+ * Variant of the secondary action that links somewhere. `href` is optional
+ * at the type level so that callers can omit it during development; the
+ * runtime falls back to `'#'` so the cascade doesn't crash, but in
+ * production every secondary navigation CTA should set `href`.
+ */
+type SecondaryNav = {
+  label: string;
+  href?: string;
+  variant?: 'primary' | 'secondary';
+};
+
+/**
+ * Variant of the secondary action that renders the inert "Coming Soon"
+ * pill. The `state: 'coming-soon'` literal acts as the discriminant; the
+ * presence of this field flips the renderer from a navigational anchor to
+ * the <DisabledCta /> client island via <CtaButton variant="disabled" />.
+ */
+type SecondaryComingSoon = {
+  label: string;
+  state: 'coming-soon';
+  trailing?: ReactNode;
+};
+
+export type HeroSectionProps = {
+  eyebrow: string;
+  headline: ReactNode;
+  sub: string;
+  primary: {
+    label: string;
+    href: string;
+    variant?: 'primary' | 'secondary';
+    download?: boolean;
+    trailing?: ReactNode;
+  };
+  secondary?: SecondaryNav | SecondaryComingSoon;
+  spotlight?: boolean;
+};
+
+/**
+ * Type guard that narrows the secondary discriminator. Using `'state' in s`
+ * lets TypeScript infer the `SecondaryComingSoon` branch in the truthy
+ * arm and the `SecondaryNav` branch in the falsy arm without runtime cost.
+ */
+function isComingSoon(
+  secondary: SecondaryNav | SecondaryComingSoon,
+): secondary is SecondaryComingSoon {
+  return 'state' in secondary && secondary.state === 'coming-soon';
+}
+
+export function HeroSection({
+  eyebrow,
+  headline,
+  sub,
+  primary,
+  secondary,
+  spotlight,
+}: HeroSectionProps) {
+  return (
+    <section className="hero">
+      {/* The spotlight is mounted as a sibling of `.hero-content` so the
+          radial-gradient sits behind the text via z-index (the gradient is
+          z-0 from `.hero-spotlight`; `.hero-content` is z-1). It is gated
+          on the `spotlight` prop so non-home routes never ship the
+          decoration or the client bundle that drives it (Req 2.5). */}
+      {spotlight ? <HeroSpotlight /> : null}
+
+      <div className="hero-content">
+        {/* Eyebrow caption — mono, uppercase, tracked. Req 3.7's no-uppercase
+            rule applies to display/h1 sizes only, so the eyebrow keeping
+            uppercase is allowed here. */}
+        <p className="eyebrow">{eyebrow}</p>
+
+        {/* Display headline. This is the LCP candidate: rendered server-side,
+            no client JS required to paint, and with no `text-transform:
+            uppercase` (Req 1.1, 3.7). */}
+        <h1 className="hero-headline">{headline}</h1>
+
+        {/* Sub-headline rendered as a `lede` paragraph. The shared `.lede`
+            class carries the body-lg type rhythm; `.hero-sub` adds the
+            hero-specific measure cap and centring tweaks. */}
+        <p className="hero-sub lede">{sub}</p>
+
+        <div className="hero-ctas">
+          {/* Primary CTA. We pass `variant="primary"` explicitly rather than
+              spreading the caller's `primary.variant` so HeroSection always
+              renders the primary slot as the dominant accent button — the
+              caller's optional `variant` is ignored on purpose. */}
+          <CtaButton
+            variant="primary"
+            label={primary.label}
+            href={primary.href}
+            download={primary.download}
+            trailing={primary.trailing}
+          />
+
+          {secondary
+            ? isComingSoon(secondary)
+              ? (
+                  <CtaButton
+                    variant="disabled"
+                    label={secondary.label}
+                    reason="coming-soon"
+                    trailing={secondary.trailing}
+                  />
+                )
+              : (
+                  <CtaButton
+                    variant="secondary"
+                    label={secondary.label}
+                    href={secondary.href ?? '#'}
+                  />
+                )
+            : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default HeroSection;

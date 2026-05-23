@@ -1,2639 +1,3546 @@
-/* ════════════════════════════════════════════
-  AUTH PAGES (ported from legacy inline CSS)
-  ════════════════════════════════════════════ */
-.auth-shell {
+/* ==========================================================================
+   PREMIUM REDESIGN â€” TOKEN LAYER
+   Added by task 1.1. Source of truth: design.md â†’ Design System â†’ Token Layer.
+   The legacy CSS below this header stays in place until task 7.1 deletes it
+   so existing pages keep rendering during the migration.
+   ========================================================================== */
+
+@import "tailwindcss";
+
+/* --------------------------------------------------------------------------
+   Tailwind v4 token wiring.
+   `@theme inline` keeps the indirection at runtime so utilities like
+   `bg-bg`, `text-text`, `border-border`, `font-sans`, `rounded-card`, etc.
+   re-theme automatically when `data-theme` flips on <html>.
+   -------------------------------------------------------------------------- */
+@theme inline {
+  --color-bg:              var(--bg);
+  --color-surface:         var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-text:            var(--text);
+  --color-text-muted:      var(--text-muted);
+  --color-text-dim:        var(--text-dim);
+  --color-accent:          var(--accent);
+  --color-accent-fg:       var(--accent-fg);
+  --color-border:          var(--border);
+  --color-error:           var(--error);
+  --color-success:         var(--success);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono),  ui-monospace, monospace;
+
+  --radius-card:   var(--radius-card);
+  --radius-button: var(--radius-button);
+
+  --spacing-section: var(--section-y);
+}
+
+/* --------------------------------------------------------------------------
+   @property registrations for the Hero_Spotlight gradient.
+   Registering --mx and --my as <percentage> lets the radial-gradient
+   `at var(--mx) var(--my)` interpolate smoothly via `transition` instead of
+   step-changing. Browsers without @property fall back to step transitions
+   (still functional, just slightly less smooth).
+   -------------------------------------------------------------------------- */
+@property --mx {
+  syntax: "<percentage>";
+  initial-value: 50%;
+  inherits: false;
+}
+
+@property --my {
+  syntax: "<percentage>";
+  initial-value: 35%;
+  inherits: false;
+}
+
+/* --------------------------------------------------------------------------
+   Theme-independent design tokens.
+   Type scale (clamp() pairs handle the desktop/mobile breakpoint per
+   Req 3.2/3.3), line heights, letter spacing, measure, spacing scale,
+   motion durations, layout, radii.
+   -------------------------------------------------------------------------- */
+:root {
+  /* Type scale â€” exactly seven sizes (Req 3.1) */
+  --fs-display:  clamp(2.5rem, 4.5vw + 0.5rem, 5.5rem);   /* 40â€“88px */
+  --fs-h1:       clamp(2rem, 3vw + 0.5rem, 3.5rem);
+  --fs-h2:       clamp(1.5rem, 2vw + 0.5rem, 2.25rem);
+  --fs-h3:       clamp(1.25rem, 1vw + 0.75rem, 1.5rem);
+  --fs-body-lg:  1.125rem;
+  --fs-body:     1rem;
+  --fs-caption:  0.8125rem;
+
+  /* Line heights */
+  --lh-tight: 1.08;   /* display, h1, h2, h3 â€” within 1.05â€“1.2 (Req 3.5) */
+  --lh-body:  1.6;    /* body, body-lg â€” within 1.5â€“1.7 (Req 3.4) */
+
+  /* Letter spacing */
+  --tracking-tight: -0.03em;   /* headings â€” within âˆ’0.04 to âˆ’0.02 (Req 3.6) */
+  --tracking-mono:   0.10em;   /* eyebrow caption â€” within 0.08â€“0.12 (Req 3.8) */
+
+  /* Measure â€” body paragraph max (Req 3.9) */
+  --measure: 66ch;
+
+  /* Spacing scale (4px base) */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+  --section-y: clamp(4rem, 8vw, 8rem);
+
+  /* Motion */
+  --duration-fast: 100ms;   /* theme color transition (Req 4.3) */
+  --duration-base: 180ms;   /* hover/focus â€” within â‰¤200ms (Req 6.5, 7.5, 15.1) */
+  --duration-slow: 300ms;   /* spotlight re-anchor â€” within 200â€“400ms (Req 2.3) */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout */
+  --nav-height: 64px;       /* within 56â€“72 (Req 5.3) */
+  --max-width:  1200px;
+
+  /* Radii */
+  --radius-card:   12px;
+  --radius-button: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Dark theme color tokens (Req 4.7)
+   --text contrast â‰¥ 7:1 vs --bg, --text-muted â‰¥ 4.5:1 vs --bg,
+   --accent maintains â‰¥ 4.5:1 vs --bg (Req 4.9), --border within 6â€“12% (Req 16.2).
+   Saturation on --accent capped at 60% of source #00F2FF (Req 1.3).
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --bg:              #0A0C12;
+  --surface-raised:  #12141C;
+  --surface-overlay: #181B26;
+  --text:            #F2F3F7;
+  --text-muted:      #A4A8B5;
+  --text-dim:        #6E7280;
+  --border:          rgba(255, 255, 255, 0.08);
+  --border-strong:   rgba(255, 255, 255, 0.12);
+  --accent:          hsl(183 60% 55%);
+  --accent-fg:       #04101A;
+  --focus-ring:      hsl(183 60% 65%);
+  --error:           #FF6B82;
+  --success:         #4DE39A;
+  --spotlight-alpha: 0.18;   /* Req 2.2 dark cap */
+  --shadow-card:     0 1px 0 rgba(255, 255, 255, 0.02), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Light theme color tokens (Req 4.8)
+   --bg in #FAFAF7..#FFFFFF range, contrasts mirror dark theme requirements.
+   --accent is darker for AA against the near-white background (Req 4.9).
+   -------------------------------------------------------------------------- */
+:root[data-theme="light"] {
+  --bg:              #FAFAF7;
+  --surface-raised:  #FFFFFF;
+  --surface-overlay: #F2F2EE;
+  --text:            #0A0C12;
+  --text-muted:      #4A4D58;
+  --text-dim:        #6E7280;
+  --border:          rgba(10, 12, 18, 0.08);
+  --border-strong:   rgba(10, 12, 18, 0.14);
+  --accent:          hsl(183 60% 35%);
+  --accent-fg:       #FFFFFF;
+  --focus-ring:      hsl(183 60% 35%);
+  --error:           #B0263A;
+  --success:         #0E7A4D;
+  --spotlight-alpha: 0.10;   /* Req 2.2 light cap */
+  --shadow-card:     0 1px 0 rgba(10, 12, 18, 0.04), 0 12px 32px rgba(10, 12, 18, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Reduced-motion override (Req 15.4, 16.1, 16.2, 16.3).
+   Forces every animation, transition, and scroll behavior to a safe value
+   when the user agent reports prefers-reduced-motion: reduce. The legacy
+   block lower in this file already has a similar rule scoped to a few
+   selectors; this universal version takes precedence and keeps protecting
+   the new components built on top of these tokens.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Theme-swap transition (Req 4.3, 19.1).
+   When `<ThemeToggle />` flips `data-theme` on <html>, every token-driven
+   color cascades. This rule animates the body's background and text colors
+   over `--duration-fast` (100ms) so the swap is perceptible but never feels
+   sluggish. Other elements either inherit `color` or read `var(--bg)` /
+   `var(--text)` directly â€” they re-cascade instantly, and the body's
+   transition gives the eye a single coherent fade. The reduced-motion block
+   above already neutralises this transition for users who opt out.
+   -------------------------------------------------------------------------- */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: var(--space-2xl);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color            var(--duration-fast) var(--ease-out);
 }
 
-.auth-card {
-  max-width: 520px;
-  width: 100%;
-  padding: var(--space-2xl);
-  border-radius: 8px;
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-  text-align: center;
-}
-
-.auth-title {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  margin-bottom: var(--space-sm);
-}
-
-.auth-sub {
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-lg);
-}
-
-.auth-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-}
-
-.auth-tab {
-  padding: var(--space-sm) var(--space-md);
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: rgba(var(--color-obsidian-rgb), 0.6);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all var(--duration) var(--ease-out);
-}
-
-.auth-tab.is-active {
-  border-color: rgba(var(--color-cyan-rgb), 0.5);
-  color: #fff;
-  box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2);
-}
-
-.auth-form {
-  display: grid;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-}
-
-.auth-input {
-  width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: rgba(var(--color-obsidian-rgb), 0.7);
-  color: var(--color-text);
-}
-
-.auth-input:focus {
-  border-color: rgba(var(--color-cyan-rgb), 0.4);
-  box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2);
-}
-
-.auth-actions {
-  display: grid;
-  gap: var(--space-sm);
-}
-
-.auth-primary {
+/* --------------------------------------------------------------------------
+   Theme toggle button (Req 4.2, 4.3, 12.2, 14.9).
+   Square button sized to a 44Ã—44 minimum hit target so it satisfies the
+   touch-target requirement on `(pointer: coarse)` without depending on
+   surrounding padding. Background is transparent â€” the toggle sits inside
+   the header where it should not draw a competing surface â€” and the icon
+   color uses --text-muted by default, transitioning to --text on hover or
+   focus over --duration-base. Border and radius come from existing tokens
+   so the control reads as part of the same chrome family as other buttons.
+   The `:focus-visible` ring uses --focus-ring so keyboard users always see
+   a visible focus indicator that meets contrast on both themes (Req 14.3).
+   -------------------------------------------------------------------------- */
+.theme-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  background: #ffffff;
-  color: #1f1f1f;
-  border-radius: 6px;
-  font-weight: 600;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
   cursor: pointer;
-  transition: transform var(--duration) var(--ease-out),
-    box-shadow var(--duration) var(--ease-out);
+  transition:
+    color            var(--duration-base) var(--ease-out),
+    border-color     var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
 }
 
-.auth-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--border);
 }
 
-.auth-secondary {
-  background: transparent;
-  color: var(--color-cyan);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.6);
-}
-
-.google-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.auth-note {
-  margin-top: var(--space-md);
-  font-size: var(--fs-xs);
-  color: var(--color-text-dim);
-}
-
-.auth-error {
-  color: var(--color-error);
-  font-size: var(--fs-sm);
-  min-height: 1.2em;
-  margin-top: var(--space-md);
-}
-
-.auth-link {
-  font-size: var(--fs-xs);
-  color: var(--color-cyan);
-  text-align: right;
-  cursor: pointer;
-}
-
-.auth-link:hover {
-  text-decoration: underline;
-}
-/* ──────────────────────────────────────────────────────────────────────────
-   UNVIEWABLE — Design System & Styles
-   Vanilla CSS ∙ CSS Variables ∙ Grid/Flex ∙ Responsive
-   ────────────────────────────────────────────────────────────────────────── */
-
-/* ── CSS Variables (Design Tokens) ── */
-:root {
-  /* Palette */
-  --color-obsidian:     #0A0C12;
-  --color-obsidian-rgb: 10, 12, 18;
-  --color-stealth:      #1E1E1E;
-  --color-stealth-rgb:  30, 30, 30;
-  --color-cyan:         #00F2FF;
-  --color-cyan-rgb:     0, 242, 255;
-  --color-teal:         #2A9D8F;
-  --color-teal-rgb:     42, 157, 143;
-  --color-surface:      #12141C;
-  --color-surface-rgb:  18, 20, 28;
-  --color-text:         #E0E0E6;
-  --color-text-muted:   #8A8A9A;
-  --color-text-dim:     #555568;
-  --color-error:        #FF4D6A;
-  --color-success:      #00E676;
-  --color-border:       rgba(255, 255, 255, 0.06);
-
-  /* Glass */
-  --glass-bg:           rgba(18, 20, 28, 0.55);
-  --glass-border:       rgba(255, 255, 255, 0.08);
-  --glass-blur:         16px;
-
-  /* Typography */
-  --font-sans:  var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono:  var(--font-mono), 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
-  --fs-xs:     0.75rem;
-  --fs-sm:     0.875rem;
-  --fs-base:   1rem;
-  --fs-lg:     1.125rem;
-  --fs-xl:     1.5rem;
-  --fs-2xl:    2rem;
-  --fs-3xl:    2.75rem;
-  --fs-4xl:    3.75rem;
-  --fs-hero:   clamp(2.5rem, 5vw + 1rem, 5rem);
-  --lh-tight:  1.1;
-  --lh-snug:   1.3;
-  --lh-normal: 1.6;
-
-  /* Spacing */
-  --space-xs:  0.25rem;
-  --space-sm:  0.5rem;
-  --space-md:  1rem;
-  --space-lg:  1.5rem;
-  --space-xl:  2rem;
-  --space-2xl: 3rem;
-  --space-3xl: 4rem;
-  --space-4xl: 6rem;
-  --space-section: clamp(4rem, 8vw, 8rem);
-
-  /* Layout */
-  --max-width: 1200px;
-  --nav-height: 64px;
-
-  /* Transitions */
-  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration:  200ms;
-  --duration-slow: 400ms;
-}
-
-/* ΓöÇΓöÇ Reset ΓöÇΓöÇ */
-*, *::before, *::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  font-family: var(--font-sans);
-  font-size: var(--fs-base);
-  line-height: var(--lh-normal);
-  color: var(--color-text);
-  background-color: var(--color-obsidian);
-  overflow-x: hidden;
-  min-height: 100vh;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-ul {
-  list-style: none;
-}
-
-button, input {
-  font-family: inherit;
-  font-size: inherit;
-  border: none;
-  outline: none;
-  background: none;
-  color: inherit;
-}
-
-code {
-  font-family: var(--font-mono);
-}
-
-/* — Skip to content (accessibility) — */
-.skip-to-content {
-  position: fixed;
-  top: -100%;
-  left: var(--space-md);
-  z-index: 10000;
-  padding: var(--space-sm) var(--space-lg);
-  background: var(--color-cyan);
-  color: var(--color-obsidian);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  border-radius: 0 0 6px 6px;
-  transition: top var(--duration) var(--ease-out);
-}
-
-.skip-to-content:focus {
-  top: 0;
-}
-
-/* — Focus visible (keyboard navigation) — */
-:focus-visible {
-  outline: 2px solid var(--color-cyan);
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-/* — Scroll margin for anchor links below fixed nav — */
-[id] {
-  scroll-margin-top: calc(var(--nav-height) + var(--space-lg));
+.theme-toggle > svg {
+  display: block;
 }
 
-/* ΓöÇΓöÇ Noise Overlay ΓöÇΓöÇ */
-.noise-overlay {
+/* --------------------------------------------------------------------------
+   Skip-to-content link (Req 14.4, 15.4).
+   Rendered as the first focusable element inside `<SiteShell />`. Sits
+   visually off-screen via `transform: translateY(-200%)` so it never
+   occupies layout, but stays inside the accessibility tree so the first
+   Tab press from the document's initial focus state lands on it. On focus
+   it slides into the top-left corner over `--duration-base` (180ms); the
+   universal reduced-motion rule above neutralises the transition so users
+   who opt out see it appear instantly. Background and text colors come
+   from the accent token pair so the control is unmistakable on both
+   themes, and the z-index sits above the fixed header (which is z-1000
+   in the legacy layer; the redesigned header will match). The selector
+   intentionally repeats the legacy name lower in this file â€” CSS source
+   order means this token-driven rule wins during the migration window
+   (legacy version is removed in task 7.1).
+   -------------------------------------------------------------------------- */
+.skip-to-content {
   position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 1000;
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  border-radius: var(--radius-button);
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-/* ΓöÇΓöÇ Scanline Overlay ΓöÇΓöÇ */
-.scanline-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9998;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.015) 2px,
-    rgba(0, 0, 0, 0.015) 4px
-  );
+.skip-to-content:focus,
+.skip-to-content:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-/* ΓöÇΓöÇ Glass Panel Utility ΓöÇΓöÇ */
-.glass-panel {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+/* --------------------------------------------------------------------------
+   Header sentinel (Req 5.1, 5.2).
+   A 1px, visually-hidden element rendered by `<SiteShell />` as the very
+   first child of `<main>`. The `<Header />` client component attaches a
+   single `IntersectionObserver` to it and toggles `data-scrolled` on the
+   header element when the sentinel leaves the viewport â€” no scroll event
+   listener anywhere in the app. `visibility: hidden` keeps the element out
+   of the accessibility tree while still allowing it to occupy layout so the
+   observer can compute its intersection ratio against the viewport.
+   -------------------------------------------------------------------------- */
+.header-sentinel {
+  height: 1px;
+  width: 100%;
+  visibility: hidden;
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   HEADER / NAV
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* --------------------------------------------------------------------------
+   Site footer (Req 11.1, 11.2, 11.3).
+   Token-driven footer rendered on every public route by `<SiteShell />`.
 
-.site-header {
+   Layout (per design.md â†’ Page-by-Page Composition):
+     - `.footer-inner` is a top row containing the secondary `<nav>` and the
+       contact links side-by-side at >= 768px (justify-content: space-between
+       inside the constrained max-width). Below 768px, flex-wrap drops the
+       contact group under the nav so the row stacks vertically without any
+       media-query-driven layout switch.
+     - `.footer-copy` sits as a sibling under that row so the copyright line
+       always renders on its own row regardless of the wrap state above.
+
+   Visual surface (Req 11.3):
+     The only surface treatment is a 1px top border in `var(--border)` to
+     separate the footer from page content. There is no background image,
+     no gradient, and no drop shadow â€” every color comes from a token.
+
+   Spacing:
+     Vertical padding uses `--space-12` (48px) so the footer breathes inside
+     the page rhythm without overshadowing the section spacing above it.
+     Horizontal padding uses `--space-6` so content lines up with the rest
+     of the marketing surface. The `env(safe-area-inset-bottom)` clamp on
+     the bottom keeps the copyright line clear of the iOS home indicator.
+
+   Footer text color is `var(--text-muted)` and link hover transitions to
+   `var(--text)` over `var(--duration-base)` (Req 11.1) â€” color-only motion
+   keeps the footer in line with the redesign's transform-free hover budget.
+   The legacy `.site-footer` rule still lives lower in this file during the
+   migration window; the new component uses `.footer` so the two coexist
+   without selector collision until task 7.1 deletes the legacy version.
+   -------------------------------------------------------------------------- */
+.footer {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: var(--space-12) var(--space-6);
+  padding-bottom: max(var(--space-12), env(safe-area-inset-bottom));
+  /* Override the legacy `text-align: center` set by the bare `.site-footer`
+     rule lower in this file (deleted in task 7.1). The redesigned footer
+     left-aligns inside its constrained max-width. */
+  text-align: left;
+}
+
+.footer .footer-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6) var(--space-12);
+}
+
+.footer .footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+}
+
+.footer .footer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  /* Reset of the legacy `.footer-contact` rule further down in this file
+     (deleted in task 7.1). The legacy rule otherwise contributes a trailing
+     margin, padding, and border-bottom that would visually break the
+     redesigned footer; specificity 0,2,0 here beats the legacy 0,1,0. */
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.footer .footer-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-button);
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.footer .footer-link:hover {
+  color: var(--text);
+}
+
+.footer .footer-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Touch-target floor (Req 12.2). On `(pointer: coarse)` devices each
+   footer link must clear the 44Ã—44 hit-target floor; the base padding
+   alone leaves the visible row at ~42px, so we lift `min-height` here
+   without disturbing the desktop rhythm. */
+@media (pointer: coarse) {
+  .footer .footer-link {
+    min-height: 44px;
+  }
+}
+
+.footer .footer-copy {
+  max-width: var(--max-width);
+  margin: var(--space-8) auto 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  color: var(--text-dim);
+  /* Override the legacy `.footer-copy` rule further down in this file
+     (deleted in task 7.1) which otherwise stamps a font-size and a
+     trailing margin onto our copyright line. */
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Site header (Req 5.1, 5.2, 5.3, 5.4, 5.8, 14.9, 16.4, 19.4).
+   Token-driven fixed header rendered on every public route by
+   `<SiteShell />`. The `<Header />` client component owns scroll-state
+   detection via an `IntersectionObserver` on the sibling `.header-sentinel`
+   element; the visual swap between scrolled and un-scrolled states is
+   driven entirely from the `data-scrolled` attribute the component toggles.
+
+   Layout:
+     - The `<header>` itself is `position: fixed` at the top of the
+       viewport with a constant height of `--nav-height` (64px, within the
+       56â€“72px range required by Req 5.3). The height never changes in
+       response to scroll, hover, or focus.
+     - `.header-inner` constrains content to `--max-width`, padding aligned
+       with the rest of the marketing surface, flex with `justify-content:
+       space-between` so the logo sits left and the actions cluster sits
+       right.
+     - The desktop nav (`.header-nav`) renders inline at `>= 768px`. Below
+       that breakpoint it is hidden and the mobile-menu trigger
+       (`.header-mobile-trigger`) takes its place.
+     - `.header-auth` reserves a placeholder slot via `min-width` so login
+       state changes contribute zero CLS (Req 19.4) â€” the slot has the
+       same horizontal footprint whether the unauth `Login` link, the
+       authed `Account + Logout` pair, or the in-flight placeholder is
+       rendered.
+
+   Visual surface (Req 5.2, 16.4):
+     - Default: a translucent background derived from the active theme `--bg`
+       so theme changes remain visible behind the header. No backdrop blur
+       in this state.
+     - Scrolled (`data-scrolled="true"`): backdrop-blur of 16px (within the
+       12â€“20px range required by Req 5.2), a 1px bottom border in
+       `var(--border)`, and a slightly more opaque background so text on
+       the header reads cleanly over noisy page content beneath.
+     - The `transition` runs at `--duration-base` (180ms) on
+       `backdrop-filter`, `background-color`, and `border-color` only;
+       there is no transform on the header itself so the height truly is
+       fixed (Req 5.3).
+
+   Logo (Req 5.8):
+     - Rendered as a flex anchor with the `next/image` element + a sibling
+       `<span class="header-logo-text">UNVIEWABLE</span>`. The image has no
+       `::before` pseudo-element rule and no keyframed pulse anywhere in
+       this stylesheet â€” the legacy `.logo::before` heartbeat is removed
+       in task 7.1 and never re-introduced here.
+     - The brand text uses the standard sans font with a tighter letter
+       spacing than body copy so it reads as a word-mark.
+
+   The `z-index: 1000` matches `.skip-to-content` so the skip link can sit
+   on top of the header when focused (its z-index also being 1000) thanks
+   to source-order rendering â€” both elements live at the same stacking
+   plane, and the skip link appears later in the DOM tree (rendered first
+   inside `<SiteShell />`) when focused.
+   -------------------------------------------------------------------------- */
+.header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
   height: var(--nav-height);
-  background: rgba(var(--color-obsidian-rgb), 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-border);
+  z-index: 1000;
+  background: color-mix(in oklch, var(--bg) 70%, transparent);
+  border-bottom: 1px solid transparent;
+  transition:
+    backdrop-filter  var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out),
+    border-color     var(--duration-base) var(--ease-out);
 }
 
-.nav-container {
+.header[data-scrolled="true"] {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: color-mix(in oklch, var(--bg) 85%, transparent);
+  border-bottom-color: var(--border);
+}
+
+.header .header-inner {
+  height: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: var(--max-width);
-  height: 100%;
-  margin: 0 auto;
-  padding: 0 var(--space-xl);
+  gap: var(--space-6);
 }
 
-.logo {
+.header .header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text);
+  font-weight: 600;
+  font-size: var(--fs-body);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  /* The image has fixed intrinsic dimensions (36Ã—36 via next/image), so
+     this anchor never reflows with content, satisfying the no-height-change
+     requirement (Req 5.3). */
+}
+
+.header .header-logo:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
+
+.header .header-logo-text {
+  /* Inline so screen readers read it as part of the logo's accessible
+     name; CSS does not hide it at any breakpoint to keep the brand
+     consistent across viewport widths (Req 5.1). */
+  display: inline;
+}
+
+.header .header-nav {
+  /* Hidden by default (mobile-first); the @media block below shows it at
+     >= 768px (Req 5.4). */
+  display: none;
+}
+
+.header .header-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  letter-spacing: 0.08em;
-  position: relative;
+  gap: var(--space-6);
 }
 
-.logo::before {
-  content: '';
+.header .header-nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  padding: var(--space-2) 0;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.header .header-nav a:hover {
+  color: var(--text);
+}
+
+.header .header-nav a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
+
+.header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header .header-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* Reserve a horizontal slot wide enough to fit the longest auth-action
+     variant ("Account" + "Logout") so the row width does not shift when
+     the auth check resolves (Req 19.4). */
+  min-width: 9rem;
+  justify-content: flex-end;
+}
+
+.header .header-auth-placeholder {
+  /* Invisible spacer that occupies the auth slot during the in-flight
+     state. `display: inline-block` so the slot's `min-width` still
+     governs layout. */
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+}
+
+.header .header-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color        var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.header .header-link:hover {
+  color: var(--text);
+}
+
+.header .header-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.header .header-mobile-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    color        var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.header .header-mobile-trigger:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.header .header-mobile-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.header .header-mobile-trigger > svg {
+  display: block;
+}
+
+/* Touch-target floor on coarse-pointer devices (Req 12.2). The header
+   links use horizontal padding only at desktop widths; on touch we lift
+   `min-height` to 44px so the inline auth control still meets the hit
+   target. */
+@media (pointer: coarse) {
+  .header .header-link {
+    min-height: 44px;
+  }
+}
+
+/* Desktop breakpoint (Req 5.4). At >= 768px the inline nav appears and
+   the mobile-menu trigger is hidden; below this width the inline nav is
+   hidden and the trigger is the only navigation entry point. */
+@media (min-width: 768px) {
+  .header .header-nav {
+    display: flex;
+  }
+  .header .header-mobile-trigger {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hero spotlight (Req 2.2, 2.3, 2.4, 2.6, 2.7, 15.5, 15.7).
+   Decorative radial-gradient wash anchored to the pointer position via the
+   `--mx` / `--my` custom properties registered (`@property`) higher in this
+   file. Default values (`50%` / `35%`) come from those registrations, so on
+   capability-gated devices â€” `prefers-reduced-motion: reduce` or `hover:
+   none` â€” the `<HeroSpotlight />` client component attaches no listeners
+   and the gradient renders as a static centred wash with zero JS runtime
+   cost (Req 2.4, 2.6, 15.5).
+
+   Color is built with `color-mix(in oklch, â€¦)` so the spotlight inherits
+   the active theme accent and respects `--spotlight-alpha` (0.18 dark,
+   0.10 light â€” Req 2.2) declared in the dark/light token blocks. The
+   `transition` on `--mx` / `--my` runs at `--duration-slow` (300ms),
+   which falls inside the 200â€“400ms re-anchor window required by Req 2.3
+   when `pointerleave` resets the values. We do not use rAF; the registered
+   `@property` interpolation smooths the visual on the GPU (Req 15.7).
+
+   `pointer-events: none` keeps the overlay out of hit-testing so it never
+   intercepts pointer events that should reach the hero CTAs, and the
+   element renders with `aria-hidden="true"` from the component so it stays
+   out of the accessibility tree (Req 2.7). `z-index: 0` places the
+   spotlight under hero text, which sits at `z-index: 1+`.
+
+   Consumer contract: the parent `<section class="hero">` (mounted by the
+   forthcoming `<HeroSection />` in task 3.4) MUST set `position: relative`
+   and `overflow: hidden` so this absolutely-positioned element anchors to
+   the section box and the 600px radial wash is clipped to the section
+   bounds rather than bleeding into adjacent sections. The fallback values
+   on `var(--mx, 50%)` / `var(--my, 35%)` mirror the `@property` initial
+   values declared above, so browsers without `@property` support still
+   render a sensible static centred gradient when no inline style is set.
+   -------------------------------------------------------------------------- */
+.hero-spotlight {
   position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%) scale(1);
-  width: 56px;
-  height: 56px;
-  background: radial-gradient(circle, rgba(var(--color-cyan-rgb), 0.5) 0%, rgba(var(--color-cyan-rgb), 0.15) 50%, transparent 70%);
-  border-radius: 50%;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
-  filter: blur(6px);
-  animation: logoHeartbeat 2s ease-in-out infinite;
+  background:
+    radial-gradient(
+      600px circle at var(--mx, 50%) var(--my, 35%),
+      color-mix(in oklch, var(--accent) calc(var(--spotlight-alpha) * 100%), transparent),
+      transparent 60%
+    );
+  transition:
+    --mx var(--duration-slow) var(--ease-out),
+    --my var(--duration-slow) var(--ease-out);
 }
 
-@keyframes logoHeartbeat {
-  0%   { transform: translateY(-50%) scale(1);   opacity: 0.6; }
-  14%  { transform: translateY(-50%) scale(1.3); opacity: 1; }
-  28%  { transform: translateY(-50%) scale(1);   opacity: 0.6; }
-  42%  { transform: translateY(-50%) scale(1.2); opacity: 0.9; }
-  56%  { transform: translateY(-50%) scale(1);   opacity: 0.6; }
-  100% { transform: translateY(-50%) scale(1);   opacity: 0.6; }
-}
+/* --------------------------------------------------------------------------
+   Hero section structural shell (Req 1.1, 2.5, 2.7, 6.1, 6.2).
+   Owns the layout chrome that <HeroSection /> renders: a centred grid that
+   stacks the eyebrow, headline, sub-headline, and CTA group with token-
+   driven spacing. Token-only colors so the hero re-themes automatically
+   when `data-theme` flips on <html>.
 
-.logo-img {
-  height: 36px;
-  width: auto;
-  object-fit: contain;
-  mix-blend-mode: lighten;
-}
+   `position: relative` and `overflow: hidden` are required by the
+   <HeroSpotlight /> contract â€” the spotlight is `position: absolute`
+   inset:0 inside the hero, and clipping the radial wash to the section
+   bounds keeps the gradient from bleeding into the trust strip below.
 
-.logo-text {
-  color: var(--color-text);
-}
+   `padding` pairs a clamp() top inset (so the headline sits comfortably
+   below the fixed 64px header at every viewport) with the standard
+   --section-y bottom inset, so the hero rhythm slots into the same
+   vertical scale used by every other section on the page.
 
-.logo-accent {
-  color: var(--color-cyan);
-}
+   `place-items: center` plus `text-align: center` deliver the centred
+   composition the design calls for without a flex wrapper around each
+   slot â€” the inner `.hero-content` grid handles per-slot spacing.
 
-.nav-links {
-  display: flex;
-  gap: var(--space-xl);
-}
-
-.nav-links a {
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition: color var(--duration) var(--ease-out);
-  position: relative;
-}
-
-.logout-link {
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color var(--duration) var(--ease-out);
-  position: relative;
-}
-
-.logout-link:hover {
-  color: var(--color-cyan);
-}
-
-.nav-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: var(--color-cyan);
-  transition: width var(--duration) var(--ease-out);
-}
-
-.nav-links a:hover {
-  color: var(--color-cyan);
-}
-
-.nav-links a:hover::after {
-  width: 100%;
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   HERO SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
+   `min-height` clamps the hero between 560px and 720px (capped at 80vh
+   so a short laptop window still shows trust-strip beneath the hero
+   without a scroll). At 360pxâ€“1920px the headline + lede + CTAs stay
+   inside the initial viewport per Req 1.1.
+   -------------------------------------------------------------------------- */
 .hero {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: calc(var(--nav-height) + var(--space-3xl)) var(--space-xl) var(--space-3xl);
-  text-align: center;
   overflow: hidden;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 2;
-  max-width: 800px;
-}
-
-/* ΓöÇΓöÇ Hero Entrance Sequence ΓöÇΓöÇ */
-.hero-tag {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.25em;
-  color: var(--color-cyan);
-  margin-bottom: var(--space-lg);
-  text-transform: uppercase;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: heroFadeUp 0.8s var(--ease-out) 0.2s forwards;
-}
-
-.hero-headline {
-  font-size: var(--fs-hero);
-  font-weight: 800;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.02em;
-  color: #FFFFFF;
-  margin-bottom: var(--space-lg);
-  opacity: 0;
-  transform: translateY(30px);
-  animation: heroFadeUp 0.9s var(--ease-out) 0.4s forwards;
-}
-
-/* Gradient text shimmer on headline */
-.hero-headline::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(var(--color-cyan-rgb), 0.06), transparent);
-  animation: textShimmer 4s ease-in-out 1.5s infinite;
-}
-
-.hero-sub {
-  font-size: var(--fs-lg);
-  line-height: var(--lh-normal);
-  color: var(--color-text-muted);
-  max-width: 600px;
-  margin: 0 auto var(--space-3xl);
-  opacity: 0;
-  transform: translateY(20px);
-  animation: heroFadeUp 0.8s var(--ease-out) 0.6s forwards;
-}
-
-/* ΓöÇΓöÇ Hero Buttons Container ΓöÇΓöÇ */
-.hero-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-lg);
-  flex-wrap: nowrap;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: heroFadeUp 0.7s var(--ease-out) 0.8s forwards;
-}
-
-/* ΓöÇΓöÇ Download Button (Primary) ΓöÇΓöÇ */
-.download-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-2xl);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--color-obsidian);
-  background: linear-gradient(135deg, var(--color-cyan) 0%, #00D9E6 100%);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all var(--duration-slow) var(--ease-out);
-  position: relative;
-  overflow: visible;
-  white-space: nowrap;
-  box-shadow: 
-    0 4px 14px rgba(var(--color-cyan-rgb), 0.35),
-    0 2px 8px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.download-button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease-out);
-}
-
-.download-button::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(135deg, var(--color-cyan), #00D9E6, var(--color-cyan));
-  border-radius: 6px;
-  z-index: -1;
-  opacity: 0;
-  filter: blur(15px);
-  transition: opacity var(--duration-slow) var(--ease-out);
-}
-
-.download-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 
-    0 6px 20px rgba(var(--color-cyan-rgb), 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.download-button:hover::before {
-  opacity: 1;
-}
-
-.download-button:hover::after {
-  opacity: 0.8;
-}
-
-.download-button:active {
-  transform: translateY(-1px);
-  box-shadow: 
-    0 2px 8px rgba(var(--color-cyan-rgb), 0.4),
-    0 1px 4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-.download-icon {
-  animation: downloadPulse 2s ease-in-out infinite;
-}
-
-@keyframes downloadPulse {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(3px); }
-}
-
-.download-button:hover .download-icon {
-  animation: downloadBounce 0.6s ease-in-out;
-}
-
-@keyframes downloadBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(5px); }
-}
-
-.version-badge {
-  padding: var(--space-xs) var(--space-sm);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  background: rgba(var(--color-obsidian-rgb), 0.4);
-  border-radius: 4px;
-  letter-spacing: 0.08em;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-}
-
-.version-badge.coming-soon {
-  background: rgba(var(--color-text-dim), 0.25);
-  color: var(--color-text-muted);
-  border: 1px solid rgba(var(--color-text-dim), 0.3);
-}
-
-/* ΓöÇΓöÇ Mac Button (Disabled/Coming Soon) ΓöÇΓöÇ */
-.mac-button {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background: linear-gradient(135deg, rgba(var(--color-cyan-rgb), 0.2) 0%, rgba(var(--color-cyan-rgb), 0.15) 100%);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.3);
-  box-shadow: 
-    0 4px 14px rgba(var(--color-cyan-rgb), 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.mac-button::after {
-  content: 'Coming Soon';
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background: rgba(var(--color-surface-rgb), 0.98);
-  color: var(--color-cyan);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: 6px;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: all var(--duration) var(--ease-out);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  z-index: 100;
-}
-
-.mac-button::before {
-  content: '';
-  position: absolute;
-  bottom: calc(100% + 2px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(var(--color-surface-rgb), 0.98);
-  opacity: 0;
-  pointer-events: none;
-  transition: all var(--duration) var(--ease-out);
-  z-index: 100;
-}
-
-.mac-button:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.mac-button:hover::before {
-  opacity: 1;
-}
-
-.mac-button .download-icon {
-  animation: none;
-}
-
-/* ΓöÇΓöÇ Secondary Button ΓöÇΓöÇ */
-.secondary-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-lg) var(--space-2xl);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--color-cyan);
-  background: transparent;
-  border: 2px solid var(--color-cyan);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all var(--duration) var(--ease-out);
-  position: relative;
-  overflow: hidden;
-}
-
-.secondary-button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--color-cyan);
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease-out);
-  z-index: -1;
-}
-
-.secondary-button:hover {
-  color: var(--color-obsidian);
-  transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(var(--color-cyan-rgb), 0.3);
-}
-
-.secondary-button:hover::before {
-  opacity: 1;
-}
-
-.secondary-button svg {
-  transition: transform var(--duration) var(--ease-out);
-}
-
-.secondary-button:hover svg {
-  transform: translateY(3px);
-}
-
-@keyframes heroFadeUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes textShimmer {
-  0%, 100% { left: -100%; }
-  50% { left: 100%; }
-}
-
-/* Hero glow ΓÇö breathing animation */
-.hero-glow {
-  position: absolute;
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(var(--color-cyan-rgb), 0.08) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 1;
-  animation: glowPulse 4s ease-in-out infinite;
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.15); }
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   FEATURES SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.video-section {
-  padding: var(--space-section) var(--space-xl);
-  background: radial-gradient(circle at 10% 10%, rgba(var(--color-cyan-rgb), 0.08), transparent 35%),
-              radial-gradient(circle at 90% 0%, rgba(var(--color-teal-rgb), 0.06), transparent 40%);
-}
-
-.video-grid {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: var(--space-xl);
-  padding: var(--space-xl);
-  border-radius: 2px;
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-}
-
-.video-frame {
-  position: relative;
-}
-
-.video-embed {
-  position: relative;
-  width: 100%;
-  padding-top: 56.25%;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--color-border);
-}
-
-.video-embed iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #000;
-}
-
-.video-steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-xl);
-  border-radius: 6px;
-  background: rgba(var(--color-obsidian-rgb), 0.65);
-  border: 1px solid var(--color-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-.video-steps-title {
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
-}
-
-.video-steps-list {
-  display: grid;
-  gap: var(--space-md);
-  padding-left: 1.2rem;
-  color: var(--color-text);
-}
-
-.video-steps-list li {
-  line-height: var(--lh-normal);
-  color: var(--color-text-muted);
-}
-
-.video-steps-list strong {
-  color: #FFFFFF;
-  font-weight: 700;
-}
-
-.video-note {
-  font-size: var(--fs-xs);
-  color: var(--color-text-dim);
-  letter-spacing: 0.02em;
-}
-
-@media (max-width: 1024px) {
-  .video-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.features {
-  padding: var(--space-section) var(--space-xl);
-  position: relative;
-}
-
-.section-container {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  content-visibility: auto;
-  contain-intrinsic-size: 0 500px;
-}
-
-.section-tag {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.25em;
-  color: var(--color-cyan);
-  text-transform: uppercase;
-  margin-bottom: var(--space-md);
-  text-align: center;
-}
-
-.section-title {
-  font-size: clamp(var(--fs-2xl), 3vw + 0.5rem, var(--fs-3xl));
-  font-weight: 700;
-  color: #FFFFFF;
-  text-align: center;
-  letter-spacing: -0.01em;
-  margin-bottom: var(--space-md);
-}
-
-.section-sub {
-  font-size: var(--fs-lg);
-  color: var(--color-text-muted);
-  text-align: center;
-  max-width: 560px;
-  margin: 0 auto var(--space-3xl);
-}
-
-/* ΓöÇΓöÇ Feature Grid ΓöÇΓöÇ */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-lg);
-}
-
-.feature-card {
-  padding: var(--space-2xl);
-  border-radius: 2px;
-  transition: all var(--duration-slow) var(--ease-out);
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--color-cyan-rgb), 0.4), transparent);
-  opacity: 0;
-  transition: opacity var(--duration-slow) var(--ease-out);
-}
-
-.feature-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.15);
-  transform: translateY(-2px);
-}
-
-.feature-card:hover::before {
-  opacity: 1;
-}
-
-.feature-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-cyan);
-  margin-bottom: var(--space-lg);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.15);
-  border-radius: 2px;
-  background: rgba(var(--color-cyan-rgb), 0.05);
-  transition: all var(--duration-slow) var(--ease-out);
-  position: relative;
-}
-
-.feature-icon::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 4px;
-  background: rgba(var(--color-cyan-rgb), 0.1);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all var(--duration-slow) var(--ease-out);
-}
-
-.feature-card:hover .feature-icon {
-  border-color: rgba(var(--color-cyan-rgb), 0.4);
-  background: rgba(var(--color-cyan-rgb), 0.1);
-  transform: translateY(-2px);
-}
-
-.feature-card:hover .feature-icon::after {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.feature-title {
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
-}
-
-.feature-api {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-teal);
-  letter-spacing: 0.04em;
-  margin-bottom: var(--space-md);
-}
-
-.feature-desc {
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  color: var(--color-text-muted);
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   HOW IT WORKS SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.how-it-works {
-  padding: var(--space-section) var(--space-xl);
-  background: linear-gradient(180deg, transparent 0%, rgba(var(--color-surface-rgb), 0.4) 50%, transparent 100%);
-}
-
-/* ΓöÇΓöÇ Steps Grid ΓöÇΓöÇ */
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-lg);
-  margin-bottom: var(--space-xl);
-}
-
-.step-card {
-  padding: var(--space-2xl);
-  border-radius: 2px;
-  position: relative;
-  transition: all var(--duration-slow) var(--ease-out);
-}
-
-.step-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--color-cyan-rgb), 0.4), transparent);
-  opacity: 0;
-  transition: opacity var(--duration-slow) var(--ease-out);
-}
-
-.step-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.15);
-  transform: translateY(-2px);
-}
-
-.step-card:hover::before {
-  opacity: 1;
-}
-
-.step-number {
-  font-family: var(--font-mono);
-  font-size: var(--fs-3xl);
-  font-weight: 700;
-  color: rgba(var(--color-cyan-rgb), 0.15);
-  line-height: 1;
-  margin-bottom: var(--space-lg);
-  transition: all var(--duration-slow) var(--ease-out);
-}
-
-.step-card:hover .step-number {
-  color: rgba(var(--color-cyan-rgb), 0.5);
-  transform: scale(1.05);
-  text-shadow: 0 0 30px rgba(var(--color-cyan-rgb), 0.2);
-}
-
-.step-title {
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
-}
-
-.step-desc {
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  color: var(--color-text-muted);
-}
-
-@media (max-width: 1024px) {
-  .steps-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .steps-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .step-card {
-    padding: var(--space-xl);
-  }
-}
-
-/* ΓöÇΓöÇ Code Block (unused ΓÇö kept for reference) ΓöÇΓöÇ */
-.code-block {
-  max-width: 720px;
-  margin: 0 auto var(--space-xl);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.code-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.code-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-dim);
-}
-
-.code-dot:first-child { background: #FF5F57; }
-.code-dot:nth-child(2) { background: #FFBD2E; }
-.code-dot:nth-child(3) { background: #28C840; }
-
-.code-filename {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-text-dim);
-  margin-left: auto;
-}
-
-.code-block pre {
-  padding: var(--space-xl);
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  line-height: 1.8;
-  color: var(--color-text);
-  tab-size: 4;
-}
-
-/* Syntax Highlighting */
-.code-comment   { color: #5C6370; font-style: italic; }
-.code-directive { color: #C678DD; }
-.code-string    { color: #98C379; }
-.code-type      { color: #E5C07B; }
-.code-fn        { color: #61AFEF; }
-.code-keyword   { color: #C678DD; }
-.code-const     { color: var(--color-cyan); }
-
-/* ΓöÇΓöÇ Tech Note ΓöÇΓöÇ */
-.tech-note {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--space-lg) var(--space-xl);
-  border-radius: 2px;
-  border-left: 2px solid var(--color-teal);
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
-}
-
-.tech-note strong {
-  color: var(--color-teal);
-}
-
-.tech-note code {
-  font-size: var(--fs-xs);
-  color: var(--color-cyan);
-  background: rgba(var(--color-cyan-rgb), 0.08);
-  padding: 2px 6px;
-  border-radius: 2px;
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   REVIEWS SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.reviews {
-  padding: var(--space-section) var(--space-xl);
-  background: radial-gradient(circle at 20% 20%, rgba(var(--color-cyan-rgb), 0.08), transparent 40%),
-              radial-gradient(circle at 80% 0%, rgba(var(--color-teal-rgb), 0.06), transparent 45%);
-}
-
-.review-form {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--space-xl);
-  border-radius: 2px;
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
-}
-
-.form-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.form-stack label {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-}
-
-.rating-label {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-}
-
-.rating-group {
-  display: inline-flex;
-  gap: var(--space-sm);
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.rating-group input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.rating-group label {
-  width: 42px;
-  height: 42px;
+  padding: clamp(6rem, 12vw, 10rem) var(--space-6) var(--section-y);
   display: grid;
   place-items: center;
-  cursor: pointer;
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-  background: rgba(var(--color-obsidian-rgb), 0.7);
-  transition: all var(--duration) var(--ease-out);
-}
-
-.rating-group svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: rgba(var(--color-cyan-rgb), 0.4);
-  stroke-width: 1.25px;
-  transition: all var(--duration) var(--ease-out);
-}
-
-.rating-group label:hover,
-.rating-group label:focus-visible {
-  border-color: rgba(var(--color-cyan-rgb), 0.35);
-  box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.15);
-}
-
-.rating-group label.active {
-  border-color: rgba(var(--color-cyan-rgb), 0.6);
-  box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.35), 0 4px 12px rgba(var(--color-cyan-rgb), 0.12);
-  background: linear-gradient(180deg, rgba(var(--color-cyan-rgb), 0.08), rgba(var(--color-cyan-rgb), 0.04));
-}
-
-.rating-group label.active svg {
-  fill: rgba(var(--color-cyan-rgb), 0.35);
-  stroke: var(--color-cyan);
-}
-
-/* Hover glow effect — lights up stars left-to-right */
-.rating-group label.hovered {
-  border-color: rgba(var(--color-cyan-rgb), 0.5);
-  box-shadow: 0 0 8px rgba(var(--color-cyan-rgb), 0.25), 0 0 16px rgba(var(--color-cyan-rgb), 0.1);
-  background: linear-gradient(180deg, rgba(var(--color-cyan-rgb), 0.12), rgba(var(--color-cyan-rgb), 0.06));
-  transform: scale(1.08);
-}
-
-.rating-group label.hovered svg {
-  fill: rgba(var(--color-cyan-rgb), 0.45);
-  stroke: var(--color-cyan);
-  filter: drop-shadow(0 0 4px rgba(var(--color-cyan-rgb), 0.4));
-}
-
-.field-control,
-.select-wrapper select,
-.form-stack textarea {
-  width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  border-radius: 2px;
-  border: 1px solid var(--color-border);
-  background: rgba(var(--color-obsidian-rgb), 0.6);
-  color: var(--color-text);
-  font-size: var(--fs-sm);
-  transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
-}
-
-.field-control:focus,
-.select-wrapper select:focus,
-.form-stack textarea:focus {
-  border-color: rgba(var(--color-cyan-rgb), 0.4);
-  box-shadow: 0 0 0 1px rgba(var(--color-cyan-rgb), 0.2);
-}
-
-.form-stack textarea {
-  resize: vertical;
-  min-height: 140px;
-  line-height: var(--lh-normal);
-}
-
-.select-wrapper {
-  position: relative;
-}
-
-.select-wrapper::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: var(--space-md);
-  width: 6px;
-  height: 6px;
-  border-left: 1px solid var(--color-text);
-  border-bottom: 1px solid var(--color-text);
-  transform: translateY(-50%) rotate(-45deg);
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.select-wrapper select {
-  appearance: none;
-  -moz-appearance: none;
-  -webkit-appearance: none;
-  padding-right: var(--space-xl);
-}
-
-.form-hint {
-  font-size: var(--fs-xs);
-  color: var(--color-text-dim);
-  margin: var(--space-sm) 0 var(--space-md);
-  letter-spacing: 0.02em;
-}
-
-.form-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.review-form.has-error .field-control,
-.review-form.has-error .select-wrapper select,
-.review-form.has-error textarea {
-  border-color: var(--color-error);
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   NOTIFY / CTA SECTION
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.notify-section {
-  padding: var(--space-section) var(--space-xl);
-}
-
-.notify-form {
-  max-width: 520px;
-  margin: 0 auto;
-  padding: var(--space-xl);
-  border-radius: 2px;
-}
-
-.form-group {
-  width: 100%;
-}
-
-.input-wrapper {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 2px;
-  overflow: hidden;
-  transition: border-color var(--duration) var(--ease-out);
-}
-
-.input-wrapper.column {
-  flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-}
-
-.input-wrapper:focus-within {
-  border-color: rgba(var(--color-cyan-rgb), 0.4);
-}
-
-.input-wrapper input {
-  flex: 1;
-  padding: var(--space-md) var(--space-lg);
-  background: rgba(var(--color-obsidian-rgb), 0.6);
-  color: var(--color-text);
-  font-size: var(--fs-sm);
-}
-
-.input-wrapper input::placeholder {
-  color: var(--color-text-dim);
-}
-
-/* Submit Button */
-.submit-btn {
-  position: relative;
-  padding: var(--space-md) var(--space-xl);
-  background: var(--color-cyan);
-  color: var(--color-obsidian);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all var(--duration) var(--ease-out);
-  white-space: nowrap;
-  min-width: 130px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.submit-btn:hover {
-  background: #33F5FF;
-}
-
-.submit-btn:active {
-  transform: scale(0.98);
-}
-
-.btn-text,
-.btn-loader,
-.btn-check {
-  transition: all var(--duration) var(--ease-out);
-}
-
-.btn-loader,
-.btn-check {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-/* Loading State */
-.submit-btn.is-loading .btn-text { opacity: 0; transform: scale(0.8); }
-.submit-btn.is-loading .btn-loader {
-  opacity: 1;
-  transform: scale(1);
-  animation: spin 0.8s linear infinite;
-}
-
-/* Success State */
-.submit-btn.is-success {
-  background: var(--color-success);
-}
-.submit-btn.is-success .btn-text { opacity: 0; transform: scale(0.8); }
-.submit-btn.is-success .btn-check {
-  opacity: 1;
-  transform: scale(1);
-  animation: popIn var(--duration-slow) var(--ease-snap);
-}
-
-@keyframes spin {
-  to { transform: scale(1) rotate(360deg); }
-}
-
-@keyframes popIn {
-  0%   { transform: scale(0.3); opacity: 0; }
-  60%  { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* Form Error */
-.form-error {
-  font-size: var(--fs-xs);
-  color: var(--color-error);
-  margin-top: var(--space-sm);
-  min-height: 1.2em;
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
-  transition: opacity var(--duration) var(--ease-out);
-}
-
-.input-wrapper.has-error {
-  border-color: var(--color-error);
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   FOOTER
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.site-footer {
-  padding: var(--space-2xl) var(--space-xl);
-  border-top: 1px solid var(--color-border);
+  min-height: clamp(560px, 80vh, 720px);
   text-align: center;
 }
 
-.footer-container {
-  max-width: var(--max-width);
-  margin: 0 auto;
+/* Inner grid that owns slot rhythm. `z-index: 1` lifts the text above the
+   `.hero-spotlight` decoration (which sits at z-0). `max-width: 800px`
+   bounds the column so long display headlines wrap into a comfortable
+   measure regardless of viewport width, and `justify-items: center`
+   keeps each slot aligned with the centred layout. */
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  display: grid;
+  gap: var(--space-6);
+  justify-items: center;
 }
 
-.footer-copy {
-  font-size: var(--fs-sm);
-  color: var(--color-text-dim);
-  margin-bottom: var(--space-xs);
-}
-
-.footer-note {
+/* Eyebrow caption (Req 3.8). Mono family, caption size, wide tracking,
+   muted color. Uppercase is allowed here â€” Req 3.7's prohibition is
+   scoped to display/h1 sizes only. */
+.eyebrow {
   font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-text-dim);
-  letter-spacing: 0.1em;
-  opacity: 0.6;
-}
-
-.footer-contact {
-  margin-bottom: var(--space-xl);
-  padding-bottom: var(--space-xl);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.footer-contact-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.1em;
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: var(--space-md);
 }
 
-.footer-contact-links {
+/* Display headline = LCP candidate (Req 1.1). Server-rendered, no JS
+   needed to paint. `font-weight: 600` stays under the design's cap on
+   display weight. `letter-spacing: var(--tracking-tight)` hits the
+   âˆ’0.04..âˆ’0.02em band Req 3.6 mandates. `max-width: 18ch` keeps the
+   headline measure within a tight, readable bound on wide viewports.
+   Crucially, NO `text-transform: uppercase` (Req 3.7). */
+.hero-headline {
+  font-size: var(--fs-display);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
+  max-width: 18ch;
+}
+
+/* Sub-headline = lede paragraph. `body-lg` size pairs with `--lh-body`
+   line-height for a comfortable read at the wider 1.125rem. The
+   `--measure` token caps the paragraph at 66ch so long sub-headlines do
+   not stretch past the readable bound (Req 3.9). */
+.hero-sub.lede {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* CTA group. `flex-wrap` so the primary + optional secondary stack on
+   narrow viewports without the layout breaking. `gap: var(--space-4)`
+   keeps the pair separated by 16px, comfortably above the â‰¥8px floor
+   `(pointer: coarse)` requires for adjacent touch targets (Req 12.2).
+   `margin-top: var(--space-2)` adds a small visual break between the
+   sub-headline and the actions without doubling the standard gap. */
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Mobile menu overlay (Req 5.5, 5.6, 5.7, 14.9, 14.11).
+   Mounted by `<MobileMenu />` only while `open === true`, so the dialog
+   markup is absent from the DOM at desktop widths and on first paint.
+   The component itself implements scroll lock, focus trap, and Escape
+   handling â€” these rules only describe the visual surface.
+
+   Layout (per design.md â†’ Header + Mobile Menu, expanded by task 2.5):
+     A flex column with three stacked regions, top-down:
+       1. `.mobile-menu-header` â€” close-button row, right-aligned.
+       2. `.mobile-menu-nav`    â€” primary nav-link stack.
+       3. `.mobile-menu-actions`â€” auth action (Login OR Account + Logout).
+     Padding-top clears the fixed header so the close control never sits
+     under the legacy site chrome (`calc(var(--nav-height) + var(--space-6))`).
+     Side and bottom padding use the spacing scale so the layout retunes
+     when the scale changes.
+
+   Layered above the fixed header (z-index 1000 in the legacy chrome) at
+   z-1100 so the overlay covers the header during the open state without
+   us having to re-style the header.
+
+   Surface: `background-color: var(--bg)` plus `backdrop-filter: blur(20px)`
+   so the legacy header may still peek through during the migration window
+   while the menu remains fully usable. The blur sits inside the 12â€“20px
+   band reserved for chrome surfaces (Req 5.2 / 16.4). The `-webkit-`
+   prefix keeps Safari rendering the same effect. The universal
+   reduced-motion rule above already neutralises any incidental
+   transitions on this surface.
+   -------------------------------------------------------------------------- */
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: calc(var(--nav-height) + var(--space-6)) var(--space-6) var(--space-6);
+  background-color: var(--bg);
+  color: var(--text);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow-y: auto;
+  /* Programmatic focus target when no focusable descendant exists; the
+     visible focus ring is suppressed because the dialog itself never
+     receives focus during normal use. */
+  outline: none;
+}
+
+/* Top row: hosts only the close button, aligned to the right so the
+   visual weight sits in the same corner as the trigger that opened the
+   menu. Flex with `justify-content: flex-end` keeps the row's height
+   driven entirely by the button so additions to this region in future
+   tasks never push the nav list down unexpectedly. */
+.mobile-menu-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-2xl);
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
 }
 
-.footer-contact-link {
+/* Close button. Sized to a 44Ã—44 minimum hit target and styled with the
+   same discipline as `.theme-toggle` so the two header-adjacent controls
+   read as a family. */
+.mobile-menu-close {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  transition: color var(--duration) var(--ease-out);
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    color            var(--duration-base) var(--ease-out),
+    border-color     var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
 }
 
-.footer-contact-link:hover {
-  color: var(--color-cyan);
+.mobile-menu-close:hover {
+  color: var(--text);
+  border-color: var(--border);
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   SCROLL ANIMATIONS (Intersection Observer)
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-.fade-in-up,
-.fade-in-left,
-.fade-in-right,
-.scale-in {
-  opacity: 1;
-  transform: none;
+.mobile-menu-close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-.js-ready .fade-in-up {
-  opacity: 0;
-  transform: translateY(32px);
-  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+/* Vertical stack of primary nav links. Gap matches the spacing scale so
+   touch targets keep â‰¥8px separation on `(pointer: coarse)` (Req 12.2). */
+.mobile-menu-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  width: 100%;
 }
 
-.js-ready .fade-in-up.is-visible {
-  opacity: 1;
+/* Auth-action region rendered below the primary nav. Same vertical rhythm
+   as the nav so Login (or Account + Logout) reads as a peer of the nav
+   links rather than a tertiary control tucked into the corner. */
+.mobile-menu-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  width: 100%;
+  margin-top: auto;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+/* Each link is rendered at h2 size with semibold weight so it dominates
+   the dialog and the tap target stays comfortably above the 44Ã—44 floor
+   (Req 12.2). Both anchors and the inline Logout button share this class
+   so the visual treatment matches across the auth-action variants. */
+.mobile-menu-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    color            var(--duration-base) var(--ease-out),
+    border-color     var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.mobile-menu-link:hover {
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+.mobile-menu-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Modifier hook on the inline logout button. Kept empty for now so callers
+   can layer overrides (a tighter weight, a destructive accent) without
+   having to re-declare the base `.mobile-menu-link` rule. The button still
+   inherits all base typography and spacing from `.mobile-menu-link`. */
+.mobile-menu-logout {
+  /* Reserved for future weight or color tuning. */
+}
+
+/* --------------------------------------------------------------------------
+   Call-to-action button (Req 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 12.2).
+   Three variants â€” primary, secondary, disabled â€” share the `.cta` base so
+   spacing, type rhythm, and hit-target geometry stay consistent across the
+   redesign. Variant-specific colors live on `.cta-primary`, `.cta-secondary`,
+   and `.cta-disabled` so callers compose `cta cta-{variant}` and the cascade
+   does the rest.
+
+   Layout (Req 6.2):
+     `inline-flex` so primary + secondary CTAs sit side-by-side in the hero
+     without their parent needing flex semantics. Padding pairs `--space-3`
+     vertical with `--space-6` horizontal to land on the design's button
+     proportion, and `gap: var(--space-2)` reserves rhythm between the
+     label text and any inline badge or icon. `font-size` reads from
+     `--fs-body` so the CTA scales with the body type system instead of
+     drifting on its own track.
+
+   Motion budget (Req 6.4, 6.5, 15.6):
+     Hover transitions are restricted to `background-color`, `border-color`,
+     `box-shadow`, and a `transform: translateY(-1px)` press-lift. No
+     pulsing border, no shimmer sweep, no animated gradient stroke, no glow
+     drop-shadow. The duration sits at `--duration-base` (180ms), inside the
+     150â€“200ms band the spec mandates. The universal reduced-motion rule
+     above zeroes out the transition for users who opt out (Req 6.7).
+
+   Hit target (Req 12.2):
+     `min-height: 44px` plus the vertical padding combine to clear the
+     44Ã—44 touch-target floor on `(pointer: coarse)` devices.
+
+   Focus indicator (Req 6.6, 14.3):
+     2px solid `--focus-ring` outline with 2px offset on `:focus-visible`.
+     The token is contrast-tuned per theme (Req 14.3) so keyboard users see
+     a visible ring on both dark and light surfaces.
+   -------------------------------------------------------------------------- */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-button);
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    border-color     var(--duration-base) var(--ease-out),
+    box-shadow       var(--duration-base) var(--ease-out),
+    transform        var(--duration-base) var(--ease-out);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Primary â€” filled accent. Background and foreground come from the accent
+   token pair so the contrast ratio is enforced by the token layer (Req 4.9).
+   The base button has no visible border (the `.cta` base sets a 1px
+   transparent border purely so primary, secondary, and disabled variants
+   share the same outer geometry â€” swapping one for the other never causes
+   a 1px reflow). Hover lifts by 1px and adds a subtle card-grade elevation;
+   active settles back to 0 so the press feels mechanical, not bouncy. */
+.cta-primary {
+  background-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.cta-primary:hover {
+  box-shadow: var(--shadow-card);
+  transform: translateY(-1px);
+}
+
+.cta-primary:active {
   transform: translateY(0);
 }
 
-.js-ready .fade-in-left {
+/* Secondary â€” transparent background, body text color, hairline token
+   border. Hover only firms the border up to `--border-strong` and lifts
+   by 1px â€” no background fill change, no color shift, so the secondary
+   stays visually subordinate to the primary even on hover. Lift matches
+   `.cta-primary` for visual parity when the two sit side-by-side in the
+   hero. */
+.cta-secondary {
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.cta-secondary:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.cta-secondary:active {
+  transform: translateY(0);
+}
+
+/* Disabled â€” the "Coming Soon" state. Rendered as `<button type="button">`
+   by `<DisabledCta />`, which guarantees no navigation, no download, and no
+   scroll change on activation (no href, no form, the inline handlers call
+   `e.preventDefault()` on click and on Enter/Space â€” Req 6.3). The visuals
+   communicate the inert state: reduced opacity, a `--surface-overlay`
+   background that matches the secondary hover wash, muted text, and a
+   `not-allowed` cursor on pointer devices. No border so the shape mirrors
+   `.cta-primary` (which has only its transparent base border). No hover
+   transitions â€” pressing a disabled control should not feel responsive. */
+.cta-disabled {
+  background-color: var(--surface-overlay);
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Star rating radiogroup (Req 12.2, 14.9, 14.10).
+   Five native <input type="radio"> + <label> pairs. The inputs are visually
+   hidden but remain focusable so :focus-visible drives the keyboard outline
+   on the paired label. The label carries the visible star SVG.
+
+   Layout: inline flex with --space-2 gap (8px) so adjacent labels sit at
+   the touch-target spacing required for `(pointer: coarse)` (Req 14.9).
+   Each label is sized to a 44Ã—44 hit target (Req 12.2). The SVG inside is
+   fixed at 24Ã—24 so the surrounding padding gives finger-friendly clearance
+   without changing the visual weight of the star.
+
+   Fill state: `data-filled="true"` on the label paints the SVG with
+   --accent for every star at or below the committed value. Hover state
+   uses :has() to extend that fill cumulatively across siblings before the
+   one being pointed at â€” purely a polish touch on browsers that support
+   :has(); the committed `data-filled` paint always works.
+
+   Focus: the visually-hidden input still receives keyboard focus, so the
+   adjacent-sibling selector `.star-rating-input:focus-visible + .star-rating-label`
+   lights up the right star. The outline uses --focus-ring which meets
+   contrast on both themes (Req 14.3).
+   -------------------------------------------------------------------------- */
+.star-rating {
+  display: inline-flex;
+  align-items: center;
+  /* 8px gap satisfies the `(pointer: coarse)` adjacent-target spacing
+     requirement (Req 14.9). The base value is already 8px so no separate
+     `(pointer: coarse)` override is required, but the rule is repeated
+     below for discoverability. */
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+}
+
+@media (pointer: coarse) {
+  .star-rating {
+    /* Re-stated explicitly so future changes to --space-2 don't silently
+       reduce touch separation on coarse pointers below 8px. */
+    gap: var(--space-2);
+  }
+}
+
+.star-rating-input {
+  /* Visually hidden but still focusable. `display:none` / `visibility:hidden`
+     would remove the element from the focus order and break the roving
+     tabindex contract. The spec wires this with `position: absolute;
+     opacity: 0; pointer-events: none;` so the label remains the sole
+     interactive surface while the input keeps native keyboard semantics
+     (focus, Space, change events). */
+  position: absolute;
   opacity: 0;
-  transform: translateX(-32px);
-  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
-}
-
-.js-ready .fade-in-left.is-visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.js-ready .fade-in-right {
-  opacity: 0;
-  transform: translateX(32px);
-  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
-}
-
-.js-ready .fade-in-right.is-visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.js-ready .scale-in {
-  opacity: 0;
-  transform: scale(0.92);
-  transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
-}
-
-.js-ready .scale-in.is-visible {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* ΓöÇΓöÇ Floating particles canvas ΓöÇΓöÇ */
-.particles-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
   pointer-events: none;
-}
-
-/* ΓöÇΓöÇ Horizontal divider line animation ΓöÇΓöÇ */
-.section-divider {
-  width: 120px;
+  /* Belt-and-braces: keep the box collapsed so it never affects layout
+     and never paints over the label even with an inherited z-index. */
+  width: 1px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--color-cyan-rgb), 0.3), transparent);
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.star-rating-label {
+  /* Spec: `display: grid; place-items: center;` for square, perfectly
+     centered hit targets. */
+  display: grid;
+  place-items: center;
+  /* 44Ã—44 minimum hit target â€” Req 12.2. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  border-radius: var(--radius-button);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  cursor: pointer;
+  /* Color/border-only transitions per Req 6.5 / 7.5 / 15.1 â€” no transform,
+     no scale, no shadow pulse. Keeps the control calm and deterministic. */
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    color        var(--duration-base) var(--ease-out);
+}
+
+.star-rating-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  /* Default: outlined star using the muted text color so unselected stars
+     read as a neutral group rather than competing with the selected
+     accent fill. */
+  fill: transparent;
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  transition:
+    fill   var(--duration-base) var(--ease-out),
+    stroke var(--duration-base) var(--ease-out);
+}
+
+/* Committed selection: every label at or below the chosen value lights up
+   in the accent. Driven by the `data-filled` attribute the component sets,
+   so this works without `:has()`. */
+.star-rating-label[data-filled="true"] .star-rating-icon {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+/* Hover cumulative fill: paint the hovered label and every preceding
+   sibling. The `:has(~ .star-rating-label:hover)` selector targets any
+   label that has a later-sibling label being hovered. Browsers without
+   `:has()` skip the cumulative branch and only the directly-hovered
+   star fills â€” still a sensible fallback. The `@media (hover: hover)`
+   gate keeps the preview off touch devices where `:hover` is sticky. */
+@media (hover: hover) {
+  .star-rating-label:hover .star-rating-icon,
+  .star-rating-label:has(~ .star-rating-label:hover) .star-rating-icon {
+    fill: var(--accent);
+    stroke: var(--accent);
+  }
+}
+
+/* Keyboard focus ring on the label whose paired input is :focus-visible.
+   Adjacent-sibling combinator works because StarRating.tsx renders the
+   label immediately after its input. */
+.star-rating-input:focus-visible + .star-rating-label {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Eyebrow + lede typography helpers (Req 3.1, 3.7, 3.8).
+   `.eyebrow` is the mono caption that sits above section headlines â€” the
+   redesign's replacement for the legacy `.section-tag`. `.lede` is the
+   larger supporting paragraph that sits below an h1 or h2 to carry the
+   positioning copy. Both classes are used by <FeatureGrid /> first and
+   will be re-used by the rest of the section components in tasks 4.3â€“4.5.
+   Defining them once here keeps the visual rhythm consistent across the
+   redesigned sections without each component re-declaring tokens inline.
+   The eyebrow uses the mono token with `--tracking-mono` (0.10em â€” within
+   the 0.08â€“0.12 band per Req 3.8) and the muted text color so it reads
+   as a caption rather than competing with the headline. No
+   `text-transform: uppercase` is applied; the source copy already arrives
+   in the desired case (Req 3.7).
+   -------------------------------------------------------------------------- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.lede {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Features section (Req 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 12.3,
+   15.6).
+   Three feature cards composed by <FeatureGrid /> directly under the hero.
+   Layout follows the same outer rhythm every section uses across the
+   redesign: a token-driven section padding (`--section-y` vertical, the
+   spacing scale horizontal) and an inner container constrained to the
+   `--max-width` token so the type measure stays comfortable on wide
+   monitors.
+
+   `.features-section`:
+     A grid stack of eyebrow + h2 + lede + grid, with a single `gap` token
+     so callers do not need to add per-child margin overrides. The grid
+     scopes the heading and lede to a comfortable measure (22ch on the h2,
+     `--measure` 66ch on the lede) so the type column never runs the full
+     1200px container â€” keeps the eye's reading rhythm coherent.
+
+   `.features-grid`:
+     Mobile-first: one column at the base, two columns at >=768px, three
+     columns at >=1024px. Gap is `--space-6` (24px) so cards keep a
+     consistent visual rhythm without bunching. Order follows Req 7.1:
+     1/2/3 columns at the documented breakpoints.
+
+   `.feature-card`:
+     `<article>` surface raised on `--surface-raised` with a 1px
+     `--border` and the card radius. Hover transitions are restricted to
+     `border-color` and `box-shadow` over `--duration-base` (180ms) so the
+     card communicates affordance without animating background-fill, icon
+     position, icon color, or text content (Req 7.4, 7.5). No transform on
+     hover â€” the card stays planted in place. The universal
+     reduced-motion rule earlier in this file zeroes the transition for
+     users who opt out (Req 15.4 / 15.6).
+
+   `.feature-icon`:
+     The 48Ã—48 chrome box that wraps the SVG mark inside every card. Width,
+     height, border, radius, and overlay background are identical across
+     all three cards â€” the only difference between cards is the SVG path
+     inside the box (Req 7.2). `color: var(--text)` cascades to the inner
+     SVG via `currentColor`, so theme swaps recolor every icon at no JS
+     cost. The 1px border uses the same `--border` token as the card so
+     the mark sits in a calm, secondary chrome rather than competing with
+     the content.
+
+   `.feature-card h3` / `.feature-card p`:
+     Token-driven typography so the cards re-flow the visual rhythm any
+     time the type scale shifts. No bespoke per-card font-size, weight, or
+     color â€” every value reads from the design tokens declared earlier in
+     this file.
+   -------------------------------------------------------------------------- */
+.features {
+  padding: var(--section-y) var(--space-6);
+}
+
+.features-section {
+  max-width: var(--max-width);
   margin: 0 auto;
+  display: grid;
+  gap: var(--space-8);
 }
 
-.js-ready .section-divider {
-  width: 0;
-  transition: width 1s var(--ease-out);
+.features-section h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  max-width: 22ch;
+  margin: 0;
 }
 
-.js-ready .section-divider.is-visible {
-  width: 120px;
+.features-section .lede {
+  /* Section-scoped override of the base `.lede` â€” selector specificity
+     0,2,0 beats the base 0,1,0 so the features lede inherits the same
+     measure / color / size as the global helper while keeping a single
+     authoritative origin for any future per-section tweak. */
+  color: var(--text-muted);
+  font-size: var(--fs-body-lg);
+  max-width: var(--measure);
+  margin: 0;
 }
 
-/* ΓöÇΓöÇ Feature card glow on hover ΓöÇΓöÇ */
-.feature-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--color-cyan-rgb), 0.06) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity var(--duration-slow) var(--ease-out);
-  pointer-events: none;
+.features-grid {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: 1fr;
 }
 
-.feature-card:hover::after {
-  opacity: 1;
-}
-
-/* ΓöÇΓöÇ Step card connector line ΓöÇΓöÇ */
-.step-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 0;
-  height: 2px;
-  background: var(--color-cyan);
-  transform: translateX(-50%);
-  transition: width var(--duration-slow) var(--ease-out);
-}
-
-.step-card:hover::after {
-  width: 40%;
-}
-
-/* — Logo image pulse — */
-@keyframes logoPulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(var(--color-cyan-rgb), 0.4)); }
-  50% { filter: drop-shadow(0 0 12px rgba(var(--color-cyan-rgb), 0.7)); }
-}
-
-/* ΓöÇΓöÇ Nav appear on load ΓöÇΓöÇ */
-.site-header {
-  animation: navSlideDown 0.6s var(--ease-out) forwards;
-}
-
-@keyframes navSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ΓöÇΓöÇ Reduced motion ΓöÇΓöÇ */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  .hero-tag, .hero-headline, .hero-sub, .hero-buttons {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   RESPONSIVE
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
-
-/* Desktop - Ensure buttons stay side by side */
-@media (min-width: 769px) {
-  .hero-buttons {
-    flex-direction: row;
-    flex-wrap: nowrap;
-  }
-  
-  .download-button {
-    max-width: fit-content;
-  }
-}
-
-/* Tablets */
-@media (max-width: 1024px) {
+@media (min-width: 768px) {
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .nav-container {
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: var(--space-md) 0;
-    gap: var(--space-md);
-  }
-
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--space-md) var(--space-xl);
-  }
-
-  .site-header {
-    height: auto;
-    padding-bottom: var(--space-sm);
-  }
-
-  .hero-headline {
-    font-size: clamp(2rem, 8vw, 3.5rem);
-  }
-
-  .hero-sub br {
-    display: none;
-  }
-
-  .hero-buttons {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-    gap: var(--space-md);
-  }
-
-  .download-button {
-    width: 100%;
-    justify-content: center;
-  }
-
+@media (min-width: 1024px) {
   .features-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-card {
-    padding: var(--space-xl);
-  }
-
-  /* ── Video sections mobile fixes ── */
-  .video-section {
-    padding: var(--space-2xl) var(--space-md);
-  }
-
-  .video-grid {
-    grid-template-columns: 1fr;
-    padding: var(--space-md);
-    gap: var(--space-md);
-  }
-
-  .video-embed {
-    border-radius: 4px;
-  }
-
-  .video-steps {
-    padding: var(--space-md);
-  }
-
-  .video-steps-title {
-    font-size: var(--fs-lg);
-  }
-
-  .video-steps-list {
-    gap: var(--space-sm);
-    font-size: var(--fs-sm);
-  }
-
-  .video-note {
-    font-size: 0.7rem;
-  }
-
-  .section-title {
-    font-size: var(--fs-xl);
-  }
-
-  .section-sub {
-    font-size: var(--fs-sm);
-  }
-
-  .steps-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .rating-group {
-    justify-content: center;
-  }
-
-  .code-block pre {
-    font-size: var(--fs-xs);
-    padding: var(--space-md);
-  }
-
-  .input-wrapper {
-    flex-direction: column;
-  }
-
-  .submit-btn {
-    padding: var(--space-md);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* Small phones */
-@media (max-width: 420px) {
-  .download-button {
-    padding: var(--space-md) var(--space-lg);
-    font-size: var(--fs-sm);
-  }
-
-  .version-badge {
-    display: none;
-  }
-
-  .video-section {
-    padding: var(--space-xl) var(--space-sm);
-  }
-
-  .video-grid {
-    padding: var(--space-sm);
-    gap: var(--space-sm);
-  }
-
-  .video-steps {
-    padding: var(--space-sm) var(--space-md);
-  }
-
-  .section-title {
-    font-size: var(--fs-lg);
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   DOCUMENT-STYLE GUIDE STEPS
-   ══════════════════════════════════════════════════════════════════ */
-
-.guide-steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3xl);
-  position: relative;
-  padding-top: var(--space-xl);
-}
-
-/* Vertical timeline connector */
-.guide-steps::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(var(--color-cyan-rgb), 0.25) 10%,
-    rgba(var(--color-cyan-rgb), 0.25) 90%,
-    transparent 100%
-  );
-  z-index: 0;
-}
-
-.guide-step {
+.feature-card {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2xl);
-  align-items: center;
-  position: relative;
-  z-index: 1;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
 }
 
-/* Alternate layout: odd steps image-left, even steps image-right */
-.guide-step:nth-child(even) {
-  direction: rtl;
+.feature-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
 }
 
-.guide-step:nth-child(even) > * {
-  direction: ltr;
-}
-
-/* Step image container */
-.guide-step-visual {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(var(--color-cyan-rgb), 0.05);
-  transition: transform var(--duration-slow) var(--ease-out),
-              box-shadow var(--duration-slow) var(--ease-out);
-}
-
-.guide-step-visual:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow:
-    0 24px 70px rgba(0, 0, 0, 0.45),
-    0 0 60px rgba(var(--color-cyan-rgb), 0.1);
-}
-
-.guide-step-visual img {
-  width: 100%;
-  height: auto;
-  display: block;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-}
-
-/* Subtle gradient overlay on image */
-.guide-step-visual::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    transparent 60%,
-    rgba(var(--color-obsidian-rgb), 0.4) 100%
-  );
-  pointer-events: none;
-}
-
-/* Step content card */
-.guide-step-content {
-  padding: var(--space-xl) var(--space-2xl);
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  position: relative;
-  transition: border-color var(--duration-slow) var(--ease-out);
-}
-
-.guide-step-content:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.2);
-}
-
-/* Step number badge */
-.guide-step-number {
+.feature-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(var(--color-cyan-rgb), 0.15), rgba(var(--color-cyan-rgb), 0.05));
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.3);
-  font-family: var(--font-mono);
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--color-cyan);
-  margin-bottom: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-overlay);
+  color: var(--text);
+}
+
+.feature-card h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.feature-card p {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   How It Works section (Req 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 12.3,
+   15.2, 15.6).
+   Token-driven three-step pipeline rendered on `/` between the feature
+   grid and the guide cards by `<HowItWorks />` (server component). The
+   surface ships zero JavaScript â€” every visual is static CSS reading from
+   the `:root[data-theme]` token layer so the section repaints with the
+   theme without React having to re-render.
+
+   Layout (Req 8.3, 8.4):
+     `.how-it-works-section` is a centered `var(--max-width)` column with a
+     `var(--space-8)` gap between the eyebrow stack and the steps grid.
+     `.steps` is single-column under 1024px so each step card claims the
+     full text measure on mobile/tablet â€” keeps line lengths readable
+     within `var(--measure)`. At 1024px and above the grid switches to
+     three equal columns separated by `var(--space-8)`, so the row of
+     cards lines up with the connector and feature-grid columns above.
+     `position: relative` on the grid is what lets the absolutely
+     positioned `.steps-connector` resolve its `top` offset against the
+     grid box, not the section.
+
+   Connector (Req 8.4, 8.6):
+     A single `<div aria-hidden="true" class="steps-connector">` is the
+     first child of the grid. Hidden by default at all viewports
+     (`display: none`), it becomes a 1px horizontal stroke at 1024px and
+     above by flipping to `display: block`. The 32px `top` offset places
+     the line through the visual mid-point of the `.step-number` numeral
+     (which is rendered at clamp(2rem, â€¦, 3rem) line-height 1, so its
+     baseline sits ~24â€“32px below the card top depending on viewport) and
+     the symmetric `left: 8% / right: 8%` insets keep the line inside the
+     outer cards' padding. `z-index: 0` on the connector and `z-index: 1`
+     on each `.step-card` ensures the cards paint on top of the line so
+     the stroke vanishes behind the card surfaces and only spans the gaps.
+     Stroke colour is `var(--border)` so it adopts the same low-contrast
+     divider tone used elsewhere in the surface.
+
+   Step card surface (Req 12.3):
+     `.step-card` reuses the same surface contract as `.feature-card`:
+     `var(--surface-raised)` background, 1px `var(--border)`,
+     `var(--radius-card)` corners, and a hover transition only on
+     `border-color` and `box-shadow` over `var(--duration-base)` (180ms).
+     `position: relative` plus `z-index: 1` is required so the card paints
+     above the connector. The internal grid uses `var(--space-3)` between
+     the numeral, the title, and the description, which matches the
+     compact 12px rhythm used inside other token-styled cards.
+
+   Step numeral (Req 8.4, 8.5, 15.6):
+     `.step-card .step-number` is rendered in `var(--font-mono)` with
+     `clamp(2rem, 2vw + 1.5rem, 3rem)` so the numeral scales between 32px
+     and 48px without discrete breakpoints. `line-height: 1` packs the
+     glyph tightly against the title that follows, and the mono tracking
+     token keeps the digit pair visually balanced with the rest of the
+     monospace surface (the version pill, the eyebrow, etc.). The numeral
+     uses `var(--accent)` so it carries the brand cyan/teal at the
+     theme-appropriate saturation. There is intentionally no
+     `:hover` rule on the numeral â€” the legacy redesign deleted the
+     `transform: scale(1.05)` and `text-shadow` glow that the prior code
+     applied (Req 15.6).
+
+   Step title and description:
+     `.step-card h3` matches the type contract of `.feature-card h3` so a
+     reader scanning across the page sees a consistent visual weight at
+     the third heading level. `.step-card p` uses the body type token
+     pair (`--fs-body` + `--lh-body`) and `var(--text-muted)` so the
+     description sits one tonal step below the title.
+
+   Callout (Req 8.5, replacing legacy `.tech-note`):
+     `.callout` is the token-driven replacement for the old
+     `.tech-note glass-panel` pair from `src/app/page.tsx`. It carries the
+     same compatibility paragraph but ships zero blur and zero gradient.
+     A 3px `border-left` in `var(--accent)` gives the callout a subtle
+     emphasis stripe without bleeding accent into the body of the box,
+     and the muted text colour keeps the prose in service of the cards
+     above. `<strong>` inside the callout is bumped to `var(--text)` so
+     the leading "Compatibility:" label stays legible against the
+     `var(--surface-overlay)` background.
+
+   What this surface intentionally omits (Req 8.6, 8.7, 15.2):
+     - No `.fade-in-up` / `.scale-in` reveal classes. The cards are
+       visible at first paint.
+     - No `IntersectionObserver` instrumentation â€” the connector is just
+       CSS, the steps are static, the callout is static.
+     - No transform on hover for either the card translate or the numeral
+       scale. The only hover affordance is the colour + shadow pair
+       declared on `.step-card:hover`.
+     - No `text-transform: uppercase` on the heading or the eyebrow's
+       sibling `<h2>` â€” the eyebrow handles the small-caps cue.
+   -------------------------------------------------------------------------- */
+
+.how-it-works {
+  padding: var(--section-y) var(--space-6);
+}
+
+.how-it-works-section {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-8);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
   position: relative;
 }
 
-.guide-step-number::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--color-cyan-rgb), 0.2), transparent 70%);
-  z-index: -1;
-  filter: blur(6px);
-}
-
-.guide-step-title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: var(--space-md);
-  letter-spacing: -0.01em;
-}
-
-@media (max-width: 900px) {
-  .guide-steps::before {
-    left: 24px;
-  }
-
-  .guide-step,
-  .guide-step:nth-child(even) {
-    grid-template-columns: 1fr;
-    gap: var(--space-xl);
-    direction: ltr;
-  }
-
-  .guide-step:nth-child(even) > * {
-    direction: ltr;
-  }
-
-  .guide-step-visual {
-    margin-left: 48px;
-  }
-
-  .guide-step-content {
-    margin-left: 48px;
-    padding: var(--space-xl);
-  }
-
-  .guide-step-number {
-    left: -48px;
-    top: 0;
-    transform: none;
+@media (min-width: 1024px) {
+  .steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-8);
   }
 }
 
-.guide-step-desc {
-  font-size: var(--fs-base);
-  line-height: var(--lh-normal);
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-lg);
+.steps-connector {
+  display: none;
 }
 
-.guide-step-tip {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  border-radius: 8px;
-  background: rgba(var(--color-cyan-rgb), 0.05);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.12);
-  font-size: var(--fs-sm);
-  color: var(--color-text);
+@media (min-width: 1024px) {
+  .steps-connector {
+    display: block;
+    position: absolute;
+    top: 32px;
+    left: 8%;
+    right: 8%;
+    height: 1px;
+    background: var(--border);
+    z-index: 0;
+  }
 }
 
-.guide-step-tip svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--color-cyan);
-}
-
-/* Guide CTA section (for homepage summaries) */
-.guide-cta-grid {
+.step-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-xl);
+  gap: var(--space-3);
+  position: relative;
+  z-index: 1;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
 }
 
-.guide-cta-card {
+.step-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.step-card .step-number {
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 2vw + 1.5rem, 3rem);
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: var(--tracking-mono);
+}
+
+.step-card h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.step-card p {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.callout {
+  margin-top: var(--space-4);
+  /* `--space-5` is not declared on the spacing scale (the scale jumps from
+     4 â†’ 6 by design), so the fallback supplies a 20px middle value that
+     keeps the callout's vertical padding visually distinct from the cards
+     above it without forcing an out-of-band token onto every consumer of
+     the design system. */
+  padding: var(--space-5, 1.25rem) var(--space-6);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-card);
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+}
+
+.callout strong {
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Trust strip (Req 10.1, 10.2, 10.3, 10.5).
+   Token-driven horizontal strip rendered on `/` directly below the hero by
+   `<TrustStrip />` (server component). It surfaces three product trust
+   signals â€” the aggregate rating, the rating count, and the software
+   version â€” sourced from `SITE_META` so the visible strings stay
+   byte-identical to the JSON-LD `SoftwareApplication` schema in
+   `app/layout.tsx`. No logos, testimonials, press mentions, or partner
+   badges are declared on this surface (Req 10.3).
+
+   Layout (Req 10.2):
+     `display: flex` plus `flex-wrap: wrap` keeps the strip from overflowing
+     horizontally at any viewport width between 320px and 1920px. At wide
+     widths the stars, rating line, and version pill sit on a single row
+     separated by `var(--space-8)`; at narrow widths the version pill drops
+     below the rating block while the row gap (`var(--space-4)`) keeps the
+     vertical rhythm tight. Centered inside the page max-width via
+     `margin: 0 auto` so the strip aligns with the rest of the marketing
+     surface, and bordered top + bottom in `var(--border)` so it reads as a
+     subtle divider band between the hero and the feature grid below.
+
+   Spacing:
+     Vertical padding uses `--space-6` (24px) so the strip stays compact
+     relative to neighbouring sections, which keeps the eye moving toward
+     the features without forcing the rating into the hero's personal
+     space. Horizontal padding matches so content lines up with the rest
+     of the page rhythm.
+
+   No client JS, no animation: the strip is purely declarative markup, so
+   it contributes zero CLS regardless of viewport width.
+   -------------------------------------------------------------------------- */
+.trust-strip {
+  padding: var(--space-6) var(--space-6);
+  max-width: var(--max-width);
+  margin: 0 auto;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-2xl);
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: all var(--duration-slow) var(--ease-out);
-  text-align: left;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4) var(--space-8);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
-.guide-cta-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.25);
-  transform: translateY(-3px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
-              0 0 40px rgba(var(--color-cyan-rgb), 0.06);
+/* Star row. `inline-flex` so the five 18Ã—18 SVG stars render on a single
+   line with a consistent 2px gap between them â€” tight enough to read as a
+   group, loose enough to keep the half-star transitions crisp. */
+.trust-stars {
+  display: inline-flex;
+  gap: 2px;
 }
 
-.guide-cta-icon {
+.trust-stars svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Rating line. Body type at the muted color so the strip reads as
+   secondary chrome relative to the hero, with the numeric rating bumped
+   to `var(--text)` weight 600 inside the `<strong>` so the value pops
+   without breaking the body rhythm. */
+.trust-rating {
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+}
+
+.trust-rating strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Version pill. Mono caption with the redesign's `--tracking-mono` so the
+   version string reads as machine-rendered metadata rather than copy.
+   `--text-dim` keeps it visually subordinate to both the stars and the
+   rating line â€” the version is supporting evidence, not headline. */
+.trust-version {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Guide cards section (Req 9.1, 12.2).
+   "Get Started" surface on the home page â€” eyebrow + h2 + lede above a
+   two-card grid pointing at `/guides/setup` and `/guides/usage`. Section
+   chrome mirrors the rhythm of `.features-section`-style surfaces so the
+   home page reads with one consistent vertical scale.
+
+   Layout:
+     - `.guide-cards-section` owns the section padding (`--section-y`
+       vertical, `--space-6` horizontal) and the max-width clamp via the
+       inner `.guide-cards-inner` wrapper at `--max-width`. No background,
+       no gradient, no decorative wash â€” the section sits flush against
+       its neighbours and the visual weight comes from the card surfaces.
+     - `.guide-cards-grid` is a single column up to 768px and a 2-column
+       grid above. `gap: var(--space-6)` keeps cards 24px apart, well
+       above the 8px separation floor `(pointer: coarse)` requires.
+     - On `(pointer: coarse)`, the gap is re-stated as
+       `max(var(--space-6), 12px)` so future spacing-scale tweaks can
+       never silently drop the floor below 8px (Req 12.2).
+
+   Card surface (`.guide-card`, an `<a>`):
+     The whole card is the link, so the entire visible rectangle is a
+     single hit target. `min-height: 44px` clears the touch-target floor
+     (Req 12.2) â€” in practice the padded body height lands well above 44
+     so this floor only ever matters for very short copy. The card uses
+     a token-driven `--surface-raised` background, a 1px `--border`
+     hairline, and a `--radius-card` corner radius so it reads as part
+     of the same surface family as `.feature-card` and other token cards.
+
+   Hover/focus motion:
+     Hover transitions only `border-color` and `box-shadow` over
+     `--duration-base` (180ms) â€” the same restricted budget the rest of
+     the redesigned cards use, no transform, no glow pulse. Focus uses
+     the standard 2px `--focus-ring` outline with 2px offset so keyboard
+     users always see a visible indicator. The universal reduced-motion
+     rule above neutralises the transition for users who opt out.
+
+   Inside the card:
+     - `.guide-card-icon` is a 48Ã—48 framed icon, matching `.feature-icon`
+       proportions so the two surfaces feel like siblings.
+     - `.guide-card-title` reads at `--fs-h3` with tight tracking.
+     - `.guide-card-desc` is muted body color, capped at `--measure` so
+       long descriptions never stretch past the readable bound.
+     - `.guide-card-bullets` is a token-driven `<ul>` with no native
+       bullet markers (we use a small `::marker` accent dash instead) and
+       muted body color so the bullets read as supporting evidence.
+     - `.guide-card-cta` is a mono caption-sized "Read â†’" pill that uses
+       the accent color for the verb and inherits the trailing arrow
+       size from the inline SVG (16Ã—16). The arrow translates by 2px on
+       hover for a small directional cue without any dramatic motion.
+   -------------------------------------------------------------------------- */
+.guide-cards-section {
+  width: 100%;
+  padding: var(--section-y) var(--space-6);
+}
+
+.guide-cards-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.guide-cards-title {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
+  max-width: 22ch;
+}
+
+.guide-cards-lede {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+.guide-cards-grid {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: 1fr;
+  margin-top: var(--space-8);
+}
+
+@media (min-width: 768px) {
+  .guide-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Adjacent-card separation floor on coarse pointers (Req 12.2). The base
+   gap is already 24px; re-stating it here as `max(var(--space-6), 12px)`
+   guarantees the gap never drops below 12px even if the spacing scale is
+   retuned later. */
+@media (pointer: coarse) {
+  .guide-cards-grid {
+    gap: max(var(--space-6), 12px);
+  }
+}
+
+.guide-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  min-height: 44px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
+}
+
+.guide-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.guide-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* 48Ã—48 icon container, mirrors `.feature-icon` proportions so the two
+   card families read as siblings. The inline SVG inside is 24Ã—24 and
+   inherits color from the container (`color: var(--text)` from the card),
+   so the icon retones with the active theme without per-icon CSS. */
+.guide-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(var(--color-cyan-rgb), 0.12), rgba(var(--color-teal-rgb), 0.08));
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.2);
-  color: var(--color-cyan);
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  color: var(--text);
 }
 
-.guide-cta-title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: #FFFFFF;
+.guide-card-icon > svg {
+  display: block;
 }
 
-.guide-cta-desc {
-  font-size: var(--fs-base);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
+.guide-card-title {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
 }
 
-.guide-cta-steps {
-  display: grid;
-  gap: var(--space-sm);
+.guide-card-desc {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* Bullet list â€” no native disc markers (we suppress them with
+   `list-style: none`), muted color so they read as supporting evidence,
+   and a small accent dash via `::marker`-style left-border on each item
+   for visual rhythm without ambient decoration. Gap matches the spacing
+   scale so the four bullets stack with consistent rhythm. */
+.guide-card-bullets {
   list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.guide-card-bullets > li {
+  position: relative;
+  padding-left: var(--space-4);
+}
+
+.guide-card-bullets > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--lh-body) * 0.5em - 0.5px);
+  width: 8px;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+/* CTA row â€” mono caption, uppercase, accent color. Inline-flex so the
+   trailing arrow sits flush with the label and inherits the same size
+   tier. Margin-top pushes the row to the bottom of the card grid so the
+   CTA always anchors the card visually, regardless of bullet wrapping. */
+.guide-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.guide-card-cta > svg {
+  display: block;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.guide-card:hover .guide-card-cta > svg {
+  transform: translateX(2px);
+}
+
+/* --------------------------------------------------------------------------
+   FormField (Req 14.7, 17.2).
+   The `<FormField />` server component composes a `<label>` with a
+   caller-provided input plus optional hint / error paragraphs. The grid
+   layout produces an even rhythm between label, input, and descriptors
+   without depending on margin collapse. Hint reads from `--text-dim`,
+   error reads from the redesign's `--error` token (theme-aware, AA
+   against both surfaces).
+   -------------------------------------------------------------------------- */
+.form-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.form-field > label {
+  font-size: var(--fs-caption);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.form-field-hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+.form-field-error {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--error);
+}
+
+/* --------------------------------------------------------------------------
+   Auth Cards â€” tokenized surface used by `<AuthCard />` and the existing
+   login + reset views (Req 14.7, 17.1, 17.2).
+
+   Class names `.auth-shell`, `.auth-card`, `.auth-form`, `.auth-input`,
+   `.auth-tab`, `.auth-primary`, `.auth-secondary`, `.auth-link`,
+   `.auth-error` are PRESERVED so the existing `LoginClient` DOM stays
+   identical (Req 17.1). Only the rule bodies switch to the redesign
+   token layer â€” no `glass-panel` blur on auth surfaces.
+
+   The selectors are prefixed with `:root` to bump specificity from
+   `(0,1,0)` to `(0,1,1)`. The legacy `.auth-*` rules further down in
+   this file would otherwise win on source order; the specificity bump
+   lets the redesign style apply before task 7.1 deletes the legacy
+   block.
+   -------------------------------------------------------------------------- */
+:root .auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8);
+  background: var(--bg);
+}
+
+:root .auth-card {
+  max-width: 480px;
+  width: 100%;
+  padding: var(--space-8);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: var(--space-6);
+  /* No backdrop-filter â€” auth surfaces ship zero blur (design.md â†’ Auth Cards). */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:root .auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+:root .auth-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-button);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
+}
+
+:root .auth-input::placeholder {
+  color: var(--text-dim);
+}
+
+:root .auth-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+:root .auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+:root .auth-tab {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-button);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color        var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+:root .auth-tab:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+:root .auth-tab.is-active {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-overlay);
+}
+
+:root .auth-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root .auth-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    box-shadow       var(--duration-base) var(--ease-out),
+    transform        var(--duration-base) var(--ease-out);
+}
+
+:root .auth-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+:root .auth-primary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root .auth-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+:root .auth-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+:root .auth-secondary:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-overlay);
+}
+
+:root .auth-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-family: inherit;
+  text-align: right;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+:root .auth-link:hover:not(:disabled) {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+:root .auth-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root .auth-error {
+  margin: 0;
+  min-height: 1.25em;
+  color: var(--error);
+  font-size: var(--fs-caption);
+}
+
+/* --------------------------------------------------------------------------
+   Auth typography + auxiliary blocks (Req 17.1).
+
+   The legacy auth stylesheet defined `.auth-title`, `.auth-sub`,
+   `.auth-actions`, `.auth-note`, and `.google-icon` rules that
+   `LoginClient.tsx` and `ResetClient.tsx` still reference in JSX. The
+   class names stay (DOM unchanged per Req 17.1); the rule bodies now
+   read from the redesign token layer with no `glass-panel` blur, no
+   raw colors, and no legacy palette variables.
+
+   `:root` prefix matches the rest of this auth block so specificity
+   sits at (0,1,1) â€” enough to win over any unscoped legacy rule
+   should one slip back in.
+   -------------------------------------------------------------------------- */
+:root .auth-title {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+  text-align: center;
+}
+
+:root .auth-sub {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-6);
+  text-align: center;
+}
+
+:root .auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+:root .auth-note {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+  text-align: center;
+  margin: var(--space-4) 0 0;
+}
+
+:root .google-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
+   Auth logo cluster (Req 17.1).
+
+   Used by `LoginClient.tsx` and `login/reset/page.tsx` to render the
+   logo + wordmark above the auth headline. Replaces the legacy inline
+   `style={â€¦}` overrides on the wrapper, the `<img>` tag, and the
+   wordmark span â€” every value below is sourced from the redesign token
+   layer at the top of this file.
+
+   `:root` prefix bumps specificity to (0,1,1) for the same reason as
+   the surrounding `.auth-*` block: it lets the redesign rules win over
+   any legacy auth rule lower in this file during the migration window.
+
+   Layout:
+     - `display: flex` with `align-items: center` keeps the 40px logo
+       and the wordmark vertically centred regardless of font metrics.
+     - `gap: var(--space-3)` (12px) gives the wordmark just enough
+       breathing room from the mark without feeling detached. The token
+       sits between `--space-2` (8px, too tight) and `--space-4` (16px,
+       too loose) on the 4px scale.
+     - `justify-content: center` centres the cluster inside the
+       `.auth-card` grid track so it reads as a brand mark, matching
+       the centred headline that follows immediately below.
+     - `margin-bottom: var(--space-4)` (16px) replaces the legacy
+       inline `marginBottom: 'var(--space-md)'` override with the
+       tokenized scale value used elsewhere in the redesign.
+
+   Logo image:
+     `next/image` ships explicit `width={40}` and `height={40}` props,
+     so the rendered `<img>` already has its intrinsic box reserved
+     before pixels arrive (zero CLS â€” Req 19). The CSS rule pins the
+     same dimensions as `width`/`height` and `object-fit: contain`
+     replicates the pre-redesign layout: the original PNG is square and
+     padded, but `contain` guards against any future asset swap.
+     `display: block` removes the inline-image baseline gap.
+
+   Wordmark:
+     The legacy inline style declared `font-size: 1.1rem`,
+     `font-weight: 700`, `letter-spacing: 0.12em`. The redesign
+     equivalent uses tokenized values:
+       - `font-size: var(--fs-body-lg)` (1.125rem) â€” the redesign's
+         body-lg step-up that sits closest to the legacy 1.1rem.
+       - `font-weight: 700` â€” bold weight is part of the redesign's
+         display rhythm; preserved.
+       - `letter-spacing: var(--tracking-mono)` (0.10em) â€” the mono
+         eyebrow tracking token, within the design's 0.08â€“0.12em range
+         (Req 3.8). Slightly tighter than the legacy 0.12em but stays
+         in the same visual band and matches the other uppercase mono
+         labels in the redesign (the eyebrow caption, the version pill).
+       - `color: var(--text)` â€” explicit so theme swaps recolour the
+         wordmark in lock-step with the rest of the auth card.
+   -------------------------------------------------------------------------- */
+:root .auth-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+:root .auth-logo-img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+:root .auth-logo-text {
+  font-size: var(--fs-body-lg);
+  font-weight: 700;
+  letter-spacing: var(--tracking-mono);
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Guide screenshot frame (Req 9.5, 9.6, 9.7, 16.5, 19.3, 19.5).
+   Token-driven 1px-bordered frame rendered by `<ScreenshotFrame />`. The
+   frame wraps either a `next/image` element with explicit width/height
+   props (zero CLS contribution because the slot is sized before bytes
+   arrive â€” Req 9.5, 19.3) or, on `onError`, a placeholder `<div>` of the
+   SAME width/height so the surrounding layout cannot shift (Req 9.7,
+   19.5). The 1px `var(--border)` outline satisfies the dark-theme rule
+   that every image and screenshot carries a 1px border on all four sides
+   (Req 16.5); the same rule applies in light theme via the same token.
+
+   Layout choices:
+     - `display: inline-block` so the frame sizes to its content rather
+       than stretching to the full body column. This matches the visual
+       weight of a captured screenshot â€” wide assets (e.g. the 1280Ã—720
+       hotkeys grid) read as a single block, narrow assets (e.g. an icon
+       capture) sit centred.
+     - `max-width: 100%` and the inner image rule (`max-width: 100%;
+       height: auto`) keep wide screenshots responsive: at narrow
+       viewports the frame shrinks to the available width and the image
+       scales proportionally without hard horizontal overflow.
+     - `overflow: hidden` clips the inner image to the rounded corners.
+       Without it the image's square corners would punch through the
+       frame's `border-radius` on hover.
+     - `background: var(--surface-overlay)` gives the placeholder branch
+       a visible token-driven surface when the image fails to load.
+       During normal load the image covers the background entirely.
+
+   The placeholder rule reuses the same surface and radius tokens so a
+   broken image still reads as a coherent member of the design system,
+   not a missing asset hole. Inline `style={{ width, height }}` from the
+   component sets the exact pixel box so the placeholder retains the
+   dimensional contract regardless of theme or breakpoint.
+   -------------------------------------------------------------------------- */
+.screenshot-frame {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface-overlay);
+  max-width: 100%;
+}
+
+.screenshot-frame img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.screenshot-frame-placeholder {
+  display: block;
+  max-width: 100%;
+  background: var(--surface-overlay);
+  border-radius: var(--radius-card);
+}
+
+/* --------------------------------------------------------------------------
+   Guide step (Req 9.3, 9.5, 9.6, 14.5).
+   Single numbered step rendered by `<GuideStep />`. Each step is its own
+   landmark `<section>` containing exactly one `<h2>`, an optional
+   `<ScreenshotFrame />`, and a `<div class="guide-step-body">` body slot.
+   The heading hierarchy stays linear (h1 â†’ h2 â†’ h2 â†’ â€¦ with no h3
+   before another h2) so screen-reader heading navigation never skips a
+   level (Req 14.5).
+
+   Selector scoping:
+     The legacy guide pages render `<div class="guide-step">â€¦</div>` and
+     match the legacy `.guide-step { grid-template-columns: 1fr 1fr; â€¦ }`
+     rule lower in this file (deleted in task 7.1). Our redesigned
+     component renders `<section class="guide-step">` instead, so we
+     scope every redesign rule with the `section.guide-step` type
+     selector. This (a) prevents the new rules from regressing the
+     legacy pages during the migration window, and (b) bumps specificity
+     to (0,1,1) so the redesign wins over the legacy (0,1,0) rule on the
+     redesigned DOM regardless of source order.
+
+   Layout:
+     - `display: grid` with `gap: var(--space-4)` stacks the heading,
+       screenshot, and body with consistent vertical rhythm without any
+       per-child margin overrides.
+     - `padding-block: var(--space-6)` gives each step its own breathing
+       room so the page reads as a sequence of distinct steps even when
+       no screenshot is present.
+     - `border-bottom: 1px solid var(--border)` separates steps without
+       drawing a competing surface â€” the same token-driven hairline used
+       throughout the redesign (Req 16.2).
+
+   Heading sizing:
+     The `<h2>` inherits the type-scale `--fs-h2` clamp pair declared in
+     the redesign token block at the top of this file. We re-declare it
+     locally so any legacy `h2` rule lower in this file (deleted in task
+     7.1) cannot win on source order during the migration window.
+
+   Body slot:
+     `.guide-step-body` carries the body typography rhythm â€” `--text-muted`
+     for tonal step-down from the heading, body line-height, and a
+     `max-width: var(--measure)` cap (66ch â€” Req 3.9) so paragraphs hold
+     a comfortable measure regardless of the surrounding column width.
+     Descendant selectors hand body-text rhythm to inner `<p>`, `<ul>`,
+     `<ol>` so callers can drop any ReactNode into the slot without
+     re-styling each one.
+   -------------------------------------------------------------------------- */
+section.guide-step {
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+section.guide-step h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+section.guide-step .guide-step-body {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+section.guide-step .guide-step-body > * + * {
+  margin-top: var(--space-4);
+}
+
+section.guide-step .guide-step-body p,
+section.guide-step .guide-step-body ul,
+section.guide-step .guide-step-body ol {
+  margin: 0;
+}
+
+section.guide-step .guide-step-body ul,
+section.guide-step .guide-step-body ol {
+  padding-left: var(--space-6);
+}
+
+section.guide-step .guide-step-body li + li {
+  margin-top: var(--space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Guide shell (Req 9.3, 9.4, 14.5).
+   Top-level layout for `/guides/setup` and `/guides/usage`, rendered by
+   `<GuideShell />`. The shell stacks a hero band (eyebrow + single h1 +
+   lede) above a body that's a single column on narrow viewports and a
+   2-column grid with a sticky `<TableOfContents />` aside at viewport
+   widths â‰¥ 1280px (Req 9.4).
+
+   Heading hierarchy (Req 9.3, 14.5):
+     The page renders exactly one `<h1>` here in `.guide-hero` followed
+     by a flat sequence of `<h2>` step headings inside each
+     `<GuideStep />`. No `<h3>` appears before the first `<h2>` â€”
+     sub-points inside step bodies are paragraphs, not headings.
+
+   Layout breakpoint:
+     The 2-column threshold is intentionally aligned with `--max-width:
+     1200px`. At 1280px the page has 80px of slack into which the TOC
+     aside's 200px column fits comfortably (the body column is `1fr` so
+     it absorbs whatever horizontal space remains after the aside and
+     the grid gap). Below 1280px the aside is `display: none`, the
+     content column expands to the full width, and the page reads as
+     a single linear scroll.
+
+   Wrapper:
+     `max-width: var(--max-width)` constrains the shell to the same
+     1200px max-width as the rest of the marketing surface so the
+     guide rhythm aligns with the home page rhythm. Horizontal padding
+     uses `--space-6` to match the header's inner padding, so the
+     guide content lines up vertically with the header logo.
+
+   Bottom padding uses `--section-y` so the guide ends with the same
+   vertical breathing room as every other section on the marketing
+   surface, keeping the rhythm into the footer consistent.
+   -------------------------------------------------------------------------- */
+.guide-shell {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--section-y);
+}
+
+/* Hero band â€” eyebrow + single h1 + lede stack. Top padding pushes the
+   h1 below the fixed 64px header at every viewport using a clamp() pair
+   that scales with viewport width. The `.eyebrow`, `h1`, and `.lede`
+   selectors are scoped under `.guide-shell .guide-hero` so they cannot
+   collide with the home hero's `.eyebrow` / `.lede` rules higher up in
+   this file. */
+.guide-shell .guide-hero {
+  padding: clamp(5rem, 10vw, 8rem) 0 var(--space-12);
+  display: grid;
+  gap: var(--space-6);
+  max-width: 800px;
+}
+
+.guide-shell .guide-hero .eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.guide-shell .guide-hero h1 {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
+}
+
+.guide-shell .guide-hero .lede {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+/* Body grid. Single column up to 1280px (the TOC aside drops out and the
+   content fills the viewport). At â‰¥ 1280px the grid becomes
+   `200px 1fr` with `gap: var(--space-12)` between the aside and the
+   content column. */
+.guide-shell .guide-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-12);
+}
+
+@media (min-width: 1280px) {
+  .guide-shell .guide-layout {
+    grid-template-columns: 200px 1fr;
+  }
+}
+
+/* TOC aside.
+   - Hidden by default (`display: none`) on narrow viewports so the TOC
+     never visually competes with content. The `<TableOfContents />`
+     client component still mounts (we do not conditionally render at
+     the React level), so its observer attaches and detaches with the
+     normal effect lifecycle, but the aside contributes no layout
+     below 1280px.
+   - At â‰¥ 1280px the aside is `position: sticky` so it follows the user
+     as they scroll the content column. The sticky offset is
+     `--nav-height + --space-6` so the aside floats just below the
+     fixed 64px header with a 24px breathing gap (Req 9.4 â€” "remains
+     visible at a fixed offset during scrolling").
+   - `align-self: start` keeps the aside anchored to the top of the
+     grid row rather than stretching to match the content column's
+     intrinsic height, which would otherwise paint a tall empty box
+     below the visible TOC links. */
+.guide-shell .guide-toc-aside {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .guide-shell .guide-toc-aside {
+    display: block;
+    position: sticky;
+    top: calc(var(--nav-height) + var(--space-6));
+    align-self: start;
+  }
+}
+
+/* Content column. Uses the same grid + gap pattern as the legacy
+   `.guide-steps` block below so the redesigned step rhythm matches
+   the spacing scale used elsewhere in the redesign. The `--space-8`
+   gap is the standard between-section breathing room used by
+   `<HeroSection />` and the home-page section grids. */
+.guide-shell .guide-content {
+  display: grid;
+  gap: var(--space-8);
+}
+
+/* --------------------------------------------------------------------------
+   Table of contents (Req 9.4, 14.5).
+   Sticky in-page nav rendered inside `.guide-toc-aside` by the
+   `<TableOfContents />` client component. The component lists every
+   step's `<h2>` anchor in document order and visually marks the active
+   item via `aria-current="true"` toggled by an IntersectionObserver.
+
+   Visual treatment:
+     - Mono caption-sized "On this page" label uses the same eyebrow
+       rhythm as the hero eyebrow above so the two reads as siblings
+       â€” the label sits at the top of the TOC and the links cascade
+       below it.
+     - The ordered list strips native markers so the visible content
+       is a clean column of titles. The `<ol>` is still semantically
+       ordered (steps are sequential), so screen readers announce
+       position-in-sequence even though no visible numerals appear.
+     - Link rest state uses `--text-muted` so the TOC reads as
+       supporting chrome relative to the step content; hover bumps to
+       `--text` and active uses `--accent` with weight 500 to mark the
+       user's position in the guide.
+     - Color-only motion at `--duration-base` (180ms) on the link
+       state transitions â€” no transform, no glow, no ambient hover
+       chrome. The reduced-motion universal rule above neutralises
+       the transition for users who opt out.
+     - Focus-visible ring uses the standard 2px `--focus-ring` outline
+       with 2px offset so keyboard users always see a visible focus
+       indicator.
+   -------------------------------------------------------------------------- */
+.guide-toc {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.guide-toc-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.guide-toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.guide-toc li {
+  /* Override any legacy `li` rules from the deleted-in-7.1 block so
+     the TOC items align with their `<a>` children at zero offset. */
+  margin: 0;
   padding: 0;
 }
 
-.guide-cta-steps li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  padding: var(--space-xs) 0;
-}
-
-.guide-cta-steps li::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-cyan);
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-
-.guide-cta-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-xl);
-  border-radius: 8px;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-cyan);
-  background: rgba(var(--color-cyan-rgb), 0.08);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.25);
-  transition: all var(--duration) var(--ease-out);
-  margin-top: auto;
-  width: fit-content;
-}
-
-.guide-cta-link:hover {
-  background: rgba(var(--color-cyan-rgb), 0.15);
-  border-color: rgba(var(--color-cyan-rgb), 0.5);
-  transform: translateX(4px);
-}
-
-.guide-cta-link svg {
-  transition: transform var(--duration) var(--ease-out);
-}
-
-.guide-cta-link:hover svg {
-  transform: translateX(3px);
-}
-
-/* Responsive: Guide Steps */
-@media (max-width: 900px) {
-  .guide-step {
-    grid-template-columns: 1fr;
-    gap: var(--space-xl);
-  }
-
-  .guide-step:nth-child(even) {
-    direction: ltr;
-  }
-
-  .guide-steps::before {
-    left: 24px;
-    transform: none;
-  }
-
-  .guide-step-content {
-    padding: var(--space-lg);
-  }
-
-  .guide-cta-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .guide-step-number {
-    width: 40px;
-    height: 40px;
-    font-size: var(--fs-base);
-  }
-
-  .guide-step-title {
-    font-size: var(--fs-lg);
-  }
-
-  .guide-step-content {
-    padding: var(--space-md);
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   PREREQUISITES / REQUIREMENTS CARDS
-   ══════════════════════════════════════════════════════════════════ */
-
-.prereq-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-xl);
-  margin-bottom: var(--space-3xl);
-}
-
-.prereq-card {
-  padding: var(--space-2xl) var(--space-xl);
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  text-align: center;
-  transition: border-color var(--duration-slow) var(--ease-out),
-              transform var(--duration-slow) var(--ease-out);
-}
-
-.prereq-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.2);
-  transform: translateY(-2px);
-}
-
-.prereq-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(var(--color-cyan-rgb), 0.12), rgba(var(--color-teal-rgb), 0.08));
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.2);
-  color: var(--color-cyan);
-  margin-bottom: var(--space-lg);
-}
-
-.prereq-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
-}
-
-.prereq-desc {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
-}
-
-@media (max-width: 900px) {
-  .prereq-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   HOTKEY GRID
-   ══════════════════════════════════════════════════════════════════ */
-
-.hotkey-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-lg);
-  margin-top: var(--space-xl);
-}
-
-.hotkey-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-xl) var(--space-xl);
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: border-color var(--duration-slow) var(--ease-out),
-              transform var(--duration-slow) var(--ease-out);
-}
-
-.hotkey-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.25);
-  transform: translateY(-2px);
-}
-
-.hotkey-keys {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.hotkey-keys kbd {
-  display: inline-block;
-  padding: 5px 10px;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--color-cyan);
-  background: rgba(var(--color-cyan-rgb), 0.08);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.25);
-  border-radius: 6px;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.hotkey-keys span {
-  color: var(--color-text-dim);
-  font-size: var(--fs-sm);
-}
-
-.hotkey-info {
-  flex: 1;
-}
-
-.hotkey-name {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: 4px;
-}
-
-.hotkey-desc {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
-}
-
-@media (max-width: 700px) {
-  .hotkey-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   STEALTH BANNER (Professional callout)
-   ══════════════════════════════════════════════════════════════════ */
-
-.stealth-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2xl);
-  padding: var(--space-2xl);
-  border-radius: 16px;
-  background: var(--glass-bg);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.15);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  margin-bottom: var(--space-4xl);
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-/* Subtle glowing background effect */
-.stealth-banner::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center, rgba(var(--color-cyan-rgb), 0.03) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.stealth-banner-icon {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(var(--color-obsidian-rgb), 0.8);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-cyan);
-  box-shadow: 0 0 20px rgba(var(--color-cyan-rgb), 0.15),
-              inset 0 0 20px rgba(var(--color-cyan-rgb), 0.1);
-  position: relative;
-  z-index: 1;
-}
-
-.stealth-banner-icon::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  bottom: -10px;
-  border-radius: 50%;
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.1);
-  animation: pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-}
-
-.stealth-banner-content {
-  flex: 1;
-  position: relative;
-  z-index: 1;
-}
-
-.stealth-banner-title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  letter-spacing: -0.01em;
-}
-
-.stealth-banner-title span {
-  color: var(--color-cyan);
-}
-
-.stealth-banner-text {
-  font-size: var(--fs-base);
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-
-.stealth-banner-text strong {
-  color: #FFFFFF;
-}
-
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0; }
-  50% { opacity: 1; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
-
-@media (max-width: 768px) {
-  .stealth-banner {
-    flex-direction: column;
-    text-align: center;
-    padding: var(--space-xl);
-    gap: var(--space-xl);
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   FAQ ACCORDION
-   ══════════════════════════════════════════════════════════════════ */
-
-.faq-section {
-  margin-top: var(--space-3xl);
-}
-
-.faq-section-title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: var(--space-xl);
-  text-align: center;
-}
-
-.faq-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.faq-item {
-  border-radius: 10px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  overflow: hidden;
-  transition: border-color var(--duration) var(--ease-out);
-}
-
-.faq-item:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.15);
-}
-
-.faq-question {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--space-lg) var(--space-xl);
-  font-size: var(--fs-base);
-  font-weight: 600;
-  color: #FFFFFF;
-  cursor: pointer;
-  text-align: left;
-  transition: color var(--duration) var(--ease-out);
-  background: none;
-  border: none;
-}
-
-.faq-question:hover {
-  color: var(--color-cyan);
-}
-
-.faq-question svg {
-  flex-shrink: 0;
-  color: var(--color-text-dim);
-  transition: transform var(--duration) var(--ease-out), color var(--duration) var(--ease-out);
-}
-
-.faq-item.is-open .faq-question svg {
-  transform: rotate(45deg);
-  color: var(--color-cyan);
-}
-
-.faq-answer {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height var(--duration-slow) var(--ease-out),
-              padding var(--duration-slow) var(--ease-out);
-}
-
-.faq-item.is-open .faq-answer {
-  max-height: 300px;
-  padding: 0 var(--space-xl) var(--space-lg);
-}
-
-.faq-answer p {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   CODE BLOCKS & INLINE CODE
-   ══════════════════════════════════════════════════════════════════ */
-
-.guide-code-block {
+.guide-toc a {
   display: block;
-  padding: var(--space-md) var(--space-lg);
-  border-radius: 8px;
-  background: rgba(var(--color-obsidian-rgb), 0.8);
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--color-cyan);
-  overflow-x: auto;
-  white-space: pre;
-  margin: var(--space-md) 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: var(--space-1) 0;
+  transition: color var(--duration-base) var(--ease-out);
 }
 
-.guide-step-content code,
-.faq-answer code {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(var(--color-cyan-rgb), 0.08);
-  color: var(--color-cyan);
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.12);
+.guide-toc a:hover {
+  color: var(--text);
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   BEST PRACTICES / PRO TIPS
-   ══════════════════════════════════════════════════════════════════ */
+.guide-toc a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
 
-.tips-grid {
+/* Active step. `aria-current="true"` is the active marker â€” only one
+   link carries it at a time. The accent color and weight 500 read as
+   "you are here" without competing with the body content the user is
+   reading. */
+.guide-toc a[aria-current="true"] {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Guide aftermatter (Req 9.4).
+
+   Centring wrapper for content that lives BELOW the `<GuideShell />`
+   article on a guide route â€” currently used by the compatibility
+   `.callout` at the bottom of `/guides/setup` and `/guides/usage`. The
+   shell itself owns its own `--max-width` constraint and bottom
+   `--section-y` padding, so this wrapper only needs to repeat the same
+   horizontal centring + horizontal padding so the callout aligns with
+   the step copy above it.
+
+   No vertical padding here â€” the shell's bottom padding already provides
+   breathing room above the callout, and the FAQ section below provides
+   its own top padding. Stacking three sources of vertical rhythm would
+   push the callout into a no-mans-land between the steps and the FAQ.
+   -------------------------------------------------------------------------- */
+.guide-aftermatter {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+/* --------------------------------------------------------------------------
+   Guide FAQ (Req 9.3, 9.4, 14.5).
+
+   Token-driven troubleshooting FAQ rendered AFTER the `<GuideShell />`
+   article on `/guides/setup` and `/guides/usage`. Replaces the legacy
+   `.faq-section` + `.faq-question` button + inline `<script>` toggler
+   with native `<details>` / `<summary>` disclosure widgets. The browser
+   handles open/close, keyboard activation (Enter/Space on the summary),
+   and the `aria-expanded` semantics â€” zero JS ships for the toggle.
+
+   Layout:
+     - Outer `<section>` carries the same horizontal centring and
+       horizontal padding as `.guide-shell` and `.guide-aftermatter` so
+       the FAQ aligns vertically with the step copy and the callout
+       above it.
+     - Top padding `var(--space-12)` separates the FAQ from the callout
+       above it; bottom padding `var(--section-y)` supplies the same
+       footer rhythm used by every other section on the marketing
+       surface.
+
+   Heading hierarchy (Req 14.5):
+     The eyebrow is a `<p>` (not a heading), and the section heading is
+     an `<h2>` linked via `aria-labelledby` to the section. This keeps
+     the page heading order linear: the GuideShell's `<h1>` is followed
+     by the flat sequence of step `<h2>`s rendered by `<GuideStep />`,
+     then this FAQ `<h2>` continues that flat sequence. No `<h3>` ever
+     appears before another `<h2>`.
+
+   `<details>` styling:
+     - The `<summary>` is the always-visible question. We rely on the
+       browser's default disclosure marker (the rotating triangle), but
+       restyle the cursor + padding + font so the row reads as part of
+       the design system rather than as a default browser widget.
+     - On `:hover`, only the text colour shifts (no background fill,
+       no transform) to keep the affordance subtle.
+     - On `:focus-visible`, a 2px accent outline + 2px offset matches
+       the focus-ring treatment used everywhere else in the redesign
+       (Req 14.9, 14.11).
+     - The body container (a `<div>` inside `<details>`) carries the
+       muted body type, capped at `--measure` (66ch â€” Req 3.9), so the
+       answer copy holds a comfortable measure regardless of viewport
+       width.
+     - Each `<details>` is separated by a 1px `--border` hairline so
+       the list reads as a sequence of discrete rows without competing
+       backgrounds.
+   -------------------------------------------------------------------------- */
+.guide-faq {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6) var(--section-y);
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-xl);
-  margin-top: var(--space-xl);
+  gap: var(--space-4);
 }
 
-.tip-card {
-  padding: var(--space-2xl) var(--space-xl);
-  border-radius: 12px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: border-color var(--duration-slow) var(--ease-out);
+.guide-faq .eyebrow {
+  margin: 0;
 }
 
-.tip-card:hover {
-  border-color: rgba(var(--color-cyan-rgb), 0.2);
+.guide-faq h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
 }
 
-.tip-card-icon {
+.guide-faq-list {
+  display: grid;
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.guide-faq details {
+  border-bottom: 1px solid var(--border);
+}
+
+.guide-faq summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  cursor: pointer;
+  list-style: revert;
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-tight);
+  font-weight: 500;
+  color: var(--text);
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.guide-faq summary:hover {
+  color: var(--accent);
+}
+
+.guide-faq summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
+
+.guide-faq details > div {
+  padding: 0 0 var(--space-4);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+.guide-faq details > div a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.guide-faq details > div a:hover {
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Usage guide â€” hotkey reference (Req 9.4, 9.6, 14.5, 16.5).
+
+   Renders below the `<GuideShell />` article on `/guides/usage`. The
+   outer `<section>` mirrors `.guide-faq`'s width clamp + horizontal
+   padding so the hotkey grid aligns with the step copy above it.
+   `.usage-hotkeys-inner` constrains the contents to `--max-width` and
+   stacks the heading, lede, and grid with consistent spacing rhythm.
+
+   Card grid (Req 12.2, 16.5):
+     The seven Ctrl+Shift+â€¦ bindings render as a grid of token-bordered
+     rows rather than a `<table>` so each row clears the 44Ã—44 hit-target
+     floor on coarse pointers without table-cell padding heroics, and the
+     surface re-themes via the same `--surface-raised` / `--border` tokens
+     used by `.feature-card`. `role="list"` on the wrapper plus
+     `role="listitem"` on each row keeps the markup semantically a list
+     so screen readers announce the count of bindings. The only motion
+     is a `border-color` transition at `--duration-base` matching the
+     redesign hover budget.
+
+   Layout breakpoint mirrors the home-page `.features-grid` (single
+   column under 768px, two columns at and above) so the hotkey reference
+   reads with the same column rhythm as the rest of the marketing
+   surface.
+   -------------------------------------------------------------------------- */
+.usage-hotkeys {
+  width: 100%;
+  padding: var(--space-12) var(--space-6) 0;
+}
+
+.usage-hotkeys-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.usage-hotkeys h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.usage-hotkeys-lede {
+  margin: 0;
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+.usage-hotkeys-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .usage-hotkeys-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.usage-hotkeys-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.usage-hotkeys-row:hover {
+  border-color: var(--border-strong);
+}
+
+.usage-hotkeys-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.usage-hotkeys-keys kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--color-cyan-rgb), 0.1), rgba(var(--color-teal-rgb), 0.06));
-  border: 1px solid rgba(var(--color-cyan-rgb), 0.15);
-  color: var(--color-cyan);
-  margin-bottom: var(--space-md);
+  min-width: 1.75rem;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text);
 }
 
-.tip-card-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: var(--space-sm);
+.usage-hotkeys-plus {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
 }
 
-.tip-card-desc {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  line-height: var(--lh-normal);
+.usage-hotkeys-info {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
-@media (max-width: 700px) {
-  .tips-grid {
-    grid-template-columns: 1fr;
+.usage-hotkeys-name {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.usage-hotkeys-desc {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+/* --------------------------------------------------------------------------
+   Inline keyboard chip â€” `<kbd>` and the explicit `.guide-kbd` alias
+   (Req 9.6, 16.5).
+
+   Renders any inline `<kbd>` (e.g. inside a guide step body or a tip
+   card) as a token-bordered key chip so keyboard inputs read clearly in
+   running prose. The `.guide-kbd` class is an explicit alias of the same
+   rule used by guide content â€” call sites prefer it over a bare `<kbd>`
+   so the intent stays visible in the JSX, but the visual is identical
+   either way. Surface, border, and color all come from tokens so the
+   chip retheming follows the rest of the page on a `data-theme` flip.
+
+   The chip uses `inline-block` so it can sit in flow with surrounding
+   text without breaking baseline; vertical metrics align with the
+   running font via `font-size: 0.85em` (relative, not fixed) so the
+   chip scales gracefully if the surrounding paragraph picks up a
+   larger or smaller measure. The `.usage-hotkeys-keys kbd` rule
+   further down the file overrides these defaults inside the standalone
+   hotkey-reference grid where the chip is the dominant element rather
+   than inline punctuation; specificity 0,2,1 there beats this 0,0,1.
+   -------------------------------------------------------------------------- */
+kbd,
+.guide-kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Usage guide â€” best practices (Req 9.4, 9.6, 16.5).
+
+   Four tip cards rendered below the step walkthrough on `/guides/usage`.
+   Each `.usage-tip-card` mirrors `.feature-card`'s surface contract â€”
+   `var(--surface-raised)` background, 1px `var(--border)`, hover bump to
+   `var(--border-strong)` plus `var(--shadow-card)` â€” without re-using the
+   `.feature-card` className itself, so the home-page feature grid and
+   this tip grid can evolve independently.
+
+   Layout mirrors `.usage-hotkeys-grid`: single column under 768px, two
+   columns at and above. We do NOT step up to three or four columns at
+   wider viewports because the tip cards carry sentence-length copy that
+   reads better at a generous measure than crammed into thin columns.
+
+   Inline `<kbd>` (with the `.guide-kbd` alias) inside tip body copy
+   reuses the same token-bordered key chip styled by the global
+   `kbd, .guide-kbd` rule above so the visual language for keyboard
+   input stays consistent across the page.
+   -------------------------------------------------------------------------- */
+.usage-tips {
+  width: 100%;
+  padding: var(--space-12) var(--space-6) 0;
+}
+
+.usage-tips-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.usage-tips h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.usage-tips-lede {
+  margin: 0;
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+.usage-tips-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .usage-tips-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* 4K+ monitors */
-@media (min-width: 2560px) {
-  :root {
-    --max-width: 1400px;
-    --fs-base: 1.125rem;
-  }
+/* Token-driven tip card. Surface contract intentionally mirrors
+   `.feature-card` (see the rule earlier in this file) â€” same background,
+   border, radius, padding rhythm, and hover treatment â€” so the redesign
+   reads as a single visual family across pages. The inner `h3` and `p`
+   typography mirrors `.feature-card h3` / `.feature-card p` for the
+   same reason: a reader scanning across `/` and `/guides/usage` sees
+   consistent visual weight on third-level headings and body copy. */
+.usage-tip-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
+}
 
-  .hero-content {
-    max-width: 960px;
+.usage-tip-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.usage-tip-card h3 {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.usage-tip-card p {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+/* --------------------------------------------------------------------------
+   Reviews island wrapper (Req 13.7, 17.6).
+
+   Outer chrome rendered by `<HomeClient />` around the lazy-loaded
+   `<ReviewForm />` island. Follows the same `padding: var(--section-y)
+   var(--space-6)` rhythm every other home-page section uses
+   (`.features`, `.how-it-works`, `.guide-cards-section`) so vertical
+   spacing matches the rest of the page exactly.
+
+   The inner container is clamped to `760px` on purpose â€” the review
+   form is intentionally narrower than the main marketing grid because
+   long-form input fields read better on a tighter measure than the
+   `--max-width: 1200px` used by feature/step grids.
+
+   Class names `.reviews-island` and `.reviews-island-section` are
+   distinct from the legacy bare `.reviews` selector (still living in
+   the legacy block lower in this file until the task-9.1 deletion
+   pass) so there is zero specificity fight during the migration window.
+   Both selectors use only token-driven values â€” no raw colors, no
+   gradients, no shadows beyond the ones already on `.review-form`
+   itself.
+   -------------------------------------------------------------------------- */
+.reviews-island {
+  width: 100%;
+  padding: var(--section-y) var(--space-6);
+}
+
+.reviews-island-section {
+  max-width: 760px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.reviews-island-section h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  max-width: 22ch;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Review form (Req 14.7, 14.8, 14.9, 17.2, 17.3, 17.6).
+
+   Token-driven surface for the home-page `<ReviewForm />` island. Class
+   names `.review-form`, `.form-grid`, `.form-stack`, `.field-control`,
+   `.rating-label`, `.form-hint`, `.form-actions`, `.submit-btn`, and
+   `.form-error` are PRESERVED (Req 17.1) â€” only their rule bodies switch
+   to the redesign tokens. No `.glass-panel` blur, no shimmer sweep, no
+   pulsing border.
+
+   Selectors are prefixed with `:root` to bump specificity from `(0,1,0)`
+   to `(0,1,1)` so the redesign rules win over the legacy block lower in
+   this file (which still ships until task 7.1's deletion pass). The
+   pattern mirrors the auth-card section above for consistency.
+
+   Layout:
+     - Two-column grid at >=768px: email on the left, rating on the right.
+     - Single column below 768px so the rating and email never wrap into
+       an ambiguous layout on narrow viewports.
+     - The textarea sits in its own row at full container width.
+
+   Submit button mirrors `.cta-primary`: accent background, accent-fg
+   text, 44px min-height, 1px hover lift. The `.is-loading` and
+   `.is-success` modifiers carry a paint-only state change (background
+   color shift) â€” the legacy keyframed loader/check icons are dropped
+   because the redesign restricts micro-interactions to opacity, color,
+   transform-translate-1px, and box-shadow (Req 15.6).
+   -------------------------------------------------------------------------- */
+:root .review-form {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  /* No backdrop-filter on form surfaces (Req 16.4 reserves blur for the
+     fixed header and mobile menu only). */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:root .review-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  :root .review-form .form-grid {
+    /* Email column gets 2fr so the input has room to breathe; rating
+       column collapses to its content width plus a comfortable cap. */
+    grid-template-columns: 2fr 1fr;
+    align-items: start;
   }
 }
+
+:root .review-form .form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+:root .review-form .form-stack > label {
+  font-size: var(--fs-caption);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+:root .review-form .rating-label {
+  font-size: var(--fs-caption);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* Email + textarea share the same control surface â€” single rule keeps
+   the visual weight consistent across both inputs. */
+:root .review-form .field-control,
+:root .review-form textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow   var(--duration-base) var(--ease-out);
+}
+
+:root .review-form .field-control::placeholder,
+:root .review-form textarea::placeholder {
+  color: var(--text-dim);
+}
+
+:root .review-form .field-control:focus-visible,
+:root .review-form textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+:root .review-form .field-control[readonly] {
+  /* Read-only email gets a slightly muted background so it's clearly not
+     editable, but the contrast still meets AA against the surface. */
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+:root .review-form textarea {
+  resize: vertical;
+  min-height: 140px;
+  line-height: var(--lh-body);
+}
+
+:root .review-form textarea[aria-invalid="true"],
+:root .review-form .field-control[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+:root .review-form .form-hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+:root .review-form .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Submit button â€” shaped like `.cta-primary`. We can't share the class
+   directly because the legacy DOM ships `submit-btn` and the existing
+   keyframed loader/check icons depend on the class name; restating the
+   token-driven rules under `:root .review-form .submit-btn` keeps the
+   contract simple while overriding the legacy gradient + transform-scale
+   visuals. */
+:root .review-form .submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    box-shadow       var(--duration-base) var(--ease-out),
+    transform        var(--duration-base) var(--ease-out);
+}
+
+:root .review-form .submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+:root .review-form .submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+:root .review-form .submit-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root .review-form .submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading + success modifiers â€” paint-only feedback. The text content
+   stays the same so the button width never reflows mid-submission. */
+:root .review-form .submit-btn.is-loading {
+  opacity: 0.85;
+}
+
+:root .review-form .submit-btn.is-success {
+  background: var(--success);
+  color: var(--bg);
+}
+
+:root .review-form .form-error {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: var(--fs-caption);
+  color: var(--error);
+}
+
+/* --------------------------------------------------------------------------
+   SHARED `.surface` BLOCK (Req 12.1).
+   Tokenized replacement for the legacy `.glass-panel` blur surface â€” used
+   wherever a route needs a single recessed card with prose inside (the
+   `/feedback` contact card is the first consumer; future routes that want
+   the same surface contract can reuse it without inventing a new class).
+
+   The contract is intentionally minimal: `--surface-raised` background, a
+   1px `--border` hairline, `--radius-card` corners, comfortable inset
+   padding, and the body type rhythm in `--text-muted`. No backdrop-filter,
+   no shadow stack, no gradient â€” the redesign's surfaces earn their depth
+   from the token palette alone (design.md â†’ Design System â†’ What Gets
+   Refactored: `.glass-panel` â†’ `.surface`).
+
+   Anchors inside `.surface` paint in `--accent` so contact addresses and
+   external links read as actionable without us having to hand-paint each
+   `<a>` at the call site. The underline is offset by 2px so the link does
+   not collide with descenders of the surrounding body type, and the
+   focus-visible outline matches the rest of the redesign's focus contract
+   (2px solid `--focus-ring`, 2px offset).
+   -------------------------------------------------------------------------- */
+.surface {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.surface > p {
+  margin: 0;
+  max-width: var(--measure);
+}
+
+.surface a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+
+.surface a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.surface a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   FEEDBACK CONTACT SECTION (Req 2.5, 11.2, 12.1).
+
+   The `/feedback` route renders this section directly under the
+   <HeroSection /> band. It owns the vertical rhythm (`--section-y`
+   padding), centers content up to `--max-width`, and stacks an h2,
+   a lede paragraph, and a row of two anchor buttons (mailto + Instagram)
+   using the shared spacing scale. The visual weight comes entirely from
+   the design-token cascade â€” no background, no gradient, no scrim, no
+   `glass-panel` blur (Req 2.5, 12.1).
+
+   `.feedback-contact-link` is the tokenized button-style anchor used for
+   the email and Instagram entries. Hairline `--border`, `--radius-button`
+   corners, body weight 500, and a 44px minimum hit target so it satisfies
+   the touch-target rule on coarse pointers (Req 12.2). Hover lifts only
+   the border tone and adds the shared card shadow; focus paints the
+   2px `--focus-ring` outline with a 2px offset for AA contrast.
+   -------------------------------------------------------------------------- */
+.feedback-contact {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--section-y) var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+}
+
+.feedback-contact h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+.feedback-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.feedback-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  min-height: 44px;
+  transition: border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.feedback-contact-link:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.feedback-contact-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   DOWNLOADS â€” system requirements + CTA version pill (Req 2.5, 9.2, 12.1).
+
+   The `/downloads` route renders the system-requirements section directly
+   under the <HeroSection /> band. It is intentionally inline in the page
+   (no dedicated component) â€” the styles are scoped here so the markup
+   stays thin and the surface treatment reads from the same token-driven
+   family as the other marketing sections.
+
+   Layout (`.downloads-requirements`):
+     A single grid column clamped to `--max-width` and centred with
+     `margin: 0 auto`. The vertical rhythm uses the shared `--section-y`
+     padding token so this section slots into the same scale as every
+     other section on the marketing surface. No background, no gradient,
+     no scrim â€” the visual weight comes entirely from the inner `.surface`
+     card, mirroring the rhythm of `.feedback-contact` (Req 12.1).
+
+   Surface card (`.downloads-requirements .surface`):
+     The bullet list lives inside the redesign's tokenized `.surface`
+     block â€” `--surface-raised` background, 1px `--border` hairline,
+     `--radius-card` corners â€” that replaces the legacy `.glass-panel`
+     blur surface. Padding is set to `--space-6` so the card matches the
+     padding rhythm of every other surface card across the redesign.
+     No backdrop-filter, no shadow stack, no gradient.
+
+   Bullet list (`.downloads-requirements ul`):
+     Inherits the muted body type rhythm so the bullets sit one tonal
+     step below the h2 â€” same stop on the muted-body ladder as
+     `.guide-card-bullets` (Req 9.2). The native disc marker keeps the
+     list visually anchored on the left without a custom bullet shape.
+
+   Version pill (`.cta-version`):
+     Reused in two places: trailing the primary CTA label inside the hero
+     button via the `<HeroSection primary.trailing>` slot, and inside the
+     `Current version v{â€¦}` line beneath the surface card. Mono caption
+     type, a token-driven inline padding pair, and a tiny dark wash so
+     the pill reads as a recessed badge in either context. `color:
+     inherit` lets the pill pick up the accent foreground when nested in
+     the primary CTA and the page text colour when used in the body
+     copy. The `--radius-button` corner matches the CTA shape so the
+     pill nests inside the button without visual noise.
+   -------------------------------------------------------------------------- */
+.downloads-requirements {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--section-y) var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+}
+
+.downloads-requirements h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+.downloads-requirements .surface {
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+.downloads-requirements ul {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-6);
+  color: var(--text-muted);
+}
+
+.downloads-requirements li {
+  line-height: var(--lh-body);
+}
+
+.cta-version {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-button);
+  background: rgba(0, 0, 0, 0.18);
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   Account section (Req 17.7, 18.2).
+   Token-only surface for the `/account` route. Mirrors the rhythm used by
+   every other section on the marketing surface â€” vertical padding via
+   `--section-y`, horizontal padding via `--space-6`, inner column
+   constrained to a reading-friendly 720px so the prose ("Signed in as â€¦")
+   does not stretch across the full 1200px max-width.
+
+   The route is dynamic (Supabase reads cookies on every request via
+   `createSupabaseRouteClient()`), so Next.js opts the page out of static
+   generation automatically; the styling here only owns presentation, not
+   data flow.
+
+   Top inset:
+     `padding-top` is `var(--nav-height) + var(--section-y)` so the
+     eyebrow + headline + lede sit clear of the fixed 64px header at every
+     viewport. Combining the two tokens keeps the math explicit: header
+     height first, then the standard section rhythm below it.
+
+   Stack:
+     `.account-inner` is a single centred grid column with a `gap` token
+     so callers do not need per-child margin overrides. The eyebrow,
+     `<h1>`, lede, and `.account-actions` flow as direct children with a
+     consistent vertical rhythm and full-width alignment for prose.
+
+   Logout button:
+     `<LogoutButton />` renders with `class="cta cta-secondary"` so it
+     inherits the shared CTA hover lift, focus ring, and 44Ã—44 hit-target
+     floor without per-component overrides. The button sits at its natural
+     width inside `.account-actions`, which carries the spacing offset
+     between the lede and the action row.
+   -------------------------------------------------------------------------- */
+.account-section {
+  padding: calc(var(--nav-height) + var(--section-y)) var(--space-6) var(--section-y);
+}
+
+.account-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.account-inner h1 {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+.account-inner .lede {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.account-inner .lede strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.account-actions {
+  margin-top: var(--space-4);
+}
+
+/* ==========================================================================
+   End of design system.
+   ========================================================================== */
 

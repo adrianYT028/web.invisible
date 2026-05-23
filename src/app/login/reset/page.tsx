@@ -1,79 +1,27 @@
-'use client';
+import { SiteShell } from '@/components/chrome/SiteShell';
 
-import { useEffect, useMemo, useState } from 'react';
+import ResetClient from './ResetClient';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
-
+/**
+ * `/login/reset` — server component shell for the reset auth surface.
+ *
+ * Wraps the client island in `<SiteShell hideFooter />` so the header
+ * (and theme toggle) appears while the footer stays omitted, matching
+ * the bare-chrome treatment used on `/login`. Rendering `<SiteShell />`
+ * here — not inside `ResetClient.tsx` — keeps `<Header />`, `<Footer />`,
+ * and `<SkipToContent />` as true server components, so the auth view
+ * never widens its client-bundle footprint with chrome that does not
+ * need to ship JS.
+ *
+ * No Supabase calls, no form state, and no redirects live in this file;
+ * every piece of behaviour belongs to `ResetClient.tsx`. The Supabase
+ * `exchangeCodeForSession` and `updateUser` calls are preserved verbatim
+ * (Req 17.1–17.8).
+ */
 export default function ResetPasswordPage() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const url = window.location.href;
-      const hasCode = url.includes('code=');
-      if (!hasCode) return;
-
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(url);
-      if (!cancelled && exchangeError) {
-        setError('Auth session missing. Please request a new reset link.');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      if (updateError) throw updateError;
-      window.location.href = '/login';
-    } catch (e: any) {
-      setError(e?.message || 'Password update failed.');
-      setLoading(false);
-    }
-  }
-
   return (
-    <div className="auth-shell">
-      <div className="auth-card glass-panel">
-        <p className="section-tag" style={{ textAlign: 'center' }}>
-          RESET
-        </p>
-        <h1 className="auth-title">Set a new password</h1>
-        <p className="auth-sub">Enter a new password to regain access.</p>
-
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <input
-            className="auth-input"
-            type="password"
-            placeholder="New password"
-            required
-            autoComplete="new-password"
-            aria-label="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            disabled={loading}
-          />
-          <button type="submit" className="auth-primary" disabled={loading}>
-            Update password
-          </button>
-        </form>
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
-      </div>
-    </div>
+    <SiteShell hideFooter>
+      <ResetClient />
+    </SiteShell>
   );
 }

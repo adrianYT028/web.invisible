@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 
+import { SiteShell } from '@/components/chrome/SiteShell';
+import { HeroSection } from '@/components/hero/HeroSection';
+import { SITE_META } from '@/components/constants/site-meta';
+
 export const metadata: Metadata = {
   title: 'Download Unviewable for Windows',
   description:
@@ -13,117 +17,83 @@ export const metadata: Metadata = {
   },
 };
 
-const downloadUrl =
-  'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe';
-
+/**
+ * Downloads page — single-CTA hero plus a tokenized `.surface` card listing
+ * the system requirements.
+ *
+ * Server component (no `'use client'`). The hero ships zero JavaScript on
+ * this route: the spotlight prop is intentionally omitted, so
+ * <HeroSpotlight /> never mounts and the pointer-tracking client bundle
+ * never reaches `/downloads` (Req 2.5). The download CTA is a plain
+ * native `<a download>` rendered by `<CtaButton variant="primary">`, so
+ * activating it triggers the browser's file-save flow with no JS in
+ * between.
+ *
+ * Layout (Req 9.2, 12.1):
+ *   - The system-requirements block is the redesign's tokenized `.surface`
+ *     replacement for the legacy `.glass-panel` blur card. Visuals come
+ *     entirely from `:root[data-theme]` tokens (background
+ *     `var(--surface-raised)`, 1px `var(--border)`, `var(--radius-card)`
+ *     corners) — no gradients, no drop shadows, no ambient glow, no
+ *     backdrop-filter.
+ *   - The `<h2>` sits outside the `.surface` so the heading reads against
+ *     the page background and the surface card carries only the bullet
+ *     list, mirroring the rhythm used by the other section surfaces in
+ *     the redesign.
+ *   - A final mono `<p>` line restates the `Current version v{…}` so the
+ *     version text appears in the same typographic family as the version
+ *     pill that trails the hero CTA — a paint-only confirmation, not a
+ *     separate card.
+ *
+ * The version pill that trails the hero CTA is rendered inline as
+ * `<span class="cta-version">` so it inherits the CTA's flex row gap and
+ * reads as part of the same action. The same `.cta-version` class is
+ * reused in the body copy below so the version label keeps a consistent
+ * shape on the page.
+ */
 export default function DownloadsPage() {
   return (
-    <>
-      <header className="site-header" role="banner">
-        <nav className="nav-container" aria-label="Main navigation">
-          <a href="/" className="logo" aria-label="Unviewable Home">
-            <img
-              src="/logo.png"
-              alt="Unviewable Logo"
-              className="logo-img"
-              width={36}
-              height={36}
-            />
-            <span className="logo-text">
-              UNVIEWABLE<span className="logo-accent"></span>
-            </span>
-          </a>
-          <ul className="nav-links" role="list">
+    <SiteShell>
+      <HeroSection
+        eyebrow="Download"
+        headline={
+          <>
+            Get Unviewable
+            <br />
+            for Windows
+          </>
+        }
+        sub="Free download. No subscription, no telemetry, no traces. Requires Windows 10 version 2004 or later."
+        primary={{
+          label: 'Download for Windows',
+          href: SITE_META.downloadUrl,
+          variant: 'primary',
+          download: true,
+          trailing: (
+            <span className="cta-version">v{SITE_META.softwareVersion}</span>
+          ),
+        }}
+      />
+
+      <section className="downloads-requirements" aria-label="System requirements">
+        <h2>System requirements</h2>
+        <div className="surface">
+          <ul>
+            <li>Windows 10 version 2004 or later</li>
+            <li>4 GB RAM minimum (8 GB recommended)</li>
+            <li>50 MB disk space</li>
+            <li>Active internet connection for AI features</li>
             <li>
-              <a href="/#features">Features</a>
-            </li>
-            <li>
-              <a href="/guides/setup">Setup Guide</a>
-            </li>
-            <li>
-              <a href="/guides/usage">Usage Guide</a>
-            </li>
-            <li>
-              <a href="/#how-it-works">How It Works</a>
-            </li>
-            <li>
-              <a href="/login">Login</a>
+              Compatible with Zoom, Teams, Google Meet, Discord, OBS, and all
+              DXGI-based capture tools
             </li>
           </ul>
-        </nav>
-      </header>
-
-      <main id="main-content">
-        <section className="hero" style={{ minHeight: '80vh' }}>
-          <div className="hero-content">
-            <p className="hero-tag">DOWNLOAD</p>
-            <h1 className="hero-headline">
-              Get Unviewable
-              <br />
-              for Windows
-            </h1>
-            <p className="hero-sub">
-              Free download. No subscription, no telemetry, no traces.
-              <br />
-              Requires Windows 10 version 2004 or later.
-            </p>
-
-            <div className="hero-buttons">
-              <a
-                href={downloadUrl}
-                className="download-button"
-                download
-              >
-                <svg
-                  className="download-icon"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  role="img"
-                  aria-label="Download icon"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span>Download for Windows</span>
-                <span className="version-badge">v2.0.0</span>
-              </a>
-            </div>
-
-            <div className="tech-note glass-panel" style={{ marginTop: '3rem', textAlign: 'left' }}>
-              <h2 style={{ fontSize: '1.125rem', marginBottom: '1rem', color: '#fff' }}>
-                System Requirements
-              </h2>
-              <ul style={{ listStyle: 'disc', paddingLeft: '1.5rem', lineHeight: 2 }}>
-                <li>Windows 10 version 2004 (May 2020 Update) or later</li>
-                <li>4 GB RAM minimum (8 GB recommended)</li>
-                <li>50 MB disk space</li>
-                <li>Active internet connection for AI features</li>
-                <li>
-                  Compatible with Zoom, Teams, Google Meet, Discord, OBS, and all DXGI-based
-                  capture tools
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="hero-glow" aria-hidden="true" />
-        </section>
-      </main>
-
-      <footer className="site-footer">
-        <div className="footer-container">
-          <p className="footer-copy">
-            &copy; <time dateTime="2026">2026</time> Unviewable. All rights reserved.
-          </p>
-          <p className="footer-note">Built for those who operate in the margins.</p>
         </div>
-      </footer>
-    </>
+        <p>
+          Current version{' '}
+          <span className="cta-version">v{SITE_META.softwareVersion}</span>
+        </p>
+      </section>
+    </SiteShell>
   );
 }
