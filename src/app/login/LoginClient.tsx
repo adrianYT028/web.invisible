@@ -22,7 +22,14 @@ function getRedirectBase() {
 
 export default function LoginClient() {
   const searchParams = useSearchParams();
-  const redirectedFrom = searchParams.get('redirectedFrom') || '/';
+  // Open-redirect guard: only accept same-origin relative paths. Reject
+  // absolute URLs (http://, https://), protocol-relative (//evil.com), and
+  // anything that doesn't begin with a single '/'. Falls back to '/'.
+  const rawRedirect = searchParams.get('redirectedFrom') || '/';
+  const redirectedFrom =
+    rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : '/';
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [tab, setTab] = useState<Tab>('login');

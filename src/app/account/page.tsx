@@ -5,6 +5,7 @@ import { SiteShell } from '@/components/chrome/SiteShell';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 
 import { LogoutButton } from './LogoutButton';
+import { SignOutAllButton } from './SignOutAllButton';
 
 /**
  * `/account` — authenticated user landing page.
@@ -69,6 +70,14 @@ export default async function AccountPage() {
           </p>
           <div className="account-actions">
             <LogoutButton />
+          </div>
+          <div style={{ marginTop: '2rem' }}>
+            <p className="eyebrow">Desktop sessions</p>
+            <p className="lede">
+              Sign out from every device that has installed the Unviewable
+              desktop app. This does not sign you out of this browser session.
+            </p>
+            <SignOutAllButton />
           </div>
         </div>
       </section>
