@@ -67,7 +67,13 @@ export default function LoginClient() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: getRedirectBase() + '/auth/callback',
+          // Carry redirectedFrom through the OAuth round-trip so that, after
+          // Google sign-in, /auth/callback returns the user to the original
+          // page (critical for /auth/desktop?device_code=... — without this
+          // the desktop link flow never completes for Google users).
+          redirectTo:
+            getRedirectBase() +
+            `/auth/callback?next=${encodeURIComponent(redirectedFrom)}`,
         },
       });
       if (oauthError) throw oauthError;
