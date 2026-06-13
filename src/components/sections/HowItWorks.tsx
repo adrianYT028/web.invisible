@@ -40,7 +40,9 @@ export function HowItWorks() {
     <section className="how-it-works">
       <div className="how-it-works-section">
         <p className="eyebrow">How It Works</p>
-        <h2>Three steps. Zero traces.</h2>
+        <h2>
+          Three steps. Zero <em>traces</em>.
+        </h2>
         <p className="lede">
           From launch to live intelligence — the entire pipeline runs silently in under 2 seconds.
         </p>

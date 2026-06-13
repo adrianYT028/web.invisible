@@ -52,7 +52,8 @@
  *   `gap: var(--space-6)` keeps a consistent rhythm between cards.
  */
 
-import { FeatureCard } from './FeatureCard';
+import type { ReactNode } from 'react';
+
 import { Reveal } from '@/components/motion/Reveal';
 
 /**
@@ -137,37 +138,88 @@ function VisionIcon() {
   );
 }
 
+/**
+ * One editorial feature row. The redacted "outcome" line is the section's
+ * signature move: a mono claim whose payoff is painted over with an ink
+ * bar until the visitor hovers the row (touch devices see it revealed —
+ * see the `.redact` rules in globals.css).
+ */
+function FeatureRow({
+  index,
+  icon,
+  title,
+  factLabel,
+  factValue,
+  description,
+}: {
+  index: string;
+  icon: ReactNode;
+  title: string;
+  factLabel: string;
+  factValue: string;
+  description: string;
+}) {
+  return (
+    <article className="feature-row">
+      <span className="feature-row-index" aria-hidden="true">
+        {index}
+      </span>
+      <div className="feature-row-head">
+        <span className="feature-row-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <h3>{title}</h3>
+        <p className="feature-row-fact">
+          {factLabel} <span className="redact">{factValue}</span>
+        </p>
+      </div>
+      <p className="feature-row-desc">{description}</p>
+    </article>
+  );
+}
+
 export function FeatureGrid() {
   return (
     <section className="features">
       <div className="features-section">
         <p className="eyebrow">What it does</p>
-        <h2>Engineered to be unseen</h2>
+        <h2>
+          Engineered to be <em>unseen</em>
+        </h2>
         <p className="lede">
           Three primitives compose the overlay: stealth rendering, system
           audio capture, and selective vision. Together they produce live
           intelligence that interviewers and meeting hosts cannot detect or
           screen-share.
         </p>
-        <div className="features-grid">
+        <div className="feature-rows">
           <Reveal delay={0}>
-            <FeatureCard
+            <FeatureRow
+              index="01"
               icon={<StealthIcon />}
               title="Stealth Execution"
+              factLabel="They see →"
+              factValue="nothing"
               description="Built on the Windows Display Affinity API, the overlay is invisible to every screen-capture and screen-share pipeline — OBS, Zoom, Teams, Discord, browser share. Interviewers see only your face and shared desktop while the assistant runs locally, on your screen alone."
             />
           </Reveal>
           <Reveal delay={120}>
-            <FeatureCard
+            <FeatureRow
+              index="02"
               icon={<AudioIcon />}
               title="Audio Loopback"
+              factLabel="Virtual cables →"
+              factValue="none"
               description="WASAPI loopback taps your system audio directly for real-time transcription — every voice in the call, including yours. No virtual cables, no plugins, no audio routing. Install once and the assistant hears the meeting exactly as your speakers do."
             />
           </Reveal>
           <Reveal delay={240}>
-            <FeatureCard
+            <FeatureRow
+              index="03"
               icon={<VisionIcon />}
               title="Vision Context"
+              factLabel="Full desktop →"
+              factValue="never sent"
               description="Selective region capture sends only the pixels you mark — a code editor, a terminal pane, an open spec — to the model. The rest of your desktop stays private. Visual context arrives without ever exposing the full screen or background tabs."
             />
           </Reveal>

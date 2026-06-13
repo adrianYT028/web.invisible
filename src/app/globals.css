@@ -122,9 +122,10 @@
   --nav-height: 64px;       /* within 56â€“72 (Req 5.3) */
   --max-width:  1200px;
 
-  /* Radii */
-  --radius-card:   12px;
-  --radius-button: 8px;
+  /* Radii — deliberately tight. The visual voice is "technical document",
+     not "friendly app": hairline borders and near-sharp corners. */
+  --radius-card:   6px;
+  --radius-button: 6px;
 }
 
 /* --------------------------------------------------------------------------
@@ -134,17 +135,18 @@
    Saturation on --accent capped at 60% of source #00F2FF (Req 1.3).
    -------------------------------------------------------------------------- */
 :root[data-theme="dark"] {
-  --bg:              #0A0C12;
-  --surface-raised:  #12141C;
-  --surface-overlay: #181B26;
-  --text:            #F2F3F7;
-  --text-muted:      #A4A8B5;
-  --text-dim:        #6E7280;
-  --border:          rgba(255, 255, 255, 0.08);
-  --border-strong:   rgba(255, 255, 255, 0.12);
-  --accent:          hsl(183 60% 55%);
-  --accent-fg:       #04101A;
-  --focus-ring:      hsl(183 60% 65%);
+  --bg:              #0A0A0B;
+  --surface-raised:  #111112;
+  --surface-overlay: #18181A;
+  --text:            #EDECE8;
+  --text-muted:      #A3A29B;
+  --text-dim:        #6D6C66;
+  --border:          rgba(237, 236, 232, 0.08);
+  --border-strong:   rgba(237, 236, 232, 0.16);
+  --accent:          #EDECE8;
+  --accent-fg:       #0A0A0B;
+  --focus-ring:      #EDECE8;
+  --signal:          #4DE39A;
   --error:           #FF6B82;
   --success:         #4DE39A;
   --spotlight-alpha: 0.18;   /* Req 2.2 dark cap */
@@ -157,17 +159,18 @@
    --accent is darker for AA against the near-white background (Req 4.9).
    -------------------------------------------------------------------------- */
 :root[data-theme="light"] {
-  --bg:              #FAFAF7;
+  --bg:              #F7F6F2;
   --surface-raised:  #FFFFFF;
-  --surface-overlay: #F2F2EE;
-  --text:            #0A0C12;
-  --text-muted:      #4A4D58;
-  --text-dim:        #6E7280;
-  --border:          rgba(10, 12, 18, 0.08);
-  --border-strong:   rgba(10, 12, 18, 0.14);
-  --accent:          hsl(183 60% 35%);
-  --accent-fg:       #FFFFFF;
-  --focus-ring:      hsl(183 60% 35%);
+  --surface-overlay: #EFEEE8;
+  --text:            #131312;
+  --text-muted:      #57564F;
+  --text-dim:        #76756D;
+  --border:          rgba(19, 19, 18, 0.10);
+  --border-strong:   rgba(19, 19, 18, 0.18);
+  --accent:          #131312;
+  --accent-fg:       #F7F6F2;
+  --focus-ring:      #131312;
+  --signal:          #0B7A4B;
   --error:           #B0263A;
   --success:         #0E7A4D;
   --spotlight-alpha: 0.10;   /* Req 2.2 light cap */
@@ -2580,6 +2583,40 @@ section.guide-step .guide-step-body li + li {
   margin-top: var(--space-2);
 }
 
+/* Two-up step layout. At >= 900px a step that carries a screenshot lays
+   out as: heading spanning the top, then the screenshot and its body copy
+   side-by-side, vertically centered against each other. This replaces the
+   stacked "heading / centered square image / paragraph" rhythm that read
+   as misaligned, and gives each step a tidy, balanced two-column block.
+   Steps with no screenshot are left untouched by the `:has()` guard, so
+   their body keeps the full single-column measure. */
+@media (min-width: 900px) {
+  section.guide-step:has(.screenshot-frame) {
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    grid-template-areas:
+      "head head"
+      "media body";
+    column-gap: var(--space-8);
+    row-gap: var(--space-6);
+    align-items: center;
+  }
+
+  section.guide-step:has(.screenshot-frame) > h2 {
+    grid-area: head;
+  }
+
+  section.guide-step:has(.screenshot-frame) > .screenshot-frame {
+    grid-area: media;
+    /* The 360px column already caps the frame; reset the global 420px
+       rail cap so it fills its column edge-to-edge. */
+    max-width: 100%;
+  }
+
+  section.guide-step:has(.screenshot-frame) > .guide-step-body {
+    grid-area: body;
+  }
+}
+
 /* --------------------------------------------------------------------------
    Guide shell (Req 9.3, 9.4, 14.5).
    Top-level layout for `/guides/setup` and `/guides/usage`, rendered by
@@ -3844,7 +3881,740 @@ kbd,
    full-bleed billboard.
    -------------------------------------------------------------------------- */
 .screenshot-frame {
-  max-width: min(560px, 100%);
-  margin: 0 auto;
+  max-width: min(420px, 100%);
+  /* Left-align the frame to the same rail as the step heading and body
+     copy. The previous `margin: 0 auto` centered each square screenshot,
+     which read as misaligned next to the left-aligned text. */
+  margin: 0;
 }
+
+/* ==========================================================================
+   "TWO SCREENS" THEME LAYER
+   The product's one trick — it exists on your screen and not on theirs —
+   is the design system's organizing idea. This layer retunes the marketing
+   surface into a monochrome, editorial, document-like voice:
+     - ink/paper palette (tokens above), accent used surgically
+     - editorial serif italics for emphasis words inside headlines
+     - a redaction motif (.redact) that reveals on hover/focus
+     - left-aligned asymmetric hero with the screen-share simulator
+     - features as numbered editorial rows instead of clone cards
+   Source order places this layer last so equal-specificity overrides win.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Editorial serif emphasis. Any <em> inside a display headline or section
+   h2 renders in the serif italic at a slightly larger optical size — the
+   single highest-leverage "not a template" signal. Body-copy <em> is left
+   untouched (scoped selectors only).
+   -------------------------------------------------------------------------- */
+/* Unified section heading scale — the three home sections (and any future
+   peer) share one h2 treatment so the page reads as one document. */
+.features-section h2,
+.how-it-works-section h2,
+.guide-cards-title {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
+}
+
+/* Scoped to headings only — body-copy <em> keeps the default italic so
+   emphasised words inside paragraphs never switch families. */
+h1 em,
+h2 em,
+.section-serif-em em {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.06em;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Redaction motif. The classified value renders blurred — visibly text,
+   deliberately unreadable — and sharpens into focus when the visitor
+   hovers the span (or its parent .feature-row, or keyboard focus-within).
+   Blur instead of a solid ink bar so the line never looks like a missing
+   element. Screen readers always read the true text — the redaction is
+   purely visual.
+   -------------------------------------------------------------------------- */
+.redact {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.15em;
+  color: var(--signal);
+  filter: blur(5px);
+  cursor: default;
+  transition: filter 320ms var(--ease-out);
+}
+
+.redact:hover,
+.feature-row:hover .redact,
+.feature-row:focus-within .redact {
+  filter: blur(0);
+}
+
+/* Touch surfaces have no hover — show the declassified state permanently
+   so the line never reads as a rendering mistake on phones. */
+@media (hover: none) {
+  .redact {
+    filter: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hero — left-aligned editorial composition (all routes), with an optional
+   split layout (`.hero--split`) used on the home page to seat the
+   screen-share simulator beside the copy.
+   -------------------------------------------------------------------------- */
+.hero {
+  text-align: left;
+  place-items: center;
+}
+
+/* Capture-grid texture: a faint dot lattice behind the hero, masked so it
+   fades toward the edges. Reads as "screen pixels / capture grid" — the
+   thing the product hides from. Sits in the same z-plane as the spotlight
+   decorations, under `.hero-content` (z-index 1). */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--text) 22%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 26px 26px;
+  opacity: 0.35;
+  -webkit-mask-image: radial-gradient(ellipse 75% 90% at 35% 40%, black 0%, transparent 70%);
+  mask-image: radial-gradient(ellipse 75% 90% at 35% 40%, black 0%, transparent 70%);
+}
+
+.hero-content {
+  max-width: var(--max-width);
+  width: 100%;
+  margin-inline: auto;
+  justify-items: start;
+}
+
+.hero-ctas {
+  justify-content: flex-start;
+}
+
+.hero-sub.lede {
+  max-width: 54ch;
+}
+
+/* Split variant: copy column + simulator column. Stacks under 1024px with
+   the simulator below the CTAs. */
+.hero--split .hero-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.hero-copy {
+  display: grid;
+  gap: var(--space-6);
+  justify-items: start;
+}
+
+@media (min-width: 1024px) {
+  .hero--split .hero-content {
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  }
+}
+
+/* The split hero is taller than the centered band — let it breathe but
+   keep the fold discipline. */
+.hero--split {
+  min-height: clamp(560px, 86vh, 780px);
+}
+
+/* Stagger entrance for the demo column, matching the copy wave.
+   `width: 100%` + `justify-self: stretch` override the hero-content
+   `justify-items: start` so the simulator fills its grid column instead
+   of shrinking to its content's minimum width. */
+.hero .hero-demo {
+  width: 100%;
+  justify-self: stretch;
+  animation: hero-fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 320ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero .hero-demo {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Screen-share simulator — the hero's interactive proof. A mock meeting
+   window with two views: "Your screen" (overlay present) and "Their screen"
+   (the capture output — overlay gone). Pure presentation; no network, no
+   state beyond the active tab.
+   -------------------------------------------------------------------------- */
+.sim {
+  width: 100%;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sim-tabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  background: color-mix(in oklch, var(--surface-raised) 80%, transparent);
+  justify-self: start;
+}
+
+.sim-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.06em;
+  padding: var(--space-2) var(--space-4);
+  border-radius: calc(var(--radius-button) - 2px);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    color            var(--duration-base) var(--ease-out);
+}
+
+.sim-tab[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.sim-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.sim-window {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.sim-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sim-dots {
+  display: inline-flex;
+  gap: 5px;
+  flex: none;
+}
+
+.sim-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.sim-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sim-rec {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--error);
+  flex: none;
+}
+
+.sim-rec::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: sim-rec-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes sim-rec-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.sim-stage {
+  position: relative;
+  aspect-ratio: 16 / 10.5;
+  background:
+    radial-gradient(
+      120% 90% at 50% 0%,
+      color-mix(in oklch, var(--surface-overlay) 60%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+  padding: var(--space-4);
+  display: grid;
+}
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.sim-tile {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-card) - 2px);
+  background: var(--surface-raised);
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.sim-avatar {
+  width: clamp(28px, 15%, 44px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  /* Lift the avatar off the tile's vertical centre so the name chip
+     pinned to the bottom-left corner never overlaps it on short tiles. */
+  transform: translateY(-15%);
+}
+
+.sim-name {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  background: color-mix(in oklch, var(--bg) 70%, transparent);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.sim-tile--you {
+  border-color: var(--border-strong);
+}
+
+/* The product overlay — present on "your screen", absent on "theirs".
+   Dissolves with opacity + blur so the toggle feels like display-affinity
+   doing its job rather than an element being unmounted. */
+.sim-overlay {
+  position: absolute;
+  right: var(--space-4);
+  top: var(--space-4);
+  /* Height is content-driven (no bottom pin) so the card only ever spans
+     what its text needs; max-height + hidden overflow are the hard
+     guarantee that nothing ever spills over the meeting window. */
+  bottom: auto;
+  max-height: calc(100% - var(--space-4) * 2);
+  overflow: hidden;
+  width: min(54%, 300px);
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius-card) - 2px);
+  background: color-mix(in oklch, var(--surface-overlay) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
+  transition:
+    opacity   420ms var(--ease-out),
+    filter    420ms var(--ease-out),
+    transform 420ms var(--ease-out);
+}
+
+/* Narrow stages (stacked mobile hero): tighten the type and drop the
+   secondary suggestion line so the card always fits with air around it. */
+@media (max-width: 560px) {
+  .sim-overlay {
+    padding: var(--space-2) var(--space-3);
+  }
+  .sim-overlay-q,
+  .sim-overlay-a {
+    font-size: 0.6875rem;
+  }
+  .sim-overlay-a--secondary {
+    display: none;
+  }
+}
+
+.sim-window[data-view="theirs"] .sim-overlay {
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(0.985);
+  pointer-events: none;
+}
+
+.sim-overlay-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.sim-overlay-head::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--signal) 60%, transparent);
+}
+
+.sim-overlay-q {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.sim-overlay-a {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
+}
+
+.sim-overlay-a strong {
+  color: var(--signal);
+  font-weight: 600;
+}
+
+/* Status caption under the stage — flips with the view. */
+.sim-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.sim-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  flex: none;
+}
+
+.sim-window[data-view="theirs"] .sim-status::before {
+  background: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-rec::before {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Trust strip — restyled as a mono "spec line" between hairlines, the kind
+   of ledger row a datasheet would carry. Markup unchanged.
+   -------------------------------------------------------------------------- */
+.trust-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trust-strip .trust-rating,
+.trust-strip .trust-version {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.trust-strip .trust-rating strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Features — numbered editorial rows. Replaces the three-clone-card grid:
+   each feature is a full-width row under a hairline, with a mono index,
+   the title + icon cluster, a redacted "outcome" line, and the claim copy.
+   -------------------------------------------------------------------------- */
+.feature-rows {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3) var(--space-8);
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--duration-base) var(--ease-out);
+}
+
+@media (min-width: 900px) {
+  .feature-row {
+    grid-template-columns: 4rem minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+  }
+}
+
+.feature-row-index {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding-top: 0.4em;
+}
+
+.feature-row-head {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.feature-row-head h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin: 0;
+}
+
+.feature-row-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-button);
+  color: var(--text);
+}
+
+.feature-row-fact {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.feature-row-desc {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  margin: 0;
+  max-width: var(--measure);
+}
+
+/* --------------------------------------------------------------------------
+   How-it-works — strip the card chrome; steps become an editorial ledger
+   matching the feature rows. The connector line is retired.
+   -------------------------------------------------------------------------- */
+.steps-connector {
+  display: none !important;
+}
+
+.step-card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: var(--space-6) 0 0;
+}
+
+.step-card:hover {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.step-card .step-number {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+/* Callout joins the mono document voice. */
+.callout {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--signal);
+  background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Guide cards — hairline surfaces, no heavy fill; CTA picks up the mono
+   voice that the rest of the document layer uses.
+   -------------------------------------------------------------------------- */
+.guide-card {
+  background: transparent;
+}
+
+.guide-card:hover {
+  background: var(--surface-raised);
+}
+
+.guide-card-cta {
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Header — mono wordmark, hairline discipline.
+   -------------------------------------------------------------------------- */
+.header .header-logo-text {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+}
+
+/* Mobile header overflow fix: the desktop auth slot reserves 9rem for the
+   "Account + Logout" pair (CLS guard), but below 768px that reservation
+   pushes the hamburger trigger past the right edge of a 375px viewport.
+   The mobile header only ever shows the single "Login"/"Account" link, so
+   the slot can size to content there with no layout shift. */
+@media (max-width: 767px) {
+  .header .header-auth {
+    min-width: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Footer tagline (optional element rendered by Footer). Mono, dim, small.
+   -------------------------------------------------------------------------- */
+.footer-tagline {
+  max-width: var(--max-width);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 auto var(--space-6);
+}
+
+/* --------------------------------------------------------------------------
+   Downloads — the system-requirements card becomes a mono spec sheet:
+   transparent surface, hairline-separated rows, an arrow glyph instead of
+   list bullets. Matches the feature-row / step ledger voice on the home
+   page so the two routes read as one document.
+   -------------------------------------------------------------------------- */
+.downloads-requirements .surface {
+  background: transparent;
+  padding: 0 var(--space-6);
+}
+
+.downloads-requirements ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 0;
+}
+
+.downloads-requirements li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  color: var(--text-muted);
+}
+
+.downloads-requirements li + li {
+  border-top: 1px solid var(--border);
+}
+
+.downloads-requirements li::before {
+  content: '→';
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   Guides — editorial alignment with the rest of the redesign.
+   Each step heading gets an auto-numbered mono "STEP 01" label via CSS
+   counters (zero markup changes, the TOC and anchors are untouched), and
+   steps separate with the same hairlines the home-page ledgers use.
+   -------------------------------------------------------------------------- */
+.guide-shell .guide-content {
+  counter-reset: guide-step;
+}
+
+.guide-shell .guide-step {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-8);
+}
+
+.guide-shell .guide-step h2::before {
+  counter-increment: guide-step;
+  content: 'STEP ' counter(guide-step, decimal-leading-zero);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  color: var(--text-dim);
+  margin-bottom: var(--space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Account — the secondary "Desktop sessions" block separates from the
+   primary account actions with a hairline, replacing the inline margin
+   the page previously carried.
+   -------------------------------------------------------------------------- */
+.account-block {
+  margin-top: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+
 

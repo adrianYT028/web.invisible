@@ -64,8 +64,12 @@ export type GuideStepData = {
 export type GuideShellProps = {
   /** Mono caption above the h1 (e.g. "Install & run"). */
   eyebrow: string;
-  /** The single h1 for the route (e.g. "Setup guide"). */
-  title: string;
+  /**
+   * The single h1 for the route (e.g. "Setup guide"). Accepts ReactNode so
+   * callers can wrap one word in `<em>` for the editorial serif emphasis
+   * the rest of the site's headlines use.
+   */
+  title: ReactNode;
   /** Sub-headline under the h1, body-lg type. */
   lede: string;
   /** Steps, in document order. The TOC is built from this array. */

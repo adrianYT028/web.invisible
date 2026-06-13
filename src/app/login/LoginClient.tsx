@@ -196,7 +196,9 @@ export default function LoginClient() {
             <span className="auth-logo-text">UNVIEWABLE</span>
           </div>
           <p className="eyebrow">ACCESS</p>
-          <h1 className="auth-title">Welcome back</h1>
+          <h1 className="auth-title">
+            Welcome <em>back</em>
+          </h1>
           <p className="auth-sub">Log in or create an account to access Unviewable.</p>
 
           <div className="auth-tabs" role="tablist">

@@ -47,7 +47,7 @@ export function GuideCards() {
       <div className="guide-cards-inner">
         <p className="eyebrow">Get Started</p>
         <h2 id="guide-cards-heading" className="guide-cards-title">
-          Two short guides to get you running
+          Two short guides to get you <em>running</em>
         </h2>
         <p className="guide-cards-lede lede">
           Pick the guide that matches where you are. Setup walks you through

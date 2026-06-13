@@ -60,15 +60,16 @@ export default function DownloadsPage() {
           <>
             Get Unviewable
             <br />
-            for Windows
+            for <em>Windows</em>
           </>
         }
         sub="Free download. No subscription, no telemetry, no traces. Requires Windows 10 version 2004 or later."
         primary={{
+          // Login-gated dispatcher (src/app/download/route.ts). The page is
+          // public for indexing; the file itself requires a signed-in user.
           label: 'Download for Windows',
-          href: SITE_META.downloadUrl,
+          href: '/download',
           variant: 'primary',
-          download: true,
           trailing: (
             <span className="cta-version">v{SITE_META.softwareVersion}</span>
           ),
@@ -76,7 +77,10 @@ export default function DownloadsPage() {
       />
 
       <section className="downloads-requirements" aria-label="System requirements">
-        <h2>System requirements</h2>
+        <p className="eyebrow">Spec sheet</p>
+        <h2>
+          System <em>requirements</em>
+        </h2>
         <div className="surface">
           <ul>
             <li>Windows 10 version 2004 or later</li>

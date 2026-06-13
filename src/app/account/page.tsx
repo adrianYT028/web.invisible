@@ -64,14 +64,16 @@ export default async function AccountPage() {
       <section className="account-section">
         <div className="account-inner">
           <p className="eyebrow">Account</p>
-          <h1>Your account</h1>
+          <h1>
+            Your <em>account</em>
+          </h1>
           <p className="lede">
             Signed in as <strong>{user.email ?? 'unknown'}</strong>.
           </p>
           <div className="account-actions">
             <LogoutButton />
           </div>
-          <div style={{ marginTop: '2rem' }}>
+          <div className="account-block">
             <p className="eyebrow">Desktop sessions</p>
             <p className="lede">
               Sign out from every device that has installed the Unviewable

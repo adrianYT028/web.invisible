@@ -172,12 +172,109 @@ const FAQ_ITEMS: Array<{ question: string; answer: React.ReactNode }> = [
   },
 ];
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.unviewable.online';
+
+/**
+ * Plain-text step summaries for the HowTo JSON-LD. Kept beside the visual
+ * steps so the structured data Google and AI engines read stays in sync
+ * with the on-page guide. (The visual step bodies are rich JSX, so the
+ * machine-readable summary is authored separately and deliberately concise.)
+ */
+const HOWTO_STEPS = [
+  {
+    id: 'download',
+    name: 'Download the application',
+    text: 'Head to the Unviewable downloads page and grab the latest Windows release. Extract the portable folder to a permanent location such as Documents or Desktop.',
+  },
+  {
+    id: 'groq-api',
+    name: 'Get your Groq API key',
+    text: 'Sign up for free at console.groq.com, open the API Keys section, and create an API key. Copy it for the next step.',
+  },
+  {
+    id: 'configure',
+    name: 'Configure the app',
+    text: 'Set your Groq API key either as the GROQ_API_KEY environment variable (setx GROQ_API_KEY) or by pasting it into config.ini under the [General] section.',
+  },
+  {
+    id: 'launch',
+    name: 'Launch the app',
+    text: 'Double-click InvisibleOverlay.exe to start. The overlay attaches to your display and immediately becomes invisible to every screen-capture and screen-share pipeline.',
+  },
+] as const;
+
+/**
+ * Structured data for the setup guide:
+ *   - HowTo: the four-step installation, so search and AI answer engines can
+ *     surface the procedure directly (strong for "how to install" queries).
+ *   - FAQPage: derived from FAQ_ITEMS, automatically skipping the JSX
+ *     "contact support" entry so only real question/answer pairs are emitted.
+ *   - BreadcrumbList: Home → Setup guide.
+ */
+function setupJsonLd() {
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: 'How to set up Unviewable on Windows',
+      description:
+        'Install and configure Unviewable — a stealth AI overlay for meetings and interviews — on Windows in under two minutes.',
+      totalTime: 'PT2M',
+      step: HOWTO_STEPS.map((s, i) => ({
+        '@type': 'HowToStep',
+        position: i + 1,
+        name: s.name,
+        text: s.text,
+        url: `${SITE_URL}/guides/setup#${s.id}`,
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_ITEMS.filter(
+        (item) => typeof item.answer === 'string',
+      ).map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer as string },
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: SITE_URL,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Setup guide',
+          item: `${SITE_URL}/guides/setup`,
+        },
+      ],
+    },
+  ];
+}
+
 export default function SetupGuidePage() {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(setupJsonLd()) }}
+      />
       <GuideShell
         eyebrow="Install & run"
-        title="Setup guide"
+        title={
+          <>
+            Setup <em>guide</em>
+          </>
+        }
         lede="Welcome to your AI meeting assistant. Install the invisible overlay and start leveraging real-time intelligence in your meetings and interviews."
         steps={SETUP_STEPS}
       />

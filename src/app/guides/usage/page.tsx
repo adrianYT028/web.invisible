@@ -294,12 +294,64 @@ const FAQ_ITEMS: Array<{ question: string; answer: React.ReactNode }> = [
   },
 ];
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.unviewable.online';
+
+/**
+ * Structured data for the usage guide:
+ *   - FAQPage: derived from FAQ_ITEMS, skipping the JSX "contact support"
+ *     entry so only real question/answer pairs are emitted. These troubleshooting
+ *     Q&As are exactly the kind of content AI answer engines cite.
+ *   - BreadcrumbList: Home → Usage guide.
+ */
+function usageJsonLd() {
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_ITEMS.filter(
+        (item) => typeof item.answer === 'string',
+      ).map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer as string },
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: SITE_URL,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Usage guide',
+          item: `${SITE_URL}/guides/usage`,
+        },
+      ],
+    },
+  ];
+}
+
 export default function UsageGuidePage() {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(usageJsonLd()) }}
+      />
       <GuideShell
         eyebrow="Run & operate"
-        title="Usage guide"
+        title={
+          <>
+            Usage <em>guide</em>
+          </>
+        }
         lede="Everything you need to run the AI overlay during live calls — hotkeys, workflows, and pro tips."
         steps={USAGE_STEPS}
       />

@@ -94,7 +94,9 @@ export default function ResetClient() {
           <span className="auth-logo-text">UNVIEWABLE</span>
         </div>
         <p className="eyebrow">RESET</p>
-        <h1 className="auth-title">Set a new password</h1>
+        <h1 className="auth-title">
+          Set a <em>new</em> password
+        </h1>
         <p className="auth-sub">Enter a new password to regain access.</p>
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>

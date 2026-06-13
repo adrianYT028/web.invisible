@@ -26,6 +26,25 @@ function isPublicPath(pathname: string) {
   if (pathname === '/login') return true;
   if (pathname === '/login/reset') return true;
   if (pathname === '/auth/callback') return true;
+  // Marketing / content pages: crawlable and indexable so Google and AI
+  // answer engines can surface them. These pages carry no private data —
+  // the downloads page links to the public release, and the guides are
+  // public documentation. The actual app download is still gated behind
+  // login at the /download route (see src/app/download/route.ts), so making
+  // these pages public does not expose the file to anonymous users.
+  if (pathname === '/downloads') return true;
+  if (pathname === '/guides/setup') return true;
+  if (pathname === '/guides/usage') return true;
+  if (pathname === '/feedback') return true;
+  // The /download dispatcher route runs its own session check and redirects
+  // anonymous users to /login itself (see src/app/download/route.ts), so it
+  // is "public" to the middleware — the route handler is the single
+  // authority on gating the actual file.
+  if (pathname === '/download') return true;
+  // Generated social-share images (next/og). Social platforms and AI
+  // crawlers fetch these unauthenticated, so they must never be gated.
+  if (pathname === '/opengraph-image') return true;
+  if (pathname === '/twitter-image') return true;
   if (pathname.startsWith('/_next')) return true;
   if (pathname === '/favicon.ico') return true;
   if (pathname === '/favicon.svg') return true;

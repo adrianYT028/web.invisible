@@ -1,9 +1,36 @@
 # https://www.robotstxt.org/robotstxt.html
+
+# Search crawlers — index everything except API, auth, and account surfaces.
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /auth/
 Disallow: /login/reset
 Disallow: /account
+Disallow: /download
+
+# AI answer engines — explicitly welcomed (Generative Engine Optimization).
+# These crawlers feed AI Overviews, ChatGPT, Claude, Perplexity, and Gemini;
+# allowing them lets Unviewable be cited as a source in AI-generated answers.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
 
 Sitemap: https://www.unviewable.online/sitemap.xml

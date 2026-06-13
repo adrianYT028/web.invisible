@@ -36,11 +36,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.6,
     },
-    {
-      url: `${siteUrl}/login`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
+    // `/login` and `/account` are intentionally omitted — utility/auth pages
+    // should not be advertised in the sitemap (Google's own guidance), and
+    // they carry no content worth indexing.
   ];
 }

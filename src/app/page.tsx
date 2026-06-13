@@ -82,6 +82,7 @@
 
 import { SiteShell } from '@/components/chrome/SiteShell';
 import { HeroSection } from '@/components/hero/HeroSection';
+import { ScreenSimulator } from '@/components/hero/ScreenSimulator';
 import { TrustStrip } from '@/components/sections/TrustStrip';
 import { FeatureGrid } from '@/components/sections/FeatureGrid';
 import { HowItWorks } from '@/components/sections/HowItWorks';
@@ -100,15 +101,19 @@ export default function HomePage() {
           <>
             The intelligence
             <br />
-            they can&apos;t see.
+            they can&apos;t <em>see</em>.
           </>
         }
         sub="A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses every screen-capture pipeline."
+        demo={<ScreenSimulator />}
         primary={{
+          // Routes through the login-gated /download dispatcher rather than
+          // linking the release asset directly, so the installer is only
+          // handed to signed-in users (see src/app/download/route.ts). The
+          // page itself stays public for SEO.
           label: 'Download for Windows',
-          href: SITE_META.downloadUrl,
+          href: '/download',
           variant: 'primary',
-          download: true,
           trailing: (
             <span className="cta-version">v{SITE_META.softwareVersion}</span>
           ),
@@ -131,7 +136,7 @@ export default function HomePage() {
           // constant gentle flow: the rAF loop adds a tiny per-particle
           // sine-wave force every frame, so the layer never freezes
           // when the cursor leaves the hero.
-          count: 18,
+          count: 12,
           repulsionRadius: 180,        // smaller — particles only react when the cursor is close
           repulsionStrength: 220,      // gentler push so the motion stays graceful
           damping: 0.95,               // longer coast for fluid momentum
@@ -149,12 +154,6 @@ export default function HomePage() {
             { size: 10, opacity: 0.65 },
             { size: 5,  opacity: 0.4 },
             { size: 16, opacity: 0.8 },
-            { size: 8,  opacity: 0.55 },
-            { size: 9,  opacity: 0.6 },
-            { size: 6,  opacity: 0.5 },
-            { size: 14, opacity: 0.75 },
-            { size: 5,  opacity: 0.4 },
-            { size: 11, opacity: 0.65 },
             { size: 8,  opacity: 0.55 },
           ],
         }}

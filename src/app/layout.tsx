@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google';
 import { ThemeScript } from '@/components/theme/theme-script';
 import { SITE_META } from '@/components/constants/site-meta';
 import './globals.css';
@@ -16,6 +16,14 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-mono',
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  display: 'swap',
+  variable: '--font-serif',
 });
 
 export const metadata: Metadata = {
@@ -141,9 +149,9 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}>
       <head>
-        <meta name="theme-color" content="#0A0C12" />
+        <meta name="theme-color" content="#0A0A0B" />
         {/* ThemeScript MUST appear before any <link> to a stylesheet so the
             synchronous IIFE writes data-theme on <html> before stylesheets
             evaluate — eliminates FOUC and the hydration mismatch warning. */}

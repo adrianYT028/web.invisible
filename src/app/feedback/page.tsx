@@ -72,7 +72,7 @@ export default async function FeedbackPage() {
           <>
             Tell us how
             <br />
-            it feels
+            it <em>feels</em>
           </>
         }
         sub={
@@ -98,7 +98,9 @@ export default async function FeedbackPage() {
       {isLoggedIn ? <FeedbackReview userEmail={userEmail} /> : null}
 
       <section className="feedback-contact" aria-labelledby="feedback-contact-heading">
-        <h2 id="feedback-contact-heading">Prefer email?</h2>
+        <h2 id="feedback-contact-heading">
+          Prefer <em>email</em>?
+        </h2>
         <p className="lede">
           Reach us directly at{' '}
           <a href={`mailto:${SITE_META.contactEmail}`}>{SITE_META.contactEmail}</a>{' '}

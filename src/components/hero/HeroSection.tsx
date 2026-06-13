@@ -102,6 +102,15 @@ export type HeroSectionProps = {
   secondary?: SecondaryNav | SecondaryComingSoon;
   spotlight?: boolean;
   /**
+   * Optional demo panel rendered beside the hero copy (the "Two Screens"
+   * split layout). When present the section gains the `hero--split`
+   * modifier and the copy + demo sit in a two-column grid at >=1024px.
+   * Routes that omit it keep the single-column editorial hero. The node
+   * is typically the <ScreenSimulator /> client island; passing it as a
+   * prop keeps HeroSection itself a server component.
+   */
+  demo?: ReactNode;
+  /**
    * Controls the optional cursor-repelled mass layer rendered between the
    * spotlight glow and the hero content. Pass `true` to mount with
    * defaults, or pass a `HeroAntigravityProps` object to tune count,
@@ -131,9 +140,10 @@ export function HeroSection({
   secondary,
   spotlight,
   antigravity,
+  demo,
 }: HeroSectionProps) {
   return (
-    <section className="hero">
+    <section className={demo ? 'hero hero--split' : 'hero'}>
       {/* The spotlight is mounted as a sibling of `.hero-content` so the
           radial-gradient sits behind the text via z-index (the gradient is
           z-0 from `.hero-spotlight`; `.hero-content` is z-1). It is gated
@@ -154,53 +164,59 @@ export function HeroSection({
       ) : null}
 
       <div className="hero-content">
-        {/* Eyebrow caption — mono, uppercase, tracked. Req 3.7's no-uppercase
-            rule applies to display/h1 sizes only, so the eyebrow keeping
-            uppercase is allowed here. */}
-        <p className="eyebrow">{eyebrow}</p>
+        <div className="hero-copy">
+          {/* Eyebrow caption — mono, uppercase, tracked. Req 3.7's no-uppercase
+              rule applies to display/h1 sizes only, so the eyebrow keeping
+              uppercase is allowed here. */}
+          <p className="eyebrow">{eyebrow}</p>
 
-        {/* Display headline. This is the LCP candidate: rendered server-side,
-            no client JS required to paint, and with no `text-transform:
-            uppercase` (Req 1.1, 3.7). */}
-        <h1 className="hero-headline">{headline}</h1>
+          {/* Display headline. This is the LCP candidate: rendered server-side,
+              no client JS required to paint, and with no `text-transform:
+              uppercase` (Req 1.1, 3.7). */}
+          <h1 className="hero-headline">{headline}</h1>
 
-        {/* Sub-headline rendered as a `lede` paragraph. The shared `.lede`
-            class carries the body-lg type rhythm; `.hero-sub` adds the
-            hero-specific measure cap and centring tweaks. */}
-        <p className="hero-sub lede">{sub}</p>
+          {/* Sub-headline rendered as a `lede` paragraph. The shared `.lede`
+              class carries the body-lg type rhythm; `.hero-sub` adds the
+              hero-specific measure cap. */}
+          <p className="hero-sub lede">{sub}</p>
 
-        <div className="hero-ctas">
-          {/* Primary CTA. We pass `variant="primary"` explicitly rather than
-              spreading the caller's `primary.variant` so HeroSection always
-              renders the primary slot as the dominant accent button — the
-              caller's optional `variant` is ignored on purpose. */}
-          <CtaButton
-            variant="primary"
-            label={primary.label}
-            href={primary.href}
-            download={primary.download}
-            trailing={primary.trailing}
-          />
+          <div className="hero-ctas">
+            {/* Primary CTA. We pass `variant="primary"` explicitly rather than
+                spreading the caller's `primary.variant` so HeroSection always
+                renders the primary slot as the dominant accent button — the
+                caller's optional `variant` is ignored on purpose. */}
+            <CtaButton
+              variant="primary"
+              label={primary.label}
+              href={primary.href}
+              download={primary.download}
+              trailing={primary.trailing}
+            />
 
-          {secondary
-            ? isComingSoon(secondary)
-              ? (
-                  <CtaButton
-                    variant="disabled"
-                    label={secondary.label}
-                    reason="coming-soon"
-                    trailing={secondary.trailing}
-                  />
-                )
-              : (
-                  <CtaButton
-                    variant="secondary"
-                    label={secondary.label}
-                    href={secondary.href ?? '#'}
-                  />
-                )
-            : null}
+            {secondary
+              ? isComingSoon(secondary)
+                ? (
+                    <CtaButton
+                      variant="disabled"
+                      label={secondary.label}
+                      reason="coming-soon"
+                      trailing={secondary.trailing}
+                    />
+                  )
+                : (
+                    <CtaButton
+                      variant="secondary"
+                      label={secondary.label}
+                      href={secondary.href ?? '#'}
+                    />
+                  )
+              : null}
+          </div>
         </div>
+
+        {/* Optional demo column (home route only). Rendered after the copy
+            so source order matches the visual order when the grid stacks. */}
+        {demo ? <div className="hero-demo">{demo}</div> : null}
       </div>
     </section>
   );

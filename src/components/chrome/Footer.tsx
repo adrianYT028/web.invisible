@@ -40,6 +40,10 @@ export function Footer() {
 
   return (
     <footer className="footer" aria-label="Site footer">
+      {/* Brand sign-off. Mono, dim, deliberately quiet — the last line of
+          the document rather than a marketing banner. */}
+      <p className="footer-tagline">SEEN BY YOU. NO ONE ELSE.</p>
+
       <div className="footer-inner">
         <nav className="footer-nav" aria-label="Secondary">
           {NAV_LINKS.map(({ label, href }) => (
