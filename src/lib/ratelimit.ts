@@ -106,6 +106,14 @@ export async function rateLimitRefreshByHash(hash: string): Promise<RateLimitRes
   return kvFixedWindow(`rl:refresh:hash:${hash}`, 60, 60);
 }
 
+// 10/min per user for POST /api/keys. Throttles a signed-in user from
+// brute-forcing Groq key validation through our server (design §3.3 step 3).
+export async function rateLimitKeySubmitByUser(
+  userId: string
+): Promise<RateLimitResult> {
+  return kvFixedWindow(`rl:keys:user:${userId}`, 10, 60);
+}
+
 export function getRequestIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {

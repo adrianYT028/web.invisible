@@ -67,9 +67,19 @@ export const env = {
       pick(process.env.DESKTOP_ACCESS_TOKEN_SECRET)
     );
   },
+  get keyVaultSecret() {
+    // Master_Key set for the per-user Groq key vault. JSON map of
+    // version -> base64 32-byte key. Read ONLY inside
+    // src/lib/crypto/key-vault.ts. Never expose to the browser bundle.
+    return required('KEY_VAULT_SECRET', pick(process.env.KEY_VAULT_SECRET));
+  },
+  get keyVaultActiveVersion() {
+    // Master_Key_Version used for new encryptions. Defaults to 1.
+    return Number(pick(process.env.KEY_VAULT_ACTIVE_VERSION, '1'));
+  },
   get groqApiKey() {
-    // Optional today (AI proxy is deferred). Will be required once the
-    // /api/ai/* routes ship.
+    // Optional today (premium/platform path is deferred). Promote to
+    // required() once premium ships.
     return optional(process.env.GROQ_API_KEY);
   },
   get kvRestApiUrl() {
