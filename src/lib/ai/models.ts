@@ -53,6 +53,9 @@ export type AiEndpoint = 'chat' | 'transcribe' | 'vision';
 /** The current Groq vision model (per Groq's vision docs). */
 export const CURRENT_VISION_MODEL = 'qwen/qwen3.6-27b';
 
+/** The current Groq chat model used to replace decommissioned chat ids. */
+export const CURRENT_CHAT_MODEL = 'openai/gpt-oss-120b';
+
 /** Vision model ids Groq has decommissioned (return 404), remapped on the fly. */
 const DEPRECATED_VISION_MODELS = new Set<string>([
   'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -60,10 +63,20 @@ const DEPRECATED_VISION_MODELS = new Set<string>([
 ]);
 
 /**
- * Resolve the model actually sent upstream. For the `vision` endpoint, a
- * missing or decommissioned model id is remapped to `CURRENT_VISION_MODEL`;
- * everything else passes through unchanged. Non-vision endpoints are never
- * altered.
+ * Chat model ids Groq has decommissioned or scheduled for shutdown, remapped
+ * on the fly. `llama-3.3-70b-versatile` is scheduled to shut down 2026-08-16;
+ * remapping it now means installed desktops (which bake the id into their
+ * `config.ini`) keep working through the cutover with no client update.
+ */
+const DEPRECATED_CHAT_MODELS = new Set<string>([
+  'llama-3.3-70b-versatile',
+]);
+
+/**
+ * Resolve the model actually sent upstream. Missing or decommissioned model
+ * ids are remapped to the current supported model for that endpoint; anything
+ * else passes through unchanged. `transcribe` is never altered here (its model
+ * is chosen server-adjacent and is not affected by these deprecations).
  */
 export function resolveModel(
   endpoint: AiEndpoint,
@@ -72,6 +85,11 @@ export function resolveModel(
   if (endpoint === 'vision') {
     if (!requested || DEPRECATED_VISION_MODELS.has(requested)) {
       return CURRENT_VISION_MODEL;
+    }
+  }
+  if (endpoint === 'chat') {
+    if (requested && DEPRECATED_CHAT_MODELS.has(requested)) {
+      return CURRENT_CHAT_MODEL;
     }
   }
   return requested;
