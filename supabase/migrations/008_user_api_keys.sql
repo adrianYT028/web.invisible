@@ -53,3 +53,4 @@ create policy user_api_keys_update_own on public.user_api_keys
 drop policy if exists user_api_keys_delete_own on public.user_api_keys;
 create policy user_api_keys_delete_own on public.user_api_keys
   for delete using (user_id = auth.uid());
+

@@ -14,6 +14,11 @@ import path from 'node:path';
 export default defineConfig({
   plugins: [react()],
   test: {
+    // `vmForks` avoids the Node 24 + Windows worker-startup failure ("Vitest
+    // failed to find the runner" / "Cannot read properties of undefined
+    // (reading 'config')") that the default `forks`/`threads` pools hit in this
+    // environment. See vitest-dev/vitest#8968 and related reports.
+    pool: 'vmForks',
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
