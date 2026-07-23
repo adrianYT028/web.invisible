@@ -13,6 +13,7 @@ import { forwardToGroq, type GroqUsage } from '@/lib/groq/client';
 import {
   getEndpointCapConfig,
   isPremiumModel,
+  resolveModel,
   type AiEndpoint,
   type EndpointCapConfig,
 } from '@/lib/ai/models';
@@ -118,7 +119,23 @@ export async function handleAiProxy(
       return response;
     }
     const extracted = extractModel(payload);
-    model = typeof extracted === 'string' ? extracted : null;
+    const requestedModel = typeof extracted === 'string' ? extracted : undefined;
+    // Remap decommissioned vision model ids (e.g. the Llama-4 vision models that
+    // now 404) to the current supported Groq vision model. This fixes already-
+    // installed desktop apps that still send the old id in their payload.
+    const effectiveModel = resolveModel(options.endpoint, requestedModel);
+    if (
+      effectiveModel &&
+      effectiveModel !== requestedModel &&
+      payload !== null &&
+      typeof payload === 'object' &&
+      !(payload instanceof FormData)
+    ) {
+      // Rewrite the outbound payload so the forwarded request uses the resolved
+      // model, not the dead one the client sent.
+      (payload as Record<string, unknown>).model = effectiveModel;
+    }
+    model = effectiveModel ?? null;
     const premium = model != null && isPremiumModel(model);
 
     // --- 3. Plan ------------------------------------------------------------

@@ -35,6 +35,48 @@ export const PREMIUM_MODELS = new Set<string>([]);
 /** The AI proxy endpoints. */
 export type AiEndpoint = 'chat' | 'transcribe' | 'vision';
 
+// -----------------------------------------------------------------------------
+// Vision model remap (production hotfix).
+//
+// Groq decommissioned the Llama-4 vision models (`meta-llama/llama-4-scout-…`
+// and `-maverick-…`) — requests for them now return HTTP 404 "model does not
+// exist". Every ALREADY-INSTALLED desktop app has the old id baked into its
+// `config.ini` (`[AI] vision_model`) and cannot be updated remotely, so we
+// remap dead vision ids to the current supported Groq vision model here,
+// server-side. This fixes every existing user on the next deploy without a
+// desktop release. When Groq changes the vision model again, update this one
+// constant.
+//
+// Source: https://console.groq.com/docs/vision (current supported model).
+// -----------------------------------------------------------------------------
+
+/** The current Groq vision model (per Groq's vision docs). */
+export const CURRENT_VISION_MODEL = 'qwen/qwen3.6-27b';
+
+/** Vision model ids Groq has decommissioned (return 404), remapped on the fly. */
+const DEPRECATED_VISION_MODELS = new Set<string>([
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+]);
+
+/**
+ * Resolve the model actually sent upstream. For the `vision` endpoint, a
+ * missing or decommissioned model id is remapped to `CURRENT_VISION_MODEL`;
+ * everything else passes through unchanged. Non-vision endpoints are never
+ * altered.
+ */
+export function resolveModel(
+  endpoint: AiEndpoint,
+  requested: string | undefined
+): string | undefined {
+  if (endpoint === 'vision') {
+    if (!requested || DEPRECATED_VISION_MODELS.has(requested)) {
+      return CURRENT_VISION_MODEL;
+    }
+  }
+  return requested;
+}
+
 /** The feature_limits cap columns (verified against 007_feature_limits.sql). */
 export type CapColumn =
   | 'max_questions_per_day'
