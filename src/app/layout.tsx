@@ -134,7 +134,7 @@ export default function RootLayout({
       softwareVersion: SITE_META.softwareVersion,
       description: 'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
       url: siteUrl,
-      downloadUrl: 'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe',
+      downloadUrl: 'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.1/Unviewable_Setup_2.1.0.exe',
       aggregateRating: {
         '@type': 'AggregateRating',
         ratingValue: SITE_META.ratingValue,

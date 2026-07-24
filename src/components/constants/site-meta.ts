@@ -9,11 +9,11 @@
  * MUST stay byte-identical to the strings that appear in the JSON-LD schema.
  */
 export const SITE_META = {
-  softwareVersion: '2.0.0',
+  softwareVersion: '2.1.0',
   ratingValue: '4.9',
   ratingCount: '124',
   downloadUrl:
-    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.0/Unviewable_Setup_2.0.0.exe',
+    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.1/Unviewable_Setup_2.1.0.exe',
   contactEmail: 'join.invisibleai@gmail.com',
   instagramUrl: 'https://www.instagram.com/unviewable.online/',
 } as const;
