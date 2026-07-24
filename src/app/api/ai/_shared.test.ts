@@ -684,7 +684,7 @@ describe('handleAiProxy — decommissioned model remap', () => {
     expect(mocks.state.usageInserts[0].model).toBe('qwen/qwen3.6-27b');
   });
 
-  it("remaps the chat id 'llama-3.3-70b-versatile' to 'openai/gpt-oss-120b' before forwarding", async () => {
+  it("forwards the chat id 'llama-3.3-70b-versatile' unchanged (non-reasoning, clean/fast — no remap today)", async () => {
     resetState();
     mocks.state.keyRow = keyRow();
     let forwardedModel: unknown;
@@ -700,8 +700,29 @@ describe('handleAiProxy — decommissioned model remap', () => {
 
     expect(res.status).toBe(200);
     expect(mocks.forwardToGroq).toHaveBeenCalledTimes(1);
-    expect(forwardedModel).toBe('openai/gpt-oss-120b');
-    expect(mocks.state.usageInserts[0].model).toBe('openai/gpt-oss-120b');
+    expect(forwardedModel).toBe('llama-3.3-70b-versatile');
+    expect(mocks.state.usageInserts[0].model).toBe('llama-3.3-70b-versatile');
+  });
+
+  it("suppresses reasoning for the qwen3 vision model (reasoning_effort: 'none')", async () => {
+    resetState();
+    mocks.state.keyRow = keyRow();
+    let forwardedPayload: Record<string, unknown> | undefined;
+    mocks.state.forwardImpl = async (...args: unknown[]) => {
+      forwardedPayload = args[1] as Record<string, unknown>;
+      return { status: 200, body: enc('{}'), usage: null };
+    };
+
+    const res = await handleAiProxy(
+      aiReq('vision', { model: 'meta-llama/llama-4-scout-17b-16e-instruct' }),
+      { endpoint: 'vision' }
+    );
+
+    expect(res.status).toBe(200);
+    // Remapped to the current vision model AND reasoning disabled so the app
+    // gets only the final answer, faster.
+    expect(forwardedPayload?.model).toBe('qwen/qwen3.6-27b');
+    expect(forwardedPayload?.reasoning_effort).toBe('none');
   });
 
   it('forwards a supported model unchanged', async () => {

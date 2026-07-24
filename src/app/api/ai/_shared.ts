@@ -13,6 +13,7 @@ import { forwardToGroq, type GroqUsage } from '@/lib/groq/client';
 import {
   getEndpointCapConfig,
   isPremiumModel,
+  needsReasoningSuppression,
   resolveModel,
   type AiEndpoint,
   type EndpointCapConfig,
@@ -124,16 +125,25 @@ export async function handleAiProxy(
     // now 404) to the current supported Groq vision model. This fixes already-
     // installed desktop apps that still send the old id in their payload.
     const effectiveModel = resolveModel(options.endpoint, requestedModel);
-    if (
-      effectiveModel &&
-      effectiveModel !== requestedModel &&
+    const isJsonPayload =
       payload !== null &&
       typeof payload === 'object' &&
-      !(payload instanceof FormData)
-    ) {
+      !(payload instanceof FormData);
+    if (effectiveModel && effectiveModel !== requestedModel && isJsonPayload) {
       // Rewrite the outbound payload so the forwarded request uses the resolved
       // model, not the dead one the client sent.
       (payload as Record<string, unknown>).model = effectiveModel;
+    }
+    // Suppress "thinking" for reasoning-capable models (e.g. the qwen3 vision
+    // model) so the app receives only the final answer and responds faster.
+    // Groq disables reasoning when the request carries reasoning_effort:"none".
+    // Only set it when the client hasn't already specified one.
+    if (
+      needsReasoningSuppression(effectiveModel) &&
+      isJsonPayload &&
+      (payload as Record<string, unknown>).reasoning_effort === undefined
+    ) {
+      (payload as Record<string, unknown>).reasoning_effort = 'none';
     }
     model = effectiveModel ?? null;
     const premium = model != null && isPremiumModel(model);

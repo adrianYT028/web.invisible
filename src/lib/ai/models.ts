@@ -53,9 +53,6 @@ export type AiEndpoint = 'chat' | 'transcribe' | 'vision';
 /** The current Groq vision model (per Groq's vision docs). */
 export const CURRENT_VISION_MODEL = 'qwen/qwen3.6-27b';
 
-/** The current Groq chat model used to replace decommissioned chat ids. */
-export const CURRENT_CHAT_MODEL = 'openai/gpt-oss-120b';
-
 /** Vision model ids Groq has decommissioned (return 404), remapped on the fly. */
 const DEPRECATED_VISION_MODELS = new Set<string>([
   'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -63,14 +60,31 @@ const DEPRECATED_VISION_MODELS = new Set<string>([
 ]);
 
 /**
- * Chat model ids Groq has decommissioned or scheduled for shutdown, remapped
- * on the fly. `llama-3.3-70b-versatile` is scheduled to shut down 2026-08-16;
- * remapping it now means installed desktops (which bake the id into their
- * `config.ini`) keep working through the cutover with no client update.
+ * Chat model ids to remap on the fly. Intentionally EMPTY right now:
+ * `llama-3.3-70b-versatile` (the desktop default) is non-reasoning and returns
+ * clean, fast answers, so it passes through unchanged. It IS scheduled to shut
+ * down 2026-08-16 — before then we must migrate it to a NON-reasoning
+ * replacement (a reasoning model like gpt-oss/qwen emits visible "thinking"
+ * text, which regressed answer quality when tried). Add the replacement here
+ * once chosen and tested.
  */
-const DEPRECATED_CHAT_MODELS = new Set<string>([
-  'llama-3.3-70b-versatile',
+const DEPRECATED_CHAT_MODELS = new Set<string>([]);
+
+/**
+ * Reasoning-capable models whose "thinking" must be suppressed so the app shows
+ * only the final answer (and responds faster). Groq disables reasoning when the
+ * request carries `reasoning_effort: "none"` (Qwen). `qwen/qwen3.6-27b` is the
+ * only Groq vision model today and reasons by default, so every vision request
+ * needs this.
+ */
+const REASONING_MODELS = new Set<string>([
+  'qwen/qwen3.6-27b',
 ]);
+
+/** True when the model reasons by default and its reasoning should be disabled. */
+export function needsReasoningSuppression(model: string | null | undefined): boolean {
+  return typeof model === 'string' && REASONING_MODELS.has(model);
+}
 
 /**
  * Resolve the model actually sent upstream. Missing or decommissioned model
@@ -94,6 +108,9 @@ export function resolveModel(
   }
   return requested;
 }
+
+/** Kept for the future chat migration; not applied while DEPRECATED_CHAT_MODELS is empty. */
+export const CURRENT_CHAT_MODEL = 'openai/gpt-oss-120b';
 
 /** The feature_limits cap columns (verified against 007_feature_limits.sql). */
 export type CapColumn =
