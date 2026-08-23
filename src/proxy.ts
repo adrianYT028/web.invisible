@@ -28,19 +28,30 @@ function isPublicPath(pathname: string) {
   if (pathname === '/auth/callback') return true;
   // Marketing / content pages: crawlable and indexable so Google and AI
   // answer engines can surface them. These pages carry no private data —
-  // the downloads page links to the public release, and the guides are
-  // public documentation. The actual app download is still gated behind
-  // login at the /download route (see src/app/download/route.ts), so making
-  // these pages public does not expose the file to anonymous users.
+  // the downloads page links to the purchase flow, and the guides are
+  // public documentation. The installer itself is served only by
+  // /api/download/[platform] after an entitlement check, so making these
+  // pages public does not expose the file to anonymous users.
   if (pathname === '/downloads') return true;
   if (pathname === '/guides/setup') return true;
   if (pathname === '/guides/usage') return true;
   if (pathname === '/feedback') return true;
-  // The /download dispatcher route runs its own session check and redirects
-  // anonymous users to /login itself (see src/app/download/route.ts), so it
-  // is "public" to the middleware — the route handler is the single
-  // authority on gating the actual file.
+  // The /download page runs its own session check and redirects anonymous
+  // users to /login itself (see src/app/download/page.tsx), so it is "public"
+  // to the middleware. Gating happens in two places the middleware does not
+  // need to know about: that page checks the session and the entitlement to
+  // decide whether to show checkout or the download, and
+  // /api/download/[platform] independently re-checks both before minting a
+  // signed URL. The middleware is deliberately not the authority here.
   if (pathname === '/download') return true;
+  // Policy pages. These MUST be reachable anonymously: Razorpay's activation
+  // review fetches them without a session, and cookie-gating them would fail
+  // onboarding. They contain no user data.
+  if (pathname === '/terms') return true;
+  if (pathname === '/privacy') return true;
+  if (pathname === '/refund') return true;
+  if (pathname === '/contact') return true;
+  if (pathname === '/about') return true;
   // Generated social-share images (next/og). Social platforms and AI
   // crawlers fetch these unauthenticated, so they must never be gated.
   if (pathname === '/opengraph-image') return true;

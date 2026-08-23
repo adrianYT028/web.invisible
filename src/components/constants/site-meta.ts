@@ -7,13 +7,30 @@
  *
  * IMPORTANT: The `softwareVersion`, `ratingValue`, and `ratingCount` strings
  * MUST stay byte-identical to the strings that appear in the JSON-LD schema.
+ *
+ * ---------------------------------------------------------------------------
+ * REMOVED: `downloadUrl`.
+ *
+ * This constant used to hold a public GitHub Releases URL for the installer.
+ * It was consumed by `<DownloadStarter />` on `/download`, which is a client
+ * component — so the installer URL was compiled into the client bundle and
+ * readable from page source by anyone, signed in or not. That made the
+ * login gate (and now the paywall) decorative: one person copies the link,
+ * everyone else skips payment.
+ *
+ * The installer now lives in a PRIVATE Supabase Storage bucket and is only
+ * reachable through `/api/download/[platform]`, which verifies
+ * `entitlements.download_access` and returns a five-minute signed URL. Release
+ * coordinates live in the `releases` table (see `src/lib/releases.ts`).
+ *
+ * DO NOT reintroduce a direct asset URL here. Link to `/download` instead — it
+ * is the only sanctioned entry point.
+ * ---------------------------------------------------------------------------
  */
 export const SITE_META = {
   softwareVersion: '2.1.0',
   ratingValue: '4.9',
   ratingCount: '124',
-  downloadUrl:
-    'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.1/Unviewable_Setup_2.1.0.exe',
   contactEmail: 'join.invisibleai@gmail.com',
   instagramUrl: 'https://www.instagram.com/unviewable.online/',
 } as const;

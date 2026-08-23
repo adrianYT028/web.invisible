@@ -89,4 +89,46 @@ export const env = {
   get kvRestApiToken() {
     return optional(process.env.KV_REST_API_TOKEN);
   },
+
+  // -----------------------------------------------------------------
+  // Razorpay (pay-to-download, India-only).
+  //
+  // All three are `optional()` rather than `required()` so the app still
+  // boots — and every non-payment route keeps working — when Razorpay is not
+  // configured yet. The payment routes check `isRazorpayConfigured()` and
+  // return 503 `payment_not_configured` instead of throwing a 500 from a
+  // module-level getter. That distinction matters during rollout: a missing
+  // key should degrade the checkout button, not the whole site.
+  //
+  // KEY_SECRET and WEBHOOK_SECRET are DIFFERENT secrets signing DIFFERENT
+  // things. See the header comment in src/lib/payments/razorpay.ts.
+  // -----------------------------------------------------------------
+  get razorpayKeyId() {
+    // Public-ish: this value is handed to Razorpay Checkout in the browser.
+    // It is returned by /api/payments/razorpay/order rather than exposed as a
+    // NEXT_PUBLIC_* var, so there is one fewer build-time value to keep in
+    // sync between Vercel and the client bundle.
+    return optional(process.env.RAZORPAY_KEY_ID) ?? '';
+  },
+  get razorpayKeySecret() {
+    // Signs the CHECKOUT signature: HMAC("<order_id>|<payment_id>").
+    return optional(process.env.RAZORPAY_KEY_SECRET) ?? '';
+  },
+  get razorpayWebhookSecret() {
+    // Signs the WEBHOOK signature: HMAC(raw_request_body).
+    return optional(process.env.RAZORPAY_WEBHOOK_SECRET) ?? '';
+  },
 };
+
+/**
+ * Whether order creation and checkout verification can run. The webhook has its
+ * own check because it needs only the webhook secret.
+ */
+export function isRazorpayConfigured(): boolean {
+  return env.razorpayKeyId.length > 0 && env.razorpayKeySecret.length > 0;
+}
+
+/** Whether inbound webhooks can be verified. */
+export function isRazorpayWebhookConfigured(): boolean {
+  return env.razorpayWebhookSecret.length > 0;
+}

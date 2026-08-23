@@ -107,11 +107,12 @@ export default function HomePage() {
         sub="A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses every screen-capture pipeline."
         demo={<ScreenSimulator />}
         primary={{
-          // Routes through the login-gated /download dispatcher rather than
-          // linking the release asset directly, so the installer is only
-          // handed to signed-in users (see src/app/download/route.ts). The
+          // Routes through the login-gated purchase page
+          // (src/app/download/page.tsx) rather than linking a release asset.
+          // The installer is served only by /api/download/[platform] after an
+          // entitlement check, so no asset URL exists in this bundle. This
           // page itself stays public for SEO.
-          label: 'Download for Windows',
+          label: 'Get Unviewable',
           href: '/download',
           variant: 'primary',
           trailing: (

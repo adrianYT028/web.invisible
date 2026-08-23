@@ -3,16 +3,17 @@ import type { Metadata } from 'next';
 import { SiteShell } from '@/components/chrome/SiteShell';
 import { HeroSection } from '@/components/hero/HeroSection';
 import { SITE_META } from '@/components/constants/site-meta';
+import { formatPriceDisclosure } from '@/lib/payments/pricing';
 
 export const metadata: Metadata = {
   title: 'Download Unviewable for Windows',
   description:
-    'Download the latest version of Unviewable — a stealth AI overlay for meetings and interviews. Free for Windows 10+. No traces, no detection.',
+    'Get Unviewable for Windows 10+ — a stealth AI overlay for meetings and interviews. One-time payment, lifetime license. No subscription.',
   alternates: { canonical: '/downloads' },
   openGraph: {
     title: 'Download Unviewable for Windows',
     description:
-      'Download the latest version of Unviewable — a stealth AI overlay for meetings and interviews.',
+      'Get Unviewable for Windows — a stealth AI overlay for meetings and interviews. One-time payment, lifetime license.',
     url: '/downloads',
   },
 };
@@ -63,11 +64,13 @@ export default function DownloadsPage() {
             for <em>Windows</em>
           </>
         }
-        sub="Free download. No subscription, no telemetry, no traces. Requires Windows 10 version 2004 or later."
+        sub={`One-time payment of ${formatPriceDisclosure()}. Lifetime license, no subscription, no telemetry, no traces. Requires Windows 10 version 2004 or later.`}
         primary={{
-          // Login-gated dispatcher (src/app/download/route.ts). The page is
-          // public for indexing; the file itself requires a signed-in user.
-          label: 'Download for Windows',
+          // Login-gated purchase/download page (src/app/download/page.tsx).
+          // This marketing page stays public for indexing; the installer itself
+          // is served only by /api/download/[platform] after an entitlement
+          // check, so no asset URL appears anywhere in this bundle.
+          label: 'Get Unviewable',
           href: '/download',
           variant: 'primary',
           trailing: (
@@ -97,6 +100,24 @@ export default function DownloadsPage() {
           Current version{' '}
           <span className="cta-version">v{SITE_META.softwareVersion}</span>
         </p>
+      </section>
+
+      <section className="downloads-pricing" aria-label="Pricing">
+        <p className="eyebrow">Pricing</p>
+        <h2>
+          One payment, <em>yours for good</em>
+        </h2>
+        <div className="surface">
+          <p>
+            <strong>{formatPriceDisclosure()}</strong> — a single payment for a
+            lifetime license to the current Windows feature set. There is no
+            subscription and no recurring charge.
+          </p>
+          <p>
+            Paid in INR through Razorpay (UPI, cards, netbanking, wallets).
+            Payments are currently accepted from India only.
+          </p>
+        </div>
       </section>
     </SiteShell>
   );

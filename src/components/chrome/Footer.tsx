@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { SITE_META } from '@/components/constants/site-meta';
 
-import { NAV_LINKS } from './nav-links';
+import { LEGAL_LINKS, NAV_LINKS } from './nav-links';
 
 /**
  * Site footer.
@@ -67,6 +67,17 @@ export function Footer() {
           </a>
         </div>
       </div>
+
+      {/* Policy links. Separate row from the secondary nav so they read as
+          legal boilerplate rather than product navigation, while staying
+          reachable from every page (required for Razorpay activation review). */}
+      <nav className="footer-legal" aria-label="Legal">
+        {LEGAL_LINKS.map(({ label, href }) => (
+          <Link key={href} className="footer-link" href={href}>
+            {label}
+          </Link>
+        ))}
+      </nav>
 
       <p className="footer-copy">© {year} Unviewable</p>
     </footer>

@@ -29,6 +29,15 @@ import { NextResponse } from 'next/server';
 //   key_decrypt_failed       500  /api/ai/*: unknown master-key version or auth-tag failure
 //   upstream_unavailable     502  /api/ai/*: upstream >60s or transport failure
 //   removal_failed           500  /api/keys DELETE could not remove the row
+//
+// razorpay pay-to-download additions:
+//   payment_not_configured   503  Razorpay env vars absent — checkout disabled
+//   already_purchased        409  /api/payments/*: user already has the license
+//   order_create_failed      502  Razorpay Orders API rejected or timed out
+//   invalid_signature        400  webhook/checkout HMAC did not verify
+//   payment_required         402  /api/download/*: no download entitlement
+//   release_not_found        404  /api/download|releases: no published build
+//   download_unavailable     503  entitled, but the signed URL could not be minted
 // -----------------------------------------------------------------------------
 
 export type ErrorCode =
@@ -52,7 +61,14 @@ export type ErrorCode =
   | 'premium_required'
   | 'key_decrypt_failed'
   | 'upstream_unavailable'
-  | 'removal_failed';
+  | 'removal_failed'
+  | 'payment_not_configured'
+  | 'already_purchased'
+  | 'order_create_failed'
+  | 'invalid_signature'
+  | 'payment_required'
+  | 'release_not_found'
+  | 'download_unavailable';
 
 export function jsonError(
   status: number,
@@ -93,6 +109,16 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   key_decrypt_failed: 'The stored key could not be processed.',
   upstream_unavailable: 'The AI provider did not respond in time.',
   removal_failed: 'The key could not be removed. Please try again.',
+  payment_not_configured:
+    'Payments are temporarily unavailable. Please try again later.',
+  already_purchased: 'You already own this. Head to the download page.',
+  order_create_failed:
+    'We could not start the payment. No money has left your account — please try again.',
+  invalid_signature: 'Payment verification failed.',
+  payment_required: 'Purchase required to download.',
+  release_not_found: 'No release is published for this platform yet.',
+  download_unavailable:
+    'Your download link could not be generated. Please try again in a moment.',
 };
 
 export function extractBearer(req: Request): string | null {

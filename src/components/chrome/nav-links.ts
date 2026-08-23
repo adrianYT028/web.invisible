@@ -21,3 +21,22 @@ export const NAV_LINKS = [
 ] as const;
 
 export type NavLink = (typeof NAV_LINKS)[number];
+
+/**
+ * Policy links, rendered only in the footer — deliberately kept out of
+ * NAV_LINKS so they do not appear in the header or mobile menu.
+ *
+ * These must be reachable from every page: Razorpay's activation review looks
+ * for About, Contact, Terms, Privacy, and Refund policies on the website, and
+ * a reviewer who cannot find them from the homepage footer may reject the
+ * application. They are also registered as public paths in `src/proxy.ts`.
+ */
+export const LEGAL_LINKS = [
+  { label: 'About', href: '/about' },
+  { label: 'Contact', href: '/contact' },
+  { label: 'Terms', href: '/terms' },
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'Refunds', href: '/refund' },
+] as const;
+
+export type LegalLink = (typeof LEGAL_LINKS)[number];

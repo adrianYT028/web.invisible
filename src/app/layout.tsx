@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google';
 import { ThemeScript } from '@/components/theme/theme-script';
 import { SITE_META } from '@/components/constants/site-meta';
+import { DOWNLOAD_LICENSE_PRICE } from '@/lib/payments/pricing';
 import './globals.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.unviewable.online';
@@ -134,7 +135,15 @@ export default function RootLayout({
       softwareVersion: SITE_META.softwareVersion,
       description: 'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
       url: siteUrl,
-      downloadUrl: 'https://github.com/adrianYT028/AIMeetingAssistant-Releases/releases/download/2.0.1/Unviewable_Setup_2.1.0.exe',
+      // Points at the PUBLIC downloads page, never at the asset.
+      //
+      // This field previously held the raw GitHub Releases URL for the
+      // installer. Because this JSON-LD block renders in <head> on EVERY page,
+      // that URL was served to every anonymous visitor and indexed by search
+      // engines — a complete bypass of the login gate and now of the paywall.
+      // The binary is private (Supabase Storage) and only reachable via
+      // /api/download/[platform] after an entitlement check.
+      downloadUrl: `${siteUrl}/downloads`,
       aggregateRating: {
         '@type': 'AggregateRating',
         ratingValue: SITE_META.ratingValue,
@@ -142,8 +151,19 @@ export default function RootLayout({
       },
       offers: {
         '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
+        // Advertised, GST-EXCLUSIVE price. `valueAddedTaxIncluded: false`
+        // states that tax is added on top, so the structured data matches the
+        // ₹99 + 18% GST = ₹116.82 disclosure on /download.
+        price: (DOWNLOAD_LICENSE_PRICE.baseAmountPaise / 100).toFixed(2),
+        priceCurrency: DOWNLOAD_LICENSE_PRICE.currency,
+        valueAddedTaxIncluded: false,
+        availability: 'https://schema.org/InStock',
+        url: `${siteUrl}/download`,
+        // India-only launch: Razorpay international is not enabled.
+        eligibleRegion: {
+          '@type': 'Country',
+          name: 'IN',
+        },
       },
     }
   ];
@@ -158,8 +178,11 @@ export default function RootLayout({
         <ThemeScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://github.com" />
-        <link rel="dns-prefetch" href="https://drive.google.com" />
+        {/* Razorpay Checkout is loaded on demand by /download; preconnecting
+            shaves the handshake off the first click. The old github.com and
+            drive.google.com hints were removed along with the public installer
+            URL — they advertised where the asset used to live. */}
+        <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

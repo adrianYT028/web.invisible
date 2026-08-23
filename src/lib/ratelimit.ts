@@ -114,6 +114,29 @@ export async function rateLimitKeySubmitByUser(
   return kvFixedWindow(`rl:keys:user:${userId}`, 10, 60);
 }
 
+// 10/min per user for POST /api/payments/razorpay/order. Each call hits the
+// Razorpay Orders API and writes a `payments` row, so an unthrottled loop would
+// both burn our API quota and litter the ledger with abandoned orders.
+export async function rateLimitOrderByUser(
+  userId: string
+): Promise<RateLimitResult> {
+  return kvFixedWindow(`rl:order:user:${userId}`, 10, 60);
+}
+
+// 30/hour per user for GET /api/download/[platform].
+//
+// This is anti-redistribution, not anti-abuse-of-us: signed URLs expire in
+// minutes, so the way to share a paid installer is to script fresh URL
+// generation and re-host them. 30/hour leaves plenty of room for genuine
+// retries, resumed downloads, and a second machine, while making a
+// download-farm noticeably slow. Paired with `download_events`, a user who
+// sustains this cap is exactly who to investigate.
+export async function rateLimitDownloadByUser(
+  userId: string
+): Promise<RateLimitResult> {
+  return kvFixedWindow(`rl:download:user:${userId}`, 30, 3600);
+}
+
 export function getRequestIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
