@@ -18,6 +18,10 @@ import {
   type AiEndpoint,
   type EndpointCapConfig,
 } from '@/lib/ai/models';
+import {
+  applyPromptPolicy,
+  PROMPT_POLICY_VERSION,
+} from '@/lib/ai/prompt-policy';
 import { extractBearer, jsonError, logSafe } from '@/lib/http';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -145,6 +149,38 @@ export async function handleAiProxy(
     ) {
       (payload as Record<string, unknown>).reasoning_effort = 'none';
     }
+
+    // Apply the server-side prompt policy (src/lib/ai/prompt-policy.ts).
+    //
+    // The desktop client's prompts are compiled into the binary, so prompt
+    // quality cannot be fixed by shipping config — it needs a new installer,
+    // and every existing install stays broken until the user updates.
+    // Rewriting the payload here fixes all installed copies on their next
+    // request, the same reason the model rewrite above exists.
+    //
+    // This addresses three specific pieces of user feedback:
+    //   - code output littered with comments (client prompts never mentioned
+    //     comments),
+    //   - answers that aren't the optimal solution first time (never mentioned
+    //     efficiency, edge cases, or hidden tests; chat ran at temperature
+    //     0.7),
+    //   - unclear MCQ formatting (chat said nothing; vision demanded an
+    //     explanation and never asked for a bold option).
+    //
+    // Vision is the important case: it sends NO system message at all, so its
+    // answers previously ignored every formatting rule.
+    if (isJsonPayload) {
+      const promptPolicy = applyPromptPolicy(options.endpoint, payload);
+      if (promptPolicy.applied) {
+        logSafe('ai_proxy_prompt_policy_applied', {
+          endpoint: options.endpoint,
+          action: promptPolicy.action,
+          temperature_clamped: promptPolicy.temperatureClamped,
+          policy_version: PROMPT_POLICY_VERSION,
+        });
+      }
+    }
+
     model = effectiveModel ?? null;
     const premium = model != null && isPremiumModel(model);
 
