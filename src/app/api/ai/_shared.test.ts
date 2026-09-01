@@ -684,7 +684,13 @@ describe('handleAiProxy — decommissioned model remap', () => {
     expect(mocks.state.usageInserts[0].model).toBe('qwen/qwen3.6-27b');
   });
 
-  it("forwards the chat id 'llama-3.3-70b-versatile' unchanged (non-reasoning, clean/fast — no remap today)", async () => {
+  it("remaps the retired chat id 'llama-3.3-70b-versatile' to the current chat model", async () => {
+    // This test previously asserted the OPPOSITE — that the id forwarded
+    // unchanged — which encoded the assumption that the model was still live.
+    // Groq retired it for free/developer tiers with a 2026-08-16 shutdown, and
+    // because the id is baked into every installed desktop config.ini, an
+    // unmapped id means those installs get a 404 on every question. The remap is
+    // the only fix that reaches already-shipped clients.
     resetState();
     mocks.state.keyRow = keyRow();
     let forwardedModel: unknown;
@@ -700,8 +706,34 @@ describe('handleAiProxy — decommissioned model remap', () => {
 
     expect(res.status).toBe(200);
     expect(mocks.forwardToGroq).toHaveBeenCalledTimes(1);
-    expect(forwardedModel).toBe('llama-3.3-70b-versatile');
-    expect(mocks.state.usageInserts[0].model).toBe('llama-3.3-70b-versatile');
+    expect(forwardedModel).toBe('openai/gpt-oss-120b');
+    // The usage row records the effective (remapped) model, not what was sent.
+    expect(mocks.state.usageInserts[0].model).toBe('openai/gpt-oss-120b');
+  });
+
+  it('uses include_reasoning for GPT-OSS, NOT reasoning_effort', async () => {
+    // The parameter is model-specific and the wrong one is a 400, not a no-op:
+    // `reasoning_effort` accepts 'none' only on Qwen, while GPT-OSS accepts only
+    // low/medium/high and instead honours `include_reasoning: false`. Reusing
+    // the Qwen path for the chat migration would have sent an invalid value on
+    // every request.
+    resetState();
+    mocks.state.keyRow = keyRow();
+    let forwardedPayload: Record<string, unknown> | undefined;
+    mocks.state.forwardImpl = async (...args: unknown[]) => {
+      forwardedPayload = args[1] as Record<string, unknown>;
+      return { status: 200, body: enc('{}'), usage: null };
+    };
+
+    const res = await handleAiProxy(
+      aiReq('chat', { model: 'llama-3.3-70b-versatile' }),
+      { endpoint: 'chat' }
+    );
+
+    expect(res.status).toBe(200);
+    expect(forwardedPayload?.model).toBe('openai/gpt-oss-120b');
+    expect(forwardedPayload?.include_reasoning).toBe(false);
+    expect(forwardedPayload?.reasoning_effort).toBeUndefined();
   });
 
   it("suppresses reasoning for the qwen3 vision model (reasoning_effort: 'none')", async () => {

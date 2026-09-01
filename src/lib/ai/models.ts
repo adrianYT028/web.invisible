@@ -60,30 +60,73 @@ const DEPRECATED_VISION_MODELS = new Set<string>([
 ]);
 
 /**
- * Chat model ids to remap on the fly. Intentionally EMPTY right now:
- * `llama-3.3-70b-versatile` (the desktop default) is non-reasoning and returns
- * clean, fast answers, so it passes through unchanged. It IS scheduled to shut
- * down 2026-08-16 — before then we must migrate it to a NON-reasoning
- * replacement (a reasoning model like gpt-oss/qwen emits visible "thinking"
- * text, which regressed answer quality when tried). Add the replacement here
- * once chosen and tested.
+ * Chat model ids Groq has retired, remapped on the fly to `CURRENT_CHAT_MODEL`.
+ *
+ * ACTIVATED 2026-08-25. This set was empty until now, and the earlier note here
+ * said `llama-3.3-70b-versatile` "IS scheduled to shut down 2026-08-16 — before
+ * then we must migrate it". That date passed with the set still empty, which
+ * means every installed desktop app — the model id is baked into its
+ * `config.ini` and cannot be updated remotely — was sending a retired model id
+ * upstream and getting a 404 back.
+ *
+ * Groq retired `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` for free and
+ * developer tiers and directs new traffic to the GPT-OSS models. `qwen3-32b` was
+ * announced in the same wave. Remapping a model that turns out to still be live
+ * is harmless (it forwards a newer model); leaving a retired one unmapped is an
+ * outage for paying users, so the set errs toward remapping.
  */
-const DEPRECATED_CHAT_MODELS = new Set<string>([]);
+const DEPRECATED_CHAT_MODELS = new Set<string>([
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'qwen3-32b',
+]);
 
 /**
- * Reasoning-capable models whose "thinking" must be suppressed so the app shows
- * only the final answer (and responds faster). Groq disables reasoning when the
- * request carries `reasoning_effort: "none"` (Qwen). `qwen/qwen3.6-27b` is the
- * only Groq vision model today and reasons by default, so every vision request
- * needs this.
+ * How to stop a model emitting its reasoning, per model family.
+ *
+ * This is NOT one parameter for all models, and getting it wrong is a 400 rather
+ * than a no-op. Per Groq's reasoning documentation:
+ *
+ *   - `reasoning_effort` accepts `none`/`default` ONLY on Qwen 3.6 27B. On
+ *     GPT-OSS it accepts only `low`/`medium`/`high` — so sending
+ *     `reasoning_effort: "none"` to GPT-OSS is an invalid value, not a way to
+ *     turn thinking off.
+ *   - `reasoning_format` is NOT supported by GPT-OSS 20B/120B at all.
+ *   - GPT-OSS instead honours `include_reasoning: false`.
+ *   - `include_reasoning` and `reasoning_format` are mutually exclusive.
+ *
+ * GPT-OSS also puts reasoning in a separate `message.reasoning` field rather
+ * than inside `content`, so it does not corrupt the answer text the way a raw
+ * `<think>` block would. Setting `include_reasoning: false` drops it entirely,
+ * which saves the tokens and the latency.
  */
-const REASONING_MODELS = new Set<string>([
-  'qwen/qwen3.6-27b',
-]);
+export type ReasoningSuppression =
+  | { param: 'reasoning_effort'; value: 'none' }
+  | { param: 'include_reasoning'; value: false };
+
+/** Model id → the parameter that disables its reasoning output. */
+const REASONING_SUPPRESSION: Record<string, ReasoningSuppression> = {
+  // The only Groq vision model, and it reasons by default.
+  'qwen/qwen3.6-27b': { param: 'reasoning_effort', value: 'none' },
+  // The chat replacement. GPT-OSS rejects `reasoning_effort: "none"`.
+  'openai/gpt-oss-120b': { param: 'include_reasoning', value: false },
+  'openai/gpt-oss-20b': { param: 'include_reasoning', value: false },
+};
+
+/**
+ * The parameter that disables this model's reasoning, or `null` when the model
+ * does not reason (or needs no suppression).
+ */
+export function getReasoningSuppression(
+  model: string | null | undefined
+): ReasoningSuppression | null {
+  if (typeof model !== 'string') return null;
+  return REASONING_SUPPRESSION[model] ?? null;
+}
 
 /** True when the model reasons by default and its reasoning should be disabled. */
 export function needsReasoningSuppression(model: string | null | undefined): boolean {
-  return typeof model === 'string' && REASONING_MODELS.has(model);
+  return getReasoningSuppression(model) !== null;
 }
 
 /**
@@ -109,7 +152,22 @@ export function resolveModel(
   return requested;
 }
 
-/** Kept for the future chat migration; not applied while DEPRECATED_CHAT_MODELS is empty. */
+/**
+ * The chat model retired ids are remapped to. ACTIVE as of 2026-08-25 — see
+ * `DEPRECATED_CHAT_MODELS`.
+ *
+ * GPT-OSS 120B is a reasoning model, which was the stated reason for not
+ * migrating earlier. That concern is handled by `REASONING_SUPPRESSION`:
+ * GPT-OSS returns reasoning in a separate `message.reasoning` field rather than
+ * inside `content`, and `include_reasoning: false` removes it altogether, so the
+ * desktop app receives only the final answer.
+ *
+ * One caveat worth knowing when tuning prompts: Groq's guidance for reasoning
+ * models is to put instructions in the USER message rather than a system prompt.
+ * `src/lib/ai/prompt-policy.ts` currently injects a system message, which is
+ * likely still fine but is worth A/B-ing against a user-message variant if
+ * answer quality looks off after this migration.
+ */
 export const CURRENT_CHAT_MODEL = 'openai/gpt-oss-120b';
 
 /** The feature_limits cap columns (verified against 007_feature_limits.sql). */

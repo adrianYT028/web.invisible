@@ -12,8 +12,8 @@ import { env } from '@/lib/env';
 import { forwardToGroq, type GroqUsage } from '@/lib/groq/client';
 import {
   getEndpointCapConfig,
+  getReasoningSuppression,
   isPremiumModel,
-  needsReasoningSuppression,
   resolveModel,
   type AiEndpoint,
   type EndpointCapConfig,
@@ -138,16 +138,23 @@ export async function handleAiProxy(
       // model, not the dead one the client sent.
       (payload as Record<string, unknown>).model = effectiveModel;
     }
-    // Suppress "thinking" for reasoning-capable models (e.g. the qwen3 vision
-    // model) so the app receives only the final answer and responds faster.
-    // Groq disables reasoning when the request carries reasoning_effort:"none".
-    // Only set it when the client hasn't already specified one.
+    // Suppress "thinking" for reasoning-capable models so the app receives only
+    // the final answer and responds faster.
+    //
+    // The PARAMETER IS MODEL-SPECIFIC and sending the wrong one is a 400, not a
+    // no-op: `reasoning_effort: "none"` works on Qwen but is an invalid value on
+    // GPT-OSS (which accepts only low/medium/high and instead honours
+    // `include_reasoning: false`). `getReasoningSuppression` owns that mapping —
+    // see src/lib/ai/models.ts. Only set it when the client hasn't already
+    // specified the same parameter.
+    const reasoningSuppression = getReasoningSuppression(effectiveModel);
     if (
-      needsReasoningSuppression(effectiveModel) &&
+      reasoningSuppression &&
       isJsonPayload &&
-      (payload as Record<string, unknown>).reasoning_effort === undefined
+      (payload as Record<string, unknown>)[reasoningSuppression.param] === undefined
     ) {
-      (payload as Record<string, unknown>).reasoning_effort = 'none';
+      (payload as Record<string, unknown>)[reasoningSuppression.param] =
+        reasoningSuppression.value;
     }
 
     // Apply the server-side prompt policy (src/lib/ai/prompt-policy.ts).
