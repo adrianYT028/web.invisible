@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs';
+
 import fc from 'fast-check';
 import {
   afterAll,
@@ -56,6 +58,8 @@ const mocks = vi.hoisted(() => {
     selectFails: false,
     /** Number of times upsert() was invoked (for "never written" assertions). */
     upsertCalls: 0,
+    /** Options passed to the most recent upsert(), for conflict-target assertions. */
+    lastUpsertOpts: undefined as unknown,
   };
 
   const authState: { user: { id: string } | null } = {
@@ -76,10 +80,14 @@ const mocks = vi.hoisted(() => {
     _row: Row | null = null;
     _filterVal: unknown = undefined;
 
-    upsert(row: Row, _opts?: unknown): this {
+    upsert(row: Row, opts?: unknown): this {
       store.upsertCalls += 1;
       this._op = 'upsert';
       this._row = row;
+      // Recorded so a test can assert the ON CONFLICT target. The in-memory store
+      // cannot enforce a unique constraint, so without this the harness silently
+      // accepts a target Postgres would reject.
+      store.lastUpsertOpts = opts;
       return this;
     }
     delete(): this {
@@ -536,5 +544,59 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     expect(res.status).toBe(200);
     expect(Object.keys(json).sort()).toEqual(['has_key', 'last_four']);
     expect(json).toEqual({ has_key: false, last_four: null });
+  });
+});
+
+// =============================================================================
+// Regression: the ON CONFLICT target must match a real unique constraint
+// =============================================================================
+//
+// INCIDENT. Migration 016 moved this table's primary key from `user_id` to
+// `(user_id, provider)` while the deployed route still upserted with
+// `onConflict: 'user_id'`. Postgres then rejected every save with SQLSTATE 42P10
+// — "there is no unique or exclusion constraint matching the ON CONFLICT
+// specification" — which the route mapped to a 500 and the UI showed as
+// "Something went wrong". No user could save or replace a key.
+//
+// The existing suite did not catch it: the in-memory fake stores rows in a Map
+// and cannot enforce a unique constraint, so any conflict target "works" there.
+// These tests close that gap by checking the target against the migration that
+// declares the key, rather than against the fake.
+describe('POST /api/keys — ON CONFLICT target', () => {
+  it('conflicts on the composite key, not on user_id alone', async () => {
+    resetState();
+    const res = await POST(postReq('gsk_conflicttarget01'));
+    expect(res.status).toBe(200);
+    expect(mocks.store.lastUpsertOpts).toEqual({
+      onConflict: 'user_id,provider',
+    });
+  });
+
+  it('sends `provider`, which is half of that target', async () => {
+    resetState();
+    await POST(postReq('gsk_conflicttarget02'));
+    // Relying on the column default is not enough: PostgREST needs the value to
+    // identify the row being replaced.
+    const row = [...mocks.store.rows.values()][0] as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(row.provider).toBe('groq');
+  });
+
+  it('matches the primary key migration 016 actually declares', async () => {
+    // Reads the migration, so a future change to the key definition fails here
+    // instead of in production. This is the assertion the incident needed.
+    const sql = readFileSync(
+      'supabase/migrations/016_multi_provider_keys.sql',
+      'utf8'
+    );
+    expect(sql).toContain('add primary key (user_id, provider)');
+
+    resetState();
+    await POST(postReq('gsk_conflicttarget03'));
+    const opts = mocks.store.lastUpsertOpts as { onConflict?: string };
+    const columns = (opts.onConflict ?? '').split(',').map((c) => c.trim());
+    expect(columns).toEqual(['user_id', 'provider']);
   });
 });

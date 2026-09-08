@@ -74,13 +74,28 @@ export async function POST(request: Request) {
   const { error } = await admin.from(TABLE).upsert(
     {
       user_id: user.id,
+      // Migration 016 added this column so a user can hold one key per provider.
+      // Sent explicitly rather than relying on the column default, because it is
+      // half of the conflict target below and PostgREST needs its value to
+      // identify the row being replaced.
+      provider: 'groq',
       key_ciphertext: env.ciphertext,
       key_nonce: env.iv,
       key_auth_tag: env.authTag,
       key_version: env.version,
       last_four,
     },
-    { onConflict: 'user_id' }
+    // MUST match a unique constraint. Migration 016 moved the primary key from
+    // `user_id` to `(user_id, provider)`, at which point `onConflict: 'user_id'`
+    // stopped resolving and every save failed with SQLSTATE 42P10 ("no unique or
+    // exclusion constraint matching the ON CONFLICT specification") — surfaced to
+    // the user as a 500 and an unhelpful "Something went wrong".
+    //
+    // The lesson worth keeping: a migration that changes a UNIQUE/PK definition
+    // is not backwards compatible on its own, because the deployed code's
+    // conflict targets are part of the contract. Ship the code first, or the
+    // migration last.
+    { onConflict: 'user_id,provider' }
   );
 
   if (error) {
