@@ -50,13 +50,36 @@ export type AiEndpoint = 'chat' | 'transcribe' | 'vision';
 // Source: https://console.groq.com/docs/vision (current supported model).
 // -----------------------------------------------------------------------------
 
-/** The current Groq vision model (per Groq's vision docs). */
-export const CURRENT_VISION_MODEL = 'qwen/qwen3.6-27b';
+/**
+ * The current Groq vision model.
+ *
+ * WAS `qwen/qwen3.6-27b`, WHICH GROQ RETIRED. Measured against the live API with
+ * the production key:
+ *
+ *   qwen/qwen3.6-27b                            404  model_not_found
+ *   meta-llama/llama-4-scout-17b-16e-instruct   404  model_not_found
+ *   meta-llama/llama-4-maverick-17b-128e-...    404  model_not_found
+ *   qwen/qwen3.8-27b                            200  described the image
+ *
+ * That 404 was the whole of the "vision analysis failed" report. Chat and
+ * transcription were unaffected because they resolve different models, which is
+ * why it looked like a vision-specific code fault rather than a dead model id.
+ *
+ * THE REMAP TARGET IS THE THING THAT ROTS. Retired ids were already remapped
+ * below, but onto this constant after it had itself gone stale, so the safety net
+ * pointed at a 404. When Groq moves the vision model again this is the one line to
+ * change, and it must be checked against `GET /v1/models` rather than assumed.
+ */
+export const CURRENT_VISION_MODEL = 'qwen/qwen3.8-27b';
 
 /** Vision model ids Groq has decommissioned (return 404), remapped on the fly. */
 const DEPRECATED_VISION_MODELS = new Set<string>([
   'meta-llama/llama-4-scout-17b-16e-instruct',
   'meta-llama/llama-4-maverick-17b-128e-instruct',
+  // The FORMER value of `CURRENT_VISION_MODEL`. A build that pinned it while it was
+  // current would otherwise pass it through and 404. Retiring a remap target means
+  // adding it here.
+  'qwen/qwen3.6-27b',
 ]);
 
 /**
@@ -107,6 +130,11 @@ export type ReasoningSuppression =
 /** Model id → the parameter that disables its reasoning output. */
 const REASONING_SUPPRESSION: Record<string, ReasoningSuppression> = {
   // The only Groq vision model, and it reasons by default.
+  // Keyed on the model id, so this MUST move with `CURRENT_VISION_MODEL`. A stale
+  // key does not error, it silently stops suppressing, and vision answers arrive
+  // slower and padded with thinking tokens.
+  'qwen/qwen3.8-27b': { param: 'reasoning_effort', value: 'none' },
+  // Retired, kept so a request arriving before the remap is still suppressed.
   'qwen/qwen3.6-27b': { param: 'reasoning_effort', value: 'none' },
   // The chat replacement. GPT-OSS rejects `reasoning_effort: "none"`.
   'openai/gpt-oss-120b': { param: 'include_reasoning', value: false },
