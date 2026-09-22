@@ -53,56 +53,109 @@ const SETUP_STEPS: GuideStepData[] = [
     ),
   },
   {
-    id: 'groq-api',
-    title: 'Get your Groq API key',
+    id: 'api-key',
+    title: 'AI access — usually nothing to do',
     image: {
       src: '/guides/step-groq-api.png',
-      alt: 'Groq Console API key generation page',
+      alt: 'Saving an AI provider key on the account page',
       ...SCREENSHOT_DIMS,
     },
     body: (
       <>
+        {/* REWRITTEN. This step used to instruct EVERY user to sign up at
+            console.groq.com and create their own key. That is wrong twice over
+            now: full access is platform-funded (PLATFORM_FUNDED_PLANS in
+            src/lib/ai/plans.ts), so a paying customer needs no key at all — and
+            telling them to go and get one is asking them to do work they already
+            paid to avoid. */}
         <p>
-          Sign up for free at{' '}
-          <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer">
-            console.groq.com
-          </a>
-          . Navigate to <strong>API Keys</strong> in the sidebar and click{' '}
-          <strong>Create API Key</strong>. Copy the key — you&apos;ll need it in the next step.
+          <strong>If you have full access, skip this step.</strong> Inference is
+          included in your purchase — the platform supplies the AI, and there is
+          no key to create and no usage to pay for.
         </p>
         <p>
-          Groq&apos;s free tier includes generous rate limits, more than enough for live
-          meetings and interviews.
+          <strong>Otherwise this step is required</strong>, or the app will start
+          with AI disabled. Go to{' '}
+          <a href="/account">
+            <strong>Account → API keys</strong>
+          </a>
+          , pick a provider, paste the key, and save. Do it once: every device
+          linked to your account picks it up, so a reinstall or a second machine
+          needs no setup.
+        </p>
+        <p>Three providers are supported:</p>
+        <ul>
+          <li>
+            <a
+              href="https://console.groq.com/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Groq
+            </a>{' '}
+            — free tier, fastest responses. The usual choice.
+          </li>
+          <li>
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OpenAI
+            </a>{' '}
+            — paid, billed by them.
+          </li>
+          <li>
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OpenRouter
+            </a>{' '}
+            — one key, many models.
+          </li>
+        </ul>
+        <p>
+          Keys are encrypted before they are stored and are never shown back to
+          you in full. You can save more than one and choose which to prefer.
         </p>
       </>
     ),
   },
   {
-    id: 'configure',
-    title: 'Configure the app',
+    id: 'sign-in',
+    title: 'Sign the app in to your account',
     image: {
       src: '/guides/step-configure.png',
-      alt: 'Configuring the API key via terminal or config.ini',
+      alt: 'Signing the desktop app in to your Unviewable account',
       ...SCREENSHOT_DIMS,
     },
     body: (
       <>
-        <p>Set your API key using either method.</p>
+        {/* REWRITTEN. The old step told users to run
+            `setx GROQ_API_KEY "..."` or paste a key into config.ini. Neither is
+            how the app has worked since the account key vault shipped: the app
+            authenticates to your account and the key is read from the vault
+            server-side. Publishing the old instructions leaves people editing a
+            file that no longer decides anything. */}
         <p>
-          <strong>Option A — Environment variable.</strong> Open a terminal and run:
+          Launch the app and choose <strong>Sign in</strong>. Your browser opens,
+          you approve the device, and the app is linked to your account.
         </p>
         <p>
-          <code>setx GROQ_API_KEY &quot;your-api-key-here&quot;</code>
+          This is what connects the app to whatever you set up in the previous
+          step — your saved provider key, or platform-funded access if you have
+          full access. The app never holds the key itself: it asks your account,
+          and the key is read and decrypted server-side on each request.
         </p>
         <p>
-          <strong>Option B — Config file.</strong> Open <code>config.ini</code> in the app
-          folder and paste your key into the <code>api_key</code> field under{' '}
-          <code>[General]</code>.
+          So there is nothing to paste into a config file and no environment
+          variable to set. <code>config.ini</code> still exists for preferences —
+          AI model, font size, panel opacity, hotkeys — but it no longer holds
+          credentials.
         </p>
-        <p>
-          You can also tweak the AI model, font size, panel opacity, and other behaviour from
-          the same <code>config.ini</code>.
-        </p>
+
       </>
     ),
   },
@@ -147,7 +200,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: React.ReactNode }> = [
   {
     question: "The app says 'No API key — AI features disabled'",
     answer:
-      "Your Groq API key isn't being detected. Make sure you either set the GROQ_API_KEY environment variable (restart your terminal after running setx) or pasted the key into config.ini under the [General] section.",
+      "The app is not signed in, or your account has no key saved and no full access. Choose Sign in inside the app to link it to your account. If you do not have full access, save a Groq, OpenAI or OpenRouter key on your account page - the app reads it from there. Setting a GROQ_API_KEY environment variable or editing config.ini no longer has any effect; credentials moved to the account key vault.",
   },
   {
     question: 'Windows SmartScreen is blocking the download',
@@ -188,14 +241,14 @@ const HOWTO_STEPS = [
     text: 'Head to the Unviewable downloads page and grab the latest Windows release. Extract the portable folder to a permanent location such as Documents or Desktop.',
   },
   {
-    id: 'groq-api',
+    id: 'api-key',
     name: 'Get your Groq API key',
-    text: 'Sign up for free at console.groq.com, open the API Keys section, and create an API key. Copy it for the next step.',
+    text: 'Full access includes AI inference, so there is nothing to do. Otherwise create a key at Groq, OpenAI or OpenRouter and save it on your Unviewable account page.',
   },
   {
     id: 'configure',
     name: 'Configure the app',
-    text: 'Set your Groq API key either as the GROQ_API_KEY environment variable (setx GROQ_API_KEY) or by pasting it into config.ini under the [General] section.',
+    text: 'Launch the app and choose Sign in. Approve the device in the browser to link it to your account. No API key or config file editing is required.',
   },
   {
     id: 'launch',

@@ -14,7 +14,21 @@
  */
 
 export const NAV_LINKS = [
-  { label: 'Downloads', href: '/downloads' },
+  // Pricing leads because it is the only page that says what the product IS now
+  // that there is more than one thing to buy. The four services themselves are
+  // deliberately NOT linked here yet: they are still ungated, and /resume spends
+  // the platform's own AI key on every visitor, so promoting them before the
+  // access checks land would raise cost on traffic that is not paying.
+  { label: 'Pricing', href: '/pricing' },
+  // `/services` is the signed-in home for the four services. It redirects
+  // anonymous visitors to login and back, which is the same contract /account
+  // already has, so it is safe to show in a static nav.
+  { label: 'Services', href: '/services' },
+  // `Downloads` removed from the nav. The desktop app is one of four services
+  // now, not the product, and `/pricing` plus `/services` both route to it — a
+  // top-level nav slot for one service's installer over-weighted it. The
+  // `/downloads` route itself still exists and still works for anyone holding a
+  // link or a bookmark; only the nav entry is gone.
   { label: 'Setup Guide', href: '/guides/setup' },
   { label: 'Usage Guide', href: '/guides/usage' },
   { label: 'Feedback', href: '/feedback' },

@@ -264,7 +264,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: React.ReactNode }> = [
   {
     question: "The AI isn't responding",
     answer:
-      "Check that your Groq API key is set correctly. Open config.ini and verify the api_key field, or run 'echo %GROQ_API_KEY%' in a terminal to check the environment variable. Also make sure you have internet access — the AI needs to reach Groq's servers.",
+      "Check the app is signed in to your account - that is where AI access comes from now, not config.ini or an environment variable. If you do not have full access, confirm a provider key is saved on your account page. Then check your internet connection, since answers are generated server-side.",
   },
   {
     question: "It's capturing my audio but not the meeting audio",

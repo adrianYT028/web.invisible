@@ -110,7 +110,17 @@
   --space-20: 5rem;
   --space-24: 6rem;
   --space-32: 8rem;
-  --section-y: clamp(4rem, 8vw, 8rem);
+  /* Vertical padding inside every section, top AND bottom — so the visible gap
+     between two sections is TWICE this value. That doubling is what made the page
+     feel empty: at the old clamp(4rem, 8vw, 8rem) a wide viewport hit the 8rem
+     ceiling, putting 256px of nothing between one section's last line and the
+     next section's heading.
+     
+     Reduced to a 5rem ceiling, so the worst case is 160px between sections. The
+     4rem floor also came down: on a phone the old minimum stacked 128px of gap
+     into a viewport only ~700px tall, which pushed the next section entirely out
+     of view and made the page read as a series of empty screens. */
+  --section-y: clamp(2.75rem, 5vw, 5rem);
 
   /* Motion */
   --duration-fast: 100ms;   /* theme color transition (Req 4.3) */
@@ -1556,6 +1566,23 @@ body {
 @media (min-width: 1024px) {
   .features-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Four services do not divide by three.
+   `.features-grid` widens to three columns at desktop, which suits the feature
+   list but renders four cards as 3 + 1: the fourth sits alone on a second row,
+   sized by its own short body copy, next to two columns of nothing. Holding two
+   columns keeps it 2x2 — every row full, and the cards in each row stretch to a
+   common height because that is grid's default. Declared after the 3-column rule
+   so it wins at every width without needing !important. */
+.services-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -4617,6 +4644,78 @@ h2 em,
   justify-items: start;
 }
 
+/* --------------------------------------------------------------------------
+   Account — the per-provider AI key list.
+   --------------------------------------------------------------------------
+   One row per provider (Groq, OpenAI, OpenRouter). These rules replace inline
+   styles the component previously carried: a `className` that matches no rule
+   is invisible to TypeScript and to the build, so the layout silently depended
+   on `style={{ ... }}` while reading as though it were themed. Token-only, like
+   the rest of this file, so both themes follow automatically.
+   -------------------------------------------------------------------------- */
+.account-keys {
+  display: grid;
+  gap: 0;
+  width: 100%;
+}
+
+.account-key-row {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+/* The first row sits directly under the section's own lede, which already
+   provides the separation. */
+.account-key-row:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.account-key-row .account-actions {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* The API-key text input.
+   -------------------------------------------------------------------------- */
+/* `.account-input` has been in the markup since the key vault shipped and has
+   never had a rule, so the field rendered with browser defaults on a themed
+   surface. Mirrors `.auth-input` so the two text fields in the product look like
+   the same control. */
+.account-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-button);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.account-input::placeholder {
+  color: var(--text-dim);
+}
+
+.account-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.account-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 
 
 /* ==========================================================================
@@ -4857,4 +4956,2168 @@ h2 em,
 
 .footer-legal .footer-link {
   font-size: var(--fs-caption);
+}
+
+/* ---------------------------------------------------------------------------
+   Resume analyser (/resume)
+
+   Speaks the incumbent language rather than inventing one. The evidence for what
+   that language IS comes from the system's own later overrides:
+
+     .step-card was originally a bordered card and was overridden to
+     `background: transparent; border: 0; border-top: 1px solid var(--border);
+     border-radius: 0; box-shadow: none`, and .steps-connector was forced to
+     `display: none !important`.
+
+   So the system deliberately moved AWAY from cards and decoration toward
+   transparent surfaces separated by hairline rules — consistent with the note on
+   the radius tokens: "the visual voice is 'technical document', not 'friendly
+   app'". Labels are mono / caption / dim / uppercase (.feature-row-index,
+   .feature-row-fact), never filled badges.
+
+   Consequences for this surface, all of them corrections to a first pass that
+   fought the system:
+     - No card per row. Rows are separated by 1px rules (the .feature-rows
+       pattern). A bordered box inside .surface is a nested card.
+     - Status is carried by a mono micro-label tinted with --signal / --error,
+       not by a 2-3px coloured left border on every item. The system uses a
+       coloured left border in exactly one place (.callout); the first pass used
+       it in six, which is the single loudest reason the page read as generic.
+     - Numerals are tabular. Scores are measurement, so mono and tabular-nums
+       are earned here — unlike decorative text.
+     - Only --signal and --error carry hue. --accent is near-white/near-black and
+       is reserved for the primary control, so nothing else may take it.
+   --------------------------------------------------------------------------- */
+
+.resume-flow {
+  display: grid;
+  gap: var(--space-12);
+  margin-top: var(--space-8);
+  max-width: 60rem;
+}
+
+/* --- shared micro-label (matches .feature-row-fact) ---------------------- */
+
+.resume-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.resume-allowance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.resume-allowance strong {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* --- step ---------------------------------------------------------------- */
+/* Transparent, hairline-ruled, no card — the .step-card override's shape. */
+
+.resume-step {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.resume-step-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+/* Mono index in the .feature-row-index treatment. The sequence carries real
+   information here — step 2 is unreachable until step 1 succeeds — so the
+   numbering is load-bearing rather than ornamental. */
+.resume-step-index {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.resume-step-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.resume-lede {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+/* --- file drop ----------------------------------------------------------- */
+/*
+   A bare <input type="file"> is the most conspicuously unfinished element a page
+   can ship: it renders an OS button that belongs to no design system. The input
+   is therefore visually hidden but kept in the accessibility tree and focusable,
+   with the label as the styled control.
+*/
+
+.resume-drop {
+  display: grid;
+  place-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.resume-drop:hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+
+/* The focus ring lives on the label because the input itself is invisible.
+   `:focus-visible` on the input drives it via :has(). */
+.resume-drop:has(.resume-drop-input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.resume-drop[data-busy='true'],
+.resume-drop[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.resume-drop[data-disabled='true']:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-overlay);
+}
+
+/* Visually hidden, still focusable and still announced. */
+.resume-drop-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.resume-drop-action {
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.resume-drop-hint {
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+.resume-filename {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+/* --- verdict ------------------------------------------------------------- */
+
+.resume-verdict {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.resume-verdict-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3) var(--space-4);
+}
+
+/* Status colour lands on the LABEL, not on a border down the side of a box. */
+.resume-verdict-state {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.resume-verdict[data-scannable='true'] .resume-verdict-state {
+  color: var(--signal);
+}
+
+.resume-verdict[data-scannable='false'] .resume-verdict-state {
+  color: var(--error);
+}
+
+.resume-verdict-score {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.resume-warnings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.resume-warnings li {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  max-width: var(--measure);
+}
+
+/* Diagnostics are a spec sheet: label above value, mono label, tabular value. */
+.resume-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-6) var(--space-8);
+  margin: 0;
+  padding-top: var(--space-2);
+}
+
+.resume-diagnostics dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.resume-diagnostics dd {
+  margin: var(--space-2) 0 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.resume-diagnostics dd[data-flag='bad'] {
+  color: var(--error);
+}
+
+/* --- job description ---------------------------------------------------- */
+
+.resume-jd {
+  width: 100%;
+  min-height: 13rem;
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  line-height: var(--lh-body);
+  color: var(--text);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  resize: vertical;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.resume-jd::placeholder {
+  color: var(--text-dim);
+}
+
+.resume-jd:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.resume-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.resume-counter {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.resume-note {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.resume-error {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--error);
+}
+
+/* --- score -------------------------------------------------------------- */
+
+.resume-result {
+  display: grid;
+  gap: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.resume-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/*
+   --fs-h1, not --fs-display. Display tops out near 88px and would make the score
+   larger than the page's own h1, which inverts the hierarchy of the page for a
+   value that is a result rather than a title.
+*/
+.resume-score-value {
+  font-size: var(--fs-h1);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.resume-score-max {
+  font-size: var(--fs-h3);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.resume-score-honesty {
+  margin: 0;
+  max-width: var(--measure);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+}
+
+/* --- sub-scores: a spec table, not a dashboard -------------------------- */
+
+.resume-subscores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.resume-subscore {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-subscore-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.resume-subscore-label {
+  color: var(--text);
+  font-size: var(--fs-body);
+}
+
+.resume-subscore-weight {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.resume-subscore-value {
+  min-width: 2.5ch;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* 2px, square, no shadow. Proportion is genuinely useful here; a rounded,
+   shadowed bar would be dashboard decoration in a document-voiced system. */
+.resume-bar {
+  display: block;
+  height: 2px;
+  margin-top: var(--space-3);
+  background: var(--border);
+}
+
+.resume-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+}
+
+.resume-subscore-blurb {
+  margin: var(--space-2) 0 0;
+  max-width: var(--measure);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+/* --- report sections ---------------------------------------------------- */
+
+.resume-block {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.resume-block h3 {
+  margin: 0;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+/* Hairline-ruled rows, the .feature-rows pattern. No box, no left border. */
+.resume-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.resume-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) 1fr;
+  gap: var(--space-2) var(--space-6);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-row-state {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding-top: 0.15em;
+}
+
+.resume-row[data-state='met'] .resume-row-state {
+  color: var(--signal);
+}
+.resume-row[data-state='partial'] .resume-row-state {
+  color: var(--text-muted);
+}
+.resume-row[data-state='missing'] .resume-row-state,
+.resume-row[data-state='blocking'] .resume-row-state {
+  color: var(--error);
+}
+.resume-row[data-state='likely'] .resume-row-state {
+  color: var(--text-muted);
+}
+
+.resume-row-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.resume-row-text {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.resume-row-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.resume-row-note,
+.resume-row-evidence {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.resume-row-evidence {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- keywords ----------------------------------------------------------- */
+
+.resume-keywords {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.resume-keywords li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+}
+
+.resume-keyword-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+@media (min-width: 640px) {
+  .resume-allowance {
+    gap: var(--space-2) var(--space-8);
+  }
+}
+
+@media (max-width: 560px) {
+  /* The status label moves above the text rather than squeezing a two-column
+     grid into a phone width. */
+  .resume-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .resume-subscore-head {
+    grid-template-columns: 1fr auto;
+  }
+  .resume-subscore-weight {
+    display: none;
+  }
+}
+
+/* --- rewrite diffs ------------------------------------------------------- */
+/*
+   Before/after pairs. Same hairline-row language as .resume-rows: the two lines
+   are distinguished by a mono tag and text weight, not by red/green fills.
+   Diff colouring would import a code-review metaphor this system does not use,
+   and --signal / --error are reserved for status rather than for decoration.
+*/
+
+.resume-diffs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.resume-diff {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.resume-diff-line {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  max-width: var(--measure);
+}
+
+.resume-diff-line[data-side='before'] {
+  color: var(--text-dim);
+}
+
+.resume-diff-line[data-side='after'] {
+  color: var(--text);
+}
+
+.resume-diff-tag {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding-top: 0.2em;
+}
+
+.resume-diff-why {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+  /* Aligns the reason under the text column rather than the tag column. */
+  padding-left: calc(4.5rem + var(--space-4));
+}
+
+@media (max-width: 560px) {
+  .resume-diff-line {
+    grid-template-columns: 1fr;
+  }
+  .resume-diff-why {
+    padding-left: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Job tracker (/jobs)
+
+   Reuses .resume-rows for the list container so the tracker and the scan report
+   read as one product. A tracked job needs three columns rather than two —
+   identity, score, controls — so it declares its own row rule instead of
+   .resume-row, and collapses to a stacked layout on a phone.
+   --------------------------------------------------------------------------- */
+
+.resume-job {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Stage shows as a left edge on the ROW only, at 1px — the one place the system
+   uses a coloured edge, matched to .callout's weight rather than exceeding it. */
+.resume-job[data-state='offer'] {
+  box-shadow: inset 1px 0 0 0 var(--signal);
+  padding-left: var(--space-4);
+}
+.resume-job[data-state='rejected'],
+.resume-job[data-state='archived'] {
+  opacity: 0.55;
+}
+
+.resume-job-main {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.resume-job-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.resume-job-title a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--border-strong);
+  transition: text-decoration-color var(--duration-base) var(--ease-out);
+}
+
+.resume-job-title a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.resume-job-meta {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+}
+
+.resume-job-score {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.resume-job-score-value {
+  font-size: var(--fs-body-lg);
+  color: var(--text);
+}
+
+.resume-job-score-max {
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+.resume-job-score-none {
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.resume-job-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* --- select ------------------------------------------------------------- */
+/*
+   A native <select> renders an OS control belonging to no design system, so it
+   gets the same treatment as the other inputs: appearance stripped, then an
+   authored chevron drawn by the WRAPPER element.
+   The chevron lives on `.resume-select-wrap::after` rather than on the select
+   itself because a background-image cannot inherit currentColor, and positioning
+   it against the row instead of the control needed a magic-number offset that
+   broke as soon as a neighbouring label changed length. A wrapper is one element
+   and no arithmetic.
+*/
+
+.resume-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.resume-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  width: 9px;
+  height: 6px;
+  transform: translateY(-50%);
+  background: var(--text-dim);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  pointer-events: none;
+}
+
+.resume-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--text);
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.resume-select:hover {
+  border-color: var(--border-strong);
+}
+
+.resume-select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.resume-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resume-filter-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* --- remove ------------------------------------------------------------- */
+
+.resume-job-remove {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition:
+    color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.resume-job-remove:hover {
+  color: var(--error);
+  border-color: var(--border);
+}
+
+.resume-job-remove:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .resume-job {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+  /* Controls drop to their own full-width line rather than crushing the title. */
+  .resume-job-controls {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+}
+
+/* --- filter toggles (/jobs/discover) ------------------------------------- */
+/*
+   A native checkbox is another OS control with no design-system presence, so it
+   gets `accent-color` rather than being rebuilt: that themes the check itself
+   while keeping the real control, its keyboard behaviour, and its semantics.
+   Rebuilding a checkbox from divs is how focus and screen-reader support get lost.
+*/
+
+.resume-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.resume-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.resume-toggle input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.resume-toggle:hover {
+  color: var(--text);
+}
+
+/* --- prepared application cards (/prep) ---------------------------------- */
+
+.resume-prep {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-prep-mail {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-strong);
+}
+
+.resume-prep-subject {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/*
+   <pre> for the body because the draft's line breaks are content — a paragraph
+   break before "Best," is part of the email, and collapsing whitespace would
+   render it as one block the user then has to reformat by hand.
+   `font: inherit` keeps it in the body face: this is prose, not code, so the
+   default monospace would be a costume.
+*/
+.resume-prep-body {
+  margin: 0;
+  max-width: var(--measure);
+  font: inherit;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* ==========================================================================
+   Service cube — the hero demo, on four faces
+   ==========================================================================
+
+   Reuses every `.sim-*` rule above for the window chrome. Only the 3D shell,
+   the face bodies, and the controls are new, so the four services look like
+   one product rather than four screenshots.
+
+   THE FIXED WIDTH IS LOAD-BEARING. `translateZ` cannot take a percentage, so
+   each face is pushed out by `--cube-z`, which MUST stay half of the shell's
+   width. Change one and the other follows, or the faces stop meeting at the
+   corners. That is also why the shell has a max-width instead of filling its
+   column.
+   ========================================================================== */
+
+.cube-shell {
+  --cube-w: 520px;
+  --cube-z: 260px;      /* exactly half of --cube-w */
+  --cube-h: 400px;
+
+  /* Resting angle: STRAIGHT ON, both zero.
+     A tilt was tried and rejected — it reads as a cube at rest but throws the
+     window chrome and the body text onto a skew, which looked wrong next to the
+     flat, square typography of the rest of the page. Face-on means the 3D reads
+     during the turn instead of at rest, which is the trade that was chosen.
+     These stay as variables because re-tilting is then a one-number change:
+     a yaw of about -19deg with a 7deg pitch is the version that was tried. */
+  --cube-yaw: 0deg;
+  --cube-pitch: 0deg;
+
+  width: 100%;
+  /* The tilt swings a corner wider than the face itself, so the shell reserves
+     room for it. Without this the leading edge clips against the hero column at
+     the midpoint of every turn. */
+  max-width: calc(var(--cube-w) + 4rem);
+  padding-inline: 2rem;
+  margin-inline: auto;
+  /* Vanishing point. Lower = stronger foreshortening. 1600px against a 520px
+     object was nearly orthographic, which flattened the turn; this is roughly 2x
+     the cube width, which is enough convergence to see depth without the leading
+     edge ballooning past the shell as it swings. */
+  perspective: 1050px;
+}
+
+.cube {
+  position: relative;
+  width: 100%;
+  height: var(--cube-h);
+  transform-style: preserve-3d;
+  /* 700ms against the 2s face interval: the cube is turning about a third of the
+     time and settled for the rest. At the original 900ms it was in motion for
+     nearly half of every cycle, which read as constant movement rather than as a
+     turn between two resting states. */
+  transition: transform 700ms cubic-bezier(0.65, 0.02, 0.2, 1);
+}
+
+/* Each step is a further -90deg of spin.
+   
+   THE LEADING `translateZ` IS NOT DECORATION — IT FIXES THE SIZE.
+   Faces are pushed out by half the depth so they form a box, which puts the front
+   face 260px nearer the camera than the element itself. Perspective then magnifies
+   it by 1050 / (1050 - 260) = 1.33x, so a 520x400 face painted at 690x533. It
+   overflowed the box downward and covered the dot controls underneath, and made
+   the whole cube read far larger and louder than intended.
+   
+   Moving the cube back by the same half-depth puts the front face at z = 0, where
+   the scale factor is exactly 1. The box is unchanged; only its distance is.
+   Applied leftmost so it shifts the already-rotated cube along the PARENT's z
+   axis rather than its own. */
+.cube[data-face='0'] {
+  transform: translateZ(calc(var(--cube-z) * -1)) rotateX(var(--cube-pitch))
+    rotateY(calc(var(--cube-yaw) + 0deg));
+}
+.cube[data-face='1'] {
+  transform: translateZ(calc(var(--cube-z) * -1)) rotateX(var(--cube-pitch))
+    rotateY(calc(var(--cube-yaw) - 90deg));
+}
+.cube[data-face='2'] {
+  transform: translateZ(calc(var(--cube-z) * -1)) rotateX(var(--cube-pitch))
+    rotateY(calc(var(--cube-yaw) - 180deg));
+}
+.cube[data-face='3'] {
+  transform: translateZ(calc(var(--cube-z) * -1)) rotateX(var(--cube-pitch))
+    rotateY(calc(var(--cube-yaw) - 270deg));
+}
+
+.cube-face {
+  position: absolute;
+  inset: 0;
+  /* Without this the rear faces show through mirrored as the cube turns. */
+  backface-visibility: hidden;
+  display: flex;
+}
+
+.cube-face:nth-child(1) { transform: rotateY(0deg)   translateZ(var(--cube-z)); }
+.cube-face:nth-child(2) { transform: rotateY(90deg)  translateZ(var(--cube-z)); }
+.cube-face:nth-child(3) { transform: rotateY(180deg) translateZ(var(--cube-z)); }
+.cube-face:nth-child(4) { transform: rotateY(270deg) translateZ(var(--cube-z)); }
+
+/* The window fills its face. */
+.cube-face .sim-window {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* No `background` override here: `.sim-window` already sets
+     `var(--surface-raised)`, which is opaque, so the opposite face cannot show
+     through. Restating it only created a second place to keep in sync. */
+}
+
+/* Shading — the other half of reading as a solid.
+   A browser applies no lighting to a 3D transform, so an angled face is rendered
+   at full brightness and looks like a second flat card sitting beside the first.
+   Dimming the faces that are turned away is what makes the visible side edge read
+   as the shadowed side of one object.
+
+   Keyed on `aria-hidden`, which the component already maintains for assistive
+   tech, so the visual state cannot drift from the semantic one. */
+.cube-face[aria-hidden='true'] .sim-window {
+  filter: brightness(0.5) saturate(0.8);
+}
+
+/* The front face is held slightly UNDER full brightness on purpose.
+   At `filter: none` the cube was the brightest object on the page — a
+   `--surface-raised` panel is white in the light theme — and it pulled focus off
+   the headline, which is the LCP element and the thing that should read first. 0.94
+   is enough to keep it legible and clearly the active face while letting the hero
+   copy stay dominant. */
+.cube-face[aria-hidden='false'] .sim-window {
+  filter: brightness(0.94);
+  /* Lifts the front face off the ones behind it. Kept shallow — a heavy shadow on
+     an already-bright panel reads as a floating card rather than a solid face. */
+  box-shadow: 0 18px 44px -24px rgb(0 0 0 / 0.4);
+}
+
+/* The transition matches the cube's own, so a face darkens as it swings away
+   rather than snapping at the end of the turn. */
+.cube-face .sim-window {
+  transition: filter 900ms cubic-bezier(0.65, 0.02, 0.2, 1);
+}
+
+.cube-face .sim-stage {
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- face bodies -------------------------------------------------------- */
+
+.cube-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  height: 100%;
+  justify-content: center;
+}
+
+.cube-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.cube-score-value {
+  font-family: var(--font-mono);
+  font-size: 2.75rem;
+  line-height: 1;
+  color: var(--color-accent);
+  letter-spacing: var(--tracking-tight);
+}
+
+.cube-score-max {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--color-text-dim);
+}
+
+.cube-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cube-bars li {
+  display: grid;
+  /* label | track | number. The track flexes; the other two are content-sized so
+     the numbers stay in a column and can be compared down the list. */
+  grid-template-columns: 1fr 84px 2.5ch;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+}
+
+.cube-bar-label {
+  color: var(--color-text-muted);
+}
+
+.cube-bar {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.cube-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: inherit;
+}
+
+.cube-bar-value {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  text-align: right;
+}
+
+.cube-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cube-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cube-rows li:last-child {
+  border-bottom: 0;
+}
+
+.cube-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cube-row-main strong {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--color-text);
+  /* Titles are real job titles and some are long; truncate rather than reflow
+     the row and change the cube's height mid-rotation. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cube-row-sub {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+.cube-fit {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.cube-mail-to,
+.cube-mail-subject,
+.cube-mail-body {
+  margin: 0;
+}
+
+.cube-mail-to {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--color-text-muted);
+}
+
+.cube-mail-label {
+  color: var(--color-text-dim);
+  margin-right: var(--space-2);
+}
+
+.cube-mail-subject {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.cube-mail-body {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--color-text-muted);
+}
+
+.cube-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+/* --- controls ----------------------------------------------------------- */
+
+.cube-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  /* Own stacking context, above the cube. The controls were previously painted
+     under the front face, which perspective had scaled past the bottom of the box
+     — so they were unreachable as well as invisible. The `translateZ` fix removes
+     that overlap, and this makes a future depth change unable to reintroduce it. */
+  position: relative;
+  z-index: 1;
+}
+
+.cube-dot {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.cube-dot:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-dim);
+}
+
+.cube-dot[aria-selected='true'] {
+  color: var(--color-accent-fg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.cube-dot:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* --- smaller screens ---------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .cube-shell {
+    --cube-w: 340px;
+    --cube-z: 170px;    /* half of --cube-w, as above */
+    --cube-h: 430px;
+  }
+}
+
+/* --- reduced motion ----------------------------------------------------- */
+
+/* No rotation AND no perspective. A cube swinging through a 1600px vanishing
+   point is precisely the motion this setting exists to suppress, so the faces
+   collapse to a flat stack and only the selected one is painted. The dot
+   controls still switch faces, so nothing becomes unreachable. */
+@media (prefers-reduced-motion: reduce) {
+  .cube-shell {
+    perspective: none;
+  }
+
+  .cube,
+  .cube[data-face='0'],
+  .cube[data-face='1'],
+  .cube[data-face='2'],
+  .cube[data-face='3'] {
+    transform: none;
+    transform-style: flat;
+    transition: none;
+  }
+
+  .cube-face {
+    transform: none !important;
+    /* `aria-hidden` already marks the inactive faces; this hides them visually
+       without needing a second piece of state in the component. */
+    visibility: hidden;
+  }
+
+  .cube-face[aria-hidden='false'] {
+    visibility: visible;
+  }
+}
+
+/* ==========================================================================
+   Reading rhythm for the account-shell pages (/services, /pricing, /account)
+   ==========================================================================
+
+   THE PROBLEM THESE RULES FIX
+
+   `.account-inner` is a grid with a single uniform `gap`, so every child sat the
+   same distance from every other child: a heading was exactly as far from the
+   paragraph it introduces as from the paragraph that ended the previous idea.
+   With nothing grouped, the eye gets no help deciding what belongs to what, and
+   the page reads as one undifferentiated column no matter how good the copy is.
+
+   The fix is proximity, not decoration: pull a heading TIGHT to the content it
+   owns, and open a generous interval ABOVE it to separate it from what came
+   before. Asymmetric space is what makes a hierarchy legible without adding a
+   single border or box.
+   ========================================================================== */
+
+/* Tighter base rhythm. The generous intervals are now applied deliberately below
+   rather than being the default for every gap on the page. */
+.account-inner {
+  gap: var(--space-3);
+}
+
+/* More space above a heading than below it.
+   `:not(:first-child)` keeps the leading heading flush to the top of the section
+   — a page should not open with an orphaned gap. */
+.account-inner > h2:not(:first-child),
+.account-inner > h3:not(:first-child),
+.account-block > h2:not(:first-child),
+.account-block > h3:not(:first-child) {
+  margin-top: var(--space-5);
+  margin-bottom: 0;
+}
+
+/* A heading's own paragraph hugs it. `+` only, so this binds the FIRST paragraph
+   after a heading and leaves later paragraphs on the normal rhythm. */
+.account-inner > h1 + .lede,
+.account-inner > h2 + .lede,
+.account-inner > h3 + .lede,
+.account-block > h2 + .lede,
+.account-block > h3 + .lede {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+/* Section division.
+   `.account-block` previously stacked `margin-top` AND `padding-top` at the same
+   value on top of the grid gap, so the interval was three additive values that had
+   to be kept in sync by hand. One value above the rule, a smaller one below it:
+   the divider then belongs to the block it introduces instead of floating midway
+   between two blocks. */
+.account-block {
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+}
+
+/* The action that closes a block is part of that block, so it stays close to the
+   copy it follows rather than drifting toward the next divider. */
+.account-block > .account-actions {
+  margin-top: var(--space-2);
+}
+
+/* Measure. The craft floor puts comfortable body measure at 65–75ch; `.account-inner`
+   is capped at 720px, which is roughly 80ch at this body size and runs long enough
+   that the eye loses the line on return. Constraining the PROSE rather than the
+   container keeps cards and controls full width while the text reads at a
+   comfortable length. */
+.account-inner > .lede,
+.account-block > .lede {
+  max-width: 68ch;
+}
+
+/* ==========================================================================
+   /services — a product surface, not a document
+   ==========================================================================
+
+   The page was four hairline-separated blocks of heading + paragraph + ghost
+   button. Everything carried the same weight, so nothing led; the three locked
+   services each offered their own identical "Unlock" button, which asked the same
+   question three times for a product that is bought once.
+
+   Cards for separation, one accent for the primary action, and a single buy
+   banner. The locked cards recede so the ones you can actually use lead.
+   ========================================================================== */
+
+.svc-grid {
+  list-style: none;
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 700px) {
+  .svc-grid {
+    /* Two columns, because there are four services. Three would orphan the
+       fourth onto a row of its own — the same 3+1 problem the home page had. */
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.svc-card {
+  display: flex;
+  flex-direction: column;
+  /* Tight to its own content, then one generous gap before the action, which is
+     pinned to the bottom by the auto margin below. Uniform gaps here would put
+     the CTA the same distance from the body copy as the title is, and the card
+     would read as three unrelated lines again. */
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+/* Locked services are present but clearly secondary: they are what you are being
+   sold, not what you can do right now. Recessed surface and no border emphasis,
+   so the eye lands on the available cards and then on the buy banner. */
+.svc-card[data-open='no'] {
+  background: transparent;
+  border-style: dashed;
+}
+
+.svc-card-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.svc-card[data-open='no'] .svc-card-title {
+  color: var(--text-muted);
+}
+
+.svc-card-body {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: 46ch;
+}
+
+.svc-card-meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+/* `margin-top: auto` is what equalises the cards: every action sits on the card's
+   baseline regardless of how long the body copy above it runs, so a row of cards
+   has its buttons in a line instead of stepped. */
+.svc-card-cta {
+  margin-top: auto;
+  align-self: start;
+}
+
+.svc-card-locked {
+  margin: auto 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* --- the one buy action ------------------------------------------------- */
+
+.svc-upsell {
+  margin-top: var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-radius: var(--radius-card);
+  /* Filled, so it separates from the cards above by surface rather than by
+     another hairline. This is the only element on the page that should stop the
+     eye after the cards. */
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-strong);
+}
+
+.svc-upsell-copy {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: 44ch;
+}
+
+.svc-upsell-copy strong {
+  color: var(--text);
+}
+
+.svc-upsell-cta {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   /pricing — the offer leads
+   ==========================================================================
+
+   The old reading order was: small price, feature list, a bordered GST table,
+   buy button last. A tax breakdown was the most prominent thing on a page whose
+   only job is to sell, and the button sat below the fold. Price at display size,
+   action directly under it, breakdown demoted to the bottom where a buyer looks
+   only after deciding.
+   ========================================================================== */
+
+.price-hero {
+  margin-top: var(--space-5);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.price-figure {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* Display scale. The price was set at heading size next to a heading, so it read
+   as another line of the document rather than as the number the page is about. */
+.price-figure-amount {
+  font-size: clamp(3rem, 6vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-weight: 600;
+}
+
+.price-figure-unit {
+  font-size: var(--fs-body-lg);
+  color: var(--text-muted);
+}
+
+/* One generous interval between the disclosure and the action, so the button is
+   not just another item in an evenly spaced stack. */
+.price-hero-cta,
+.price-hero > form,
+.price-hero > .checkout {
+  margin-top: var(--space-3);
+}
+
+/* --- what is included --------------------------------------------------- */
+
+.price-includes {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 700px) {
+  .price-includes {
+    /* Four services, two columns — never 3+1. */
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.price-includes li {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.price-includes-title {
+  margin: 0;
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.price-includes-body {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   /pricing — offer card
+   ==========================================================================
+   Patterned on a supplied reference: centred header, then one card holding name,
+   price, blurb, a full-width action, a rule, and a checked inclusion list.
+   One card because there is one product; see the note in the page component.
+   ========================================================================== */
+
+/* The account shell constrains to 720px and left-aligns. This page is a single
+   centred offer, so it opts out of both. */
+.account-section:has(.plan) .account-inner {
+  max-width: 940px;
+}
+
+.pricing-head {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-7);
+}
+
+.pricing-title {
+  margin: 0;
+  font-size: clamp(2.25rem, 4vw + 0.5rem, 3.5rem);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.pricing-sub {
+  margin: 0;
+  /* Narrow measure so the sub breaks into two balanced lines under the title,
+     as in the reference, instead of one long ruler-width line. */
+  max-width: 52ch;
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  text-wrap: balance;
+}
+
+/* --- the card ----------------------------------------------------------- */
+
+.plan {
+  max-width: 460px;
+  margin-inline: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface-raised);
+  overflow: hidden;
+  /* One elevation source. A border plus a wide soft shadow is the ghost-card
+     look; the shadow here is tight and offset so it reads as a real edge. */
+  box-shadow: 0 12px 32px -18px rgb(0 0 0 / 0.45);
+}
+
+.plan-top {
+  padding: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-name {
+  margin: 0;
+  font-size: var(--fs-body-lg);
+  font-weight: 600;
+}
+
+.plan-price {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.plan-price-amount {
+  font-size: clamp(2.75rem, 5vw, 3.5rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.plan-price-unit {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+}
+
+.plan-blurb {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.plan-owned {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.plan-owned strong {
+  color: var(--text);
+}
+
+/* Full-width pill with the arrow badge riding at its right end. Inverted against
+   the card so it is unmistakably the action. */
+.plan-cta,
+.plan-top .cta {
+  margin-top: var(--space-2);
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: var(--space-3) var(--space-6);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--text);
+  color: var(--bg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    filter var(--duration-base) var(--ease-out);
+}
+
+.plan-cta:hover,
+.plan-top .cta:hover {
+  /* Lifts rather than changing colour: the pill is already the maximum contrast
+     available on this surface, so there is nowhere brighter to go. */
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.plan-cta:focus-visible,
+.plan-top .cta:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.plan-cta-badge {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* --- inclusions --------------------------------------------------------- */
+
+.plan-bottom {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  /* The rule between action and detail, as in the reference. A recessed surface
+     below it separates the two halves without a second border. */
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-overlay) 55%, transparent);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.plan-included-label {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plan-included {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-included li {
+  display: grid;
+  /* Icon column fixed, text column flexible, so wrapped lines hang against the
+     text rather than sliding under the check. */
+  grid-template-columns: 18px 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.plan-included strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.plan-check {
+  /* Optical nudge: the check's circle centres on the cap height rather than the
+     line box, so it sits a hair low without this. */
+  margin-top: 2px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* --- tax ---------------------------------------------------------------- */
+
+.plan-tax {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+}
+
+.plan-tax > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--text-muted);
+}
+
+.plan-tax dt,
+.plan-tax dd {
+  margin: 0;
+}
+
+.plan-tax dd {
+  /* Tabular figures so the rupee amounts align on their decimal down the
+     column. Proportional digits make a money column look ragged. */
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-tax-total {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.plan-fineprint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   /services — alternating rows
+   ==========================================================================
+   Copy one side, a mock screen the other, sides swapping row to row. Replaces a
+   2x2 card grid that gave four services equal weight in a small box; a full-width
+   band per service has room for what each one actually does.
+   ========================================================================== */
+
+/* The account shell caps at 720px, which is a reading column, not a layout. These
+   rows need width for two real columns. `:has()` scopes it to this page without a
+   page-specific wrapper class. */
+.account-section:has(.svc-rows) .account-inner {
+  max-width: 1080px;
+}
+
+.svc-rows {
+  display: grid;
+  /* Generous separation between services, tight rhythm inside each. */
+  gap: var(--space-8);
+  margin-top: var(--space-7);
+}
+
+.svc-row {
+  display: grid;
+  gap: var(--space-5);
+  align-items: center;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .svc-row {
+    /* Copy slightly narrower than the visual: the text column holds a heading,
+       three short lines and a button, and giving it the larger share leaves it
+       looking sparse. */
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: var(--space-7);
+  }
+
+  /* The alternation. Placing both children explicitly rather than using
+     `direction: rtl` or `order` on one child keeps DOM order — and therefore
+     keyboard and screen-reader order — as copy-then-visual on every row, while
+     the visual sits left on even rows. */
+  .svc-row:nth-child(even) > .svc-row-copy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .svc-row:nth-child(even) > .svc-row-visual {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+.svc-row-copy {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+
+.svc-row-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw + 0.5rem, 2rem);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.svc-row-blurb {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  max-width: 48ch;
+}
+
+.svc-row-points {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.svc-row-points li {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+  /* A hairline per item, as in the reference's chevron lists. Bottom-only, so the
+     list reads as rows rather than as boxes. */
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.svc-row-points li:last-child {
+  border-bottom: 0;
+}
+
+.svc-chevron {
+  margin-top: 3px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.svc-row-meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+}
+
+.svc-row-cta {
+  margin-top: var(--space-2);
+}
+
+.svc-row-locked {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: var(--tracking-mono);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* --- the mock screen ---------------------------------------------------- */
+
+.svc-row-visual .sim-window {
+  /* Fixed height so all four rows present the same visual mass. Without it each
+     mock sizes to its own content and the rows step raggedly down the page. */
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.svc-row-visual .sim-stage {
+  flex: 1;
+  min-height: 0;
+}
+
+/* A locked service's visual is recessed: it is a preview of something you cannot
+   use yet, so it should not compete with the row above it that you can. */
+.svc-row[data-open='no'] .svc-row-visual .sim-window {
+  filter: brightness(0.72) saturate(0.85);
+}
+
+.svc-row[data-open='no'] .svc-row-title {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Wide variant of the account shell — and why it is a class, not :has()
+   ==========================================================================
+   `/services` and `/pricing` are layouts, not reading columns; `.account-inner`'s
+   720px cap squeezed two-column rows into roughly half the viewport, which is what
+   made the page feel cramped.
+
+   This was first written as `.account-section:has(.svc-rows) .account-inner`. That
+   rule was DROPPED during CSS compilation and never reached the browser — verified
+   by grepping the served stylesheet — so the page kept rendering at 720px while the
+   source said otherwise. An explicit modifier class cannot be optimised away.
+   ========================================================================== */
+
+.account-inner--wide {
+  max-width: 1120px;
+}
+
+/* --- breathing room ------------------------------------------------------
+   `--space-8` is 2rem. As the gap between four full-width service bands that is
+   far too tight — the rows nearly touched, so four distinct services read as one
+   dense block. Section-scale separation needs section-scale space. */
+
+.svc-rows {
+  gap: clamp(3.5rem, 6vw, 6.5rem);
+  margin-top: clamp(2.5rem, 4vw, 4rem);
+}
+
+.svc-row-copy {
+  /* The copy column was tighter than its own line-height, so heading, blurb, list
+     and button ran together as one grey mass. */
+  gap: var(--space-4);
+}
+
+.svc-row-points li {
+  padding-bottom: var(--space-3);
+}
+
+/* Bigger, so the mock is a visual and not a thumbnail. */
+.svc-row-visual .sim-window {
+  height: clamp(300px, 34vw, 400px);
+}
+
+@media (min-width: 900px) {
+  .svc-row {
+    /* Was 0.9fr / 1.1fr with a --space-7 gutter. Equal columns and a wider gutter
+       give the copy room to breathe and stop the two halves crowding each other at
+       the centre line. */
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(2.5rem, 5vw, 5rem);
+  }
+}
+
+/* --- the offer card gets the same treatment ------------------------------ */
+
+.pricing-head {
+  margin-bottom: clamp(2.5rem, 4vw, 4rem);
+}
+
+.plan {
+  /* 460px was sized against a 720px column. In a 1120px one it reads as a narrow
+     slip in a wide empty field. */
+  max-width: 520px;
+}
+
+.plan-top {
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  gap: var(--space-4);
+}
+
+.plan-bottom {
+  padding: clamp(1.5rem, 3vw, 2rem);
+  gap: var(--space-5);
+}
+
+/* ==========================================================================
+   Text entry — make a field look like a field
+   ==========================================================================
+   `.account-input` (the API-key field) and `.field-control` (the review textarea)
+   sat on `--surface-overlay` with a 1px `--border` and no focus treatment. Against
+   a raised card that is nearly the same value as the surface behind it, so the box
+   you are meant to type into read as a line of text rather than as an input, and
+   focus was invisible.
+   ========================================================================== */
+
+.account-input,
+.field-control {
+  /* Recessed rather than raised: an input is a well you type into, and going
+     DARKER than the surrounding card is what communicates that. `--surface-overlay`
+     is lighter than `--surface-raised` in the dark theme, so it was doing the
+     opposite. */
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  /* Inner shadow reinforces the recess. Small and soft — this is a depth cue, not
+     a decoration. */
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.22);
+}
+
+/* Placeholders were inheriting the body colour at full strength, which made an
+   empty field look filled. Dim, but still above the 4.5:1 floor for the theme's
+   muted tone. */
+.account-input::placeholder,
+.field-control::placeholder {
+  color: var(--text-dim);
+  opacity: 1; /* Firefox applies its own opacity to placeholders. */
+}
+
+/* Focus. There was none, so keyboard users had no idea where they were. The accent
+   ring plus a brightened border reads at a glance without shifting layout — the
+   ring is a box-shadow, not a border-width change, so nothing reflows. */
+.account-input:focus-visible,
+.field-control:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.18),
+    0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* A textarea is for prose, so it gets prose line-height and a comfortable minimum
+   height. At the default single-line height it invited one-sentence reviews. */
+.field-control {
+  line-height: var(--lh-body);
+}
+
+textarea.field-control {
+  min-height: 8.5rem;
+  /* Vertical only: horizontal resize breaks the form grid. */
+  resize: vertical;
+}
+
+/* Disabled state, which neither field had: without it a field locked during
+   submission still looks editable and invites typing that goes nowhere. */
+.account-input:disabled,
+.field-control:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
 }
