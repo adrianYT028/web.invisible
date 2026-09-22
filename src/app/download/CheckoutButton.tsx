@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { DOWNLOAD_LICENSE_PRODUCT } from '@/lib/payments/pricing';
+
 // -----------------------------------------------------------------------------
-// CheckoutButton — Razorpay Checkout for the one-time download license.
+// CheckoutButton — Razorpay Checkout for any product in the catalogue.
 //
 // Flow:
 //   1. POST /api/payments/razorpay/order  -> { order_id, key_id, amount_paise }
-//      The AMOUNT IS DECIDED SERVER-SIDE. Nothing about the price is sent from
-//      here, so a tampered client cannot ask for a cheaper order.
+//      The AMOUNT IS DECIDED SERVER-SIDE. This sends a product NAME and never a
+//      price, so a tampered client can choose WHAT to buy but not what it costs.
+//      An unrecognised name is a 400, not a fallback to the cheaper item.
 //   2. Open Razorpay Checkout with that order_id.
 //   3. On success, POST /api/payments/razorpay/verify with the returned triple
 //      for instant unlock, then router.refresh() so the server component
@@ -82,15 +85,32 @@ interface OrderResponse {
   key_id: string;
   amount_paise: number;
   currency: string;
+  product?: string;
+  product_label?: string;
   prefill_email: string | null;
 }
 
 export function CheckoutButton({
   label,
   priceDisclosure,
+  product = DOWNLOAD_LICENSE_PRODUCT,
+  description,
+  onPurchased,
 }: {
   label: string;
   priceDisclosure: string;
+  /**
+   * Which catalogue product to buy. Defaults to the desktop licence so the
+   * pre-existing download page keeps behaving exactly as it did.
+   */
+  product?: string;
+  /** Line shown inside the Razorpay modal. Falls back to the server's label. */
+  description?: string;
+  /**
+   * Called after a confirmed purchase, before the router refresh. Lets a page
+   * that is not re-rendered by entitlement state (a pricing page, say) react.
+   */
+  onPurchased?: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -120,6 +140,8 @@ export function CheckoutButton({
       const orderRes = await fetch('/api/payments/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // A product name only. The server looks up the price.
+        body: JSON.stringify({ product }),
       });
 
       if (orderRes.status === 409) {
@@ -154,7 +176,13 @@ export function CheckoutButton({
         amount: order.amount_paise,
         currency: order.currency,
         name: 'Unviewable',
-        description: 'Unviewable for Windows — lifetime download license',
+        // What the customer is buying, shown on the payment sheet. Taken from the
+        // server's catalogue rather than hardcoded, so a second product cannot end
+        // up charged under the first one's description.
+        description:
+          description ??
+          order.product_label ??
+          'Unviewable for Windows \u2014 lifetime download license',
         order_id: order.order_id,
         prefill: order.prefill_email ? { email: order.prefill_email } : undefined,
         theme: { color: '#0A0A0B' },
@@ -170,6 +198,7 @@ export function CheckoutButton({
               });
 
               if (verifyRes.ok) {
+                onPurchased?.();
                 // Server component re-reads the entitlement and swaps in the
                 // download panel.
                 router.refresh();
@@ -221,7 +250,7 @@ export function CheckoutButton({
       // Checkout is now an overlay; ondismiss/handler manage state from here.
       if (mounted.current) setBusy(false);
     }
-  }, [router]);
+  }, [router, product, description, onPurchased]);
 
   return (
     <div className="account-actions">

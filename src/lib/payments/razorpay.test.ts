@@ -50,7 +50,9 @@ function signCheckout(
 beforeEach(() => {
   // logSafe throws in non-production when a value looks like a secret; these
   // tests never log, but keep the env explicit.
-  process.env.NODE_ENV = 'test';
+  // `vi.stubEnv` rather than direct assignment: NODE_ENV is a read-only property
+  // on the modern @types/node definitions, and stubEnv is restored automatically.
+  vi.stubEnv('NODE_ENV', 'test');
 });
 
 afterEach(() => {

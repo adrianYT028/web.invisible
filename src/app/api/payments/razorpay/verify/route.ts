@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { jsonError, logSafe } from '@/lib/http';
 import { isRazorpayConfigured } from '@/lib/env';
 import { verifyCheckoutSignature } from '@/lib/payments/razorpay';
-import { grantDownloadAccess } from '@/lib/payments/entitlements';
+import { fulfilPayment } from '@/lib/payments/fulfilment';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,9 +19,9 @@ export const runtime = 'nodejs';
 //
 // THIS IS NOT THE AUTHORITY. The webhook is. A client can always fail to call
 // back (closed tab, dead network, blocked JS), so entitlement cannot depend on
-// this route existing. Both paths call the same idempotent
-// `grantDownloadAccess`, so whichever arrives first wins and the second is a
-// no-op.
+// this route existing. Both paths call the same idempotent `fulfilPayment`, so
+// whichever arrives first wins and the second is a no-op — and both derive WHAT
+// to grant from the stored `payments.product`, so they cannot diverge.
 //
 // ===== WHY THE OWNERSHIP CHECK MATTERS =====
 // A valid checkout signature proves *a* payment was made against *an* order. It
@@ -88,7 +88,10 @@ export async function POST(request: Request) {
   const admin = supabaseAdmin();
   const { data: row, error: lookupError } = await admin
     .from(PAYMENTS_TABLE)
-    .select('id, user_id, status, total_amount_paise')
+    // `product` decides what this payment grants. Taken from the STORED row,
+    // never from the request: the client proves a payment happened, it does not
+    // get to say what the payment was for.
+    .select('id, user_id, status, total_amount_paise, product')
     .eq('razorpay_order_id', orderId)
     .maybeSingle();
 
@@ -134,8 +137,12 @@ export async function POST(request: Request) {
     return jsonError(500, 'internal_error');
   }
 
-  const granted = await grantDownloadAccess(user.id, row.id as string);
-  if (!granted) {
+  const { ok, fulfilment } = await fulfilPayment({
+    userId: user.id,
+    product: row.product,
+    paymentRowId: row.id as string,
+  });
+  if (!ok) {
     // The webhook will retry the grant, so this is recoverable — but tell the
     // client to keep polling rather than claiming success.
     return jsonError(503, 'download_unavailable');
@@ -145,7 +152,18 @@ export async function POST(request: Request) {
     user_id: user.id,
     order_id: orderId,
     payment_id: paymentId,
+    fulfilment,
   });
 
-  return NextResponse.json({ ok: true, download_access: true });
+  return NextResponse.json({
+    ok: true,
+    fulfilment,
+    // Kept for the existing checkout client, which reads this field. Now that the
+    // single product grants the desktop licence as part of full access, a
+    // successful fulfilment always confers download access — but this is derived
+    // from `fulfilment` rather than hardcoded `true`, so adding a product that
+    // does NOT include the desktop app cannot silently keep reporting that it
+    // does.
+    download_access: fulfilment === 'full_access',
+  });
 }

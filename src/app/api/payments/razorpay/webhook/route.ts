@@ -11,11 +11,9 @@ import {
 import {
   DOWNLOAD_LICENSE_PRODUCT,
   derivePriceFromTotal,
+  findProduct,
 } from '@/lib/payments/pricing';
-import {
-  grantDownloadAccess,
-  revokeDownloadAccess,
-} from '@/lib/payments/entitlements';
+import { fulfilPayment, reversePayment } from '@/lib/payments/fulfilment';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -57,12 +55,14 @@ interface PaymentRow {
   status: string;
   total_amount_paise: number;
   gst_bps: number;
+  /** Decides what this payment grants. See src/lib/payments/fulfilment.ts. */
+  product: string | null;
 }
 
 async function findPaymentByOrderId(orderId: string): Promise<PaymentRow | null> {
   const { data, error } = await supabaseAdmin()
     .from(PAYMENTS_TABLE)
-    .select('id, user_id, status, total_amount_paise, gst_bps')
+    .select('id, user_id, status, total_amount_paise, gst_bps, product')
     .eq('razorpay_order_id', orderId)
     .maybeSingle();
 
@@ -80,8 +80,13 @@ async function findPaymentByOrderId(orderId: string): Promise<PaymentRow | null>
  * Grant the license for a captured payment.
  *
  * Idempotent at three layers: the UPDATE writes the same values on redelivery,
- * `grantDownloadAccess` upserts on the user_id primary key, and the partial
- * unique index on `razorpay_payment_id` makes a duplicate row impossible.
+ * the grant behind `fulfilPayment` converges (an upsert on the entitlements
+ * primary key, or a fixed-value UPDATE on the plan), and the partial unique index
+ * on `razorpay_payment_id` makes a duplicate row impossible.
+ *
+ * What is granted depends on `payments.product`, dispatched by
+ * src/lib/payments/fulfilment.ts rather than decided here, so this path and the
+ * client-driven /verify path cannot disagree about what a payment bought.
  */
 async function handlePaymentCaptured(
   payment: WebhookPaymentEntity
@@ -99,6 +104,13 @@ async function handlePaymentCaptured(
   const row = await findPaymentByOrderId(payment.orderId);
   const notesUserId = payment.notes?.user_id ?? null;
   const userId = row?.user_id ?? notesUserId;
+
+  // What the buyer paid for, when our ledger has no row for it. Validated
+  // against the catalogue rather than trusted verbatim: `notes` is echoed back by
+  // the provider, so an unrecognised value falls back to the licence — the
+  // cheaper unlock, and the only product that existed before notes carried one.
+  const recoveredProduct =
+    findProduct(payment.notes?.product)?.id ?? DOWNLOAD_LICENSE_PRODUCT;
 
   if (!userId) {
     // Neither our ledger nor the order notes identify a buyer. This should be
@@ -168,7 +180,11 @@ async function handlePaymentCaptured(
     const { error } = await admin.from(PAYMENTS_TABLE).insert({
       user_id: userId,
       provider: 'razorpay',
-      product: DOWNLOAD_LICENSE_PRODUCT,
+      // Recovered from the order notes, which the order route sets alongside
+      // user_id for exactly this path. Hardcoding the licence here would record
+      // — and then grant — the wrong product for a recovered bundle purchase,
+      // giving someone who paid ₹299 a ₹99 unlock.
+      product: recoveredProduct,
       razorpay_order_id: payment.orderId,
       razorpay_payment_id: payment.id,
       base_amount_paise: price.baseAmountPaise,
@@ -178,7 +194,11 @@ async function handlePaymentCaptured(
       currency: 'INR',
       status: 'paid',
       paid_at: nowIso,
-      notes: { recovered_by_webhook: 'true', user_id: userId },
+      notes: {
+        recovered_by_webhook: 'true',
+        user_id: userId,
+        product: recoveredProduct,
+      },
     });
 
     // A unique-violation here means a concurrent delivery already inserted it,
@@ -201,10 +221,15 @@ async function handlePaymentCaptured(
     });
   }
 
-  const granted = await grantDownloadAccess(userId, row?.id ?? null);
-  if (!granted) {
-    // The payment is recorded but the entitlement write failed. Retry: the
-    // customer has paid and currently cannot download.
+  const { ok, fulfilment } = await fulfilPayment({
+    userId,
+    product: row?.product ?? recoveredProduct,
+    paymentRowId: row?.id ?? null,
+  });
+  if (!ok) {
+    // The payment is recorded but the entitlement write failed, or the product is
+    // one this code does not know how to fulfil. Retry either way: the customer
+    // has paid and currently has nothing.
     return { status: 500, body: { code: 'internal_error' } };
   }
 
@@ -212,8 +237,9 @@ async function handlePaymentCaptured(
     payment_id: payment.id,
     order_id: payment.orderId,
     user_id: userId,
+    fulfilment,
   });
-  return { status: 200, body: { ok: true, granted: true } };
+  return { status: 200, body: { ok: true, granted: true, fulfilment } };
 }
 
 async function handlePaymentFailed(
@@ -259,7 +285,10 @@ async function handleRefundProcessed(
   // Refunds identify the payment, not the order.
   const { data, error: lookupError } = await admin
     .from(PAYMENTS_TABLE)
-    .select('id, user_id')
+    // `product` so the reversal undoes what was actually granted. Without it a
+    // refunded bundle would leave `profiles.plan` paid, because the only
+    // reversal this branch knew about was the download entitlement.
+    .select('id, user_id, product')
     .eq('razorpay_payment_id', payment.id)
     .maybeSingle();
 
@@ -290,19 +319,21 @@ async function handleRefundProcessed(
   }
 
   // Money returned, so access goes away. Re-purchasing clears `revoked_at`.
-  const revoked = await revokeDownloadAccess(
-    data.user_id as string,
-    `refund:${payment.id}`
-  );
-  if (!revoked) {
+  const { ok, fulfilment } = await reversePayment({
+    userId: data.user_id as string,
+    product: data.product,
+    reason: `refund:${payment.id}`,
+  });
+  if (!ok) {
     return { status: 500, body: { code: 'internal_error' } };
   }
 
   logSafe('webhook_refund_processed', {
     payment_id: payment.id,
     user_id: data.user_id,
+    fulfilment,
   });
-  return { status: 200, body: { ok: true, revoked: true } };
+  return { status: 200, body: { ok: true, revoked: true, fulfilment } };
 }
 
 export async function POST(request: Request) {

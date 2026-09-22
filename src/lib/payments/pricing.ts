@@ -34,6 +34,84 @@ export const CURRENCY = 'INR' as const;
 /** Product identifier persisted on `payments.product`. */
 export const DOWNLOAD_LICENSE_PRODUCT = 'download_license' as const;
 
+// -----------------------------------------------------------------------------
+// ONE PRICE, ONE PRODUCT, ALL FOUR SERVICES
+// -----------------------------------------------------------------------------
+//
+// ₹99 + 18% GST = ₹116.82 buys everything: the desktop app, the resume analyser,
+// the job tracker and openings, and the auto-apply/cold-mail flow.
+//
+// ---------------------------------------------------------------------------
+// WHY THE SEPARATE ₹299 BUNDLE WAS REMOVED (decided 2026-09)
+//
+// There were briefly two products: a ₹99 `download_license` for the desktop app
+// and a ₹299 `platform_bundle` for the four services. That created a problem with
+// no good answer: someone who had already bought the licence and then wanted the
+// services paid ₹398 for what a new customer got for ₹299. Every fix for that —
+// a credit, a discount code, a proration — is machinery in the payments path,
+// which is the last place that should carry avoidable complexity.
+//
+// Collapsing to a single ₹99 product deletes the problem rather than managing it.
+// There is one price, so there is no upgrade path to get wrong, no second
+// fulfilment branch, and nothing to explain on the pricing page.
+//
+// THE LEDGER ID IS STILL `download_license`, DELIBERATELY.
+// `platform_bundle` was never sold — the ledger contains 12 `download_license`
+// rows and zero bundle rows — so there is nothing to migrate, and renaming the
+// surviving id would make those 12 historical rows reference a product string
+// this code no longer knows. `payments.product` is the one field that has to stay
+// literally true about what happened, so the id is frozen and only the
+// customer-facing LABEL says "full access".
+//
+// ---------------------------------------------------------------------------
+// ONE-TIME, NOT MONTHLY
+//
+// A ₹99/month subscription was considered, on the reasoning that the platform
+// pays for inference on this tier (the user brings no Groq key of their own — see
+// src/lib/resume/ai/client.ts) and a recurring cost needs recurring revenue. The
+// decision went the other way: a one-time unlock is what is being sold.
+//
+// The consequence to keep in view: a buyer holds platform-funded inference
+// forever for a single ₹99 payment. What bounds that is NOT the price, it is the
+// per-day caps in `feature_limits` (migration 011: 20 uploads, 40 scans a day)
+// and the provider's own per-minute ceiling. Those caps are the liability
+// control, so raising them is a pricing decision, not a generosity one.
+//
+// At ₹99 that liability is roughly 4x tighter per rupee than it was at ₹299, and
+// the caps have NOT been lowered to compensate. That is a deliberate, revisitable
+// choice — but it means the Groq tier and those caps are now the only thing
+// standing between one payment and unbounded inference. Watch them together.
+//
+// The plan keeps no expiry — `profiles.plan_expires_at` stays NULL, which
+// migration 015 defines as perpetual. Nothing here has to change if a recurring
+// tier is added later: it would set an expiry, and `resolveEffectivePlan` already
+// handles both.
+//
+// For context on the number: the incumbents charge far more, and monthly. Jobscan
+// is around $49.95/month, Rezi $29/month, Kickresume $19/month. ₹99 is roughly
+// $1.15 once.
+
+/**
+ * The single purchasable product, and the single price.
+ *
+ * Aliases of the licence constants rather than new values, so there is exactly
+ * one number and one id in this module and they cannot drift apart. Prefer these
+ * names in new code: `DOWNLOAD_LICENSE_*` now describes only the ledger key's
+ * history, not what is being sold.
+ */
+export const FULL_ACCESS_PRODUCT = DOWNLOAD_LICENSE_PRODUCT;
+
+/**
+ * The plan name written to `profiles.plan` when the bundle is purchased.
+ *
+ * Still `student_pro`: the tier already has its per-day caps seeded in
+ * `feature_limits` and is already named in `PLATFORM_FUNDED_PLANS`, so renaming
+ * it would mean re-seeding caps and leaving a tier that funds inference but
+ * unlocks nothing. See BUNDLE_PLAN in src/lib/plans/services.ts, which a test
+ * pins to this value.
+ */
+export const STUDENT_PRO_PLAN = 'student_pro' as const;
+
 export interface PriceBreakdown {
   /** Advertised price before tax, in paise. */
   baseAmountPaise: number;
@@ -99,6 +177,75 @@ export function computePrice(
 export const DOWNLOAD_LICENSE_PRICE: Readonly<PriceBreakdown> = Object.freeze(
   computePrice()
 );
+
+/**
+ * The live price of full access: ₹99 + 18% GST = ₹116.82.
+ *
+ * The SAME frozen object as `DOWNLOAD_LICENSE_PRICE`, not a second computation —
+ * two independently computed prices for one product is how a checkout button and
+ * an order route end up disagreeing by a rupee and the ledger stops reconciling.
+ */
+export const FULL_ACCESS_PRICE: Readonly<PriceBreakdown> = DOWNLOAD_LICENSE_PRICE;
+
+// -----------------------------------------------------------------------------
+// The product catalogue
+// -----------------------------------------------------------------------------
+//
+// Everything purchasable, and what each purchase is worth. This exists so the
+// order route can accept a product from the client WITHOUT ever accepting an
+// amount: the client names a product, the server looks up the price here.
+//
+// That distinction is the whole security property. The route previously took no
+// body at all precisely to avoid the pay-what-you-want hole, and supporting a
+// second product must not reopen it. A product id is a closed set of two opaque
+// strings; an amount is arbitrary attacker-controlled arithmetic.
+
+/**
+ * What a completed purchase grants.
+ *
+ * One member, because there is one product. Kept as a union rather than inlined
+ * so the fulfilment dispatcher still switches on an explicit value: if a second
+ * product is ever added, the compiler flags every branch that has to handle it
+ * instead of silently granting full access to it.
+ */
+export type ProductFulfilment = 'full_access';
+
+export interface ProductDefinition {
+  /** Value stored in `payments.product`. */
+  id: string;
+  /** Server-derived price. Never taken from a request. */
+  price: Readonly<PriceBreakdown>;
+  /** Customer-facing name, for checkout and receipts. */
+  label: string;
+  /** Which grant runs when this is paid for. */
+  fulfilment: ProductFulfilment;
+}
+
+export const PRODUCTS: Readonly<Record<string, ProductDefinition>> =
+  Object.freeze({
+    [FULL_ACCESS_PRODUCT]: {
+      id: FULL_ACCESS_PRODUCT,
+      price: FULL_ACCESS_PRICE,
+      // Customer-facing, and deliberately NOT the id. The id says
+      // `download_license` for ledger continuity; this is what the buyer is
+      // actually getting, and it is what appears on the Razorpay payment sheet
+      // and the receipt.
+      label: 'Unviewable full access',
+      fulfilment: 'full_access',
+    },
+  });
+
+/**
+ * Look up a product by the identifier a client supplied.
+ *
+ * Returns null for anything not in the catalogue, so an unrecognised product is
+ * a 400 rather than a silent fallback to the cheaper item — which would let a
+ * client buy the bundle at the licence price by misspelling it.
+ */
+export function findProduct(id: unknown): ProductDefinition | null {
+  if (typeof id !== 'string') return null;
+  return PRODUCTS[id] ?? null;
+}
 
 /**
  * Inverse of `computePrice`: split a GST-INCLUSIVE total back into base + tax.
