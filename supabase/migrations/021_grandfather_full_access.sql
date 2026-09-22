@@ -1,0 +1,103 @@
+-- Migration: 021_grandfather_full_access
+-- Gives the existing ₹99 licence holders the plan that ₹99 now buys.
+--
+-- RUN AFTER 018_backfill_profiles. See "WHY ORDER MATTERS" below.
+--
+-- ---------------------------------------------------------------------------
+-- WHAT CHANGED UNDERNEATH THESE CUSTOMERS
+--   ₹99 used to buy one thing: the desktop app, recorded as
+--   `entitlements.download_access` (migration 009). The platform now sells one
+--   product at the same ₹99 that includes four services — resume analyser, job
+--   openings, auto-apply/cold-mail, and the desktop app — granted as
+--   `profiles.plan = 'student_pro'` (src/lib/plans/services.ts).
+--
+--   The PRICE did not change. The PRODUCT got bigger.
+--
+-- ---------------------------------------------------------------------------
+-- WHY THIS IS A CORRECTNESS FIX, NOT A GIFT
+--   Without it these accounts land in a dead end that we put in front of them
+--   in writing, on a payments page:
+--
+--     1. `hasServiceAccess` unlocks `desktop` from `download_access`, but the
+--        other three services come only from the plan. With plan = 'free' they
+--        get 402 payment_required from /api/jobs and /api/prep.
+--     2. /pricing computes `ownsDesktopOnly` for exactly these users and tells
+--        them: "Your earlier purchase now covers all four services, at no extra
+--        cost." with a link to /services.
+--     3. So they follow our own link and find three of the four paywalled.
+--     4. And they cannot buy their way out: `alreadyOwns` in
+--        /api/payments/razorpay/order returns true for any active
+--        `download_access`, so checkout answers 409 already_purchased.
+--
+--   A statement on a payment page plus no path to resolve it is the shape of a
+--   chargeback. Either the copy is false or the plan is missing; the plan is the
+--   thing that should change, because the copy is what we want to be true.
+--
+-- ---------------------------------------------------------------------------
+-- WHY DATA AND NOT CODE
+--   The self-healing alternative is to make `download_access` unlock all four
+--   services in `hasServiceAccess`. Rejected: it permanently welds the perpetual
+--   desktop licence to full access, so the first time a cheaper desktop-only SKU
+--   is sold it silently hands over the entire platform. The coupling is true of
+--   these rows, at this moment, for a historical reason — which is a data fact
+--   with a date on it, not an invariant of the access model.
+--
+-- ---------------------------------------------------------------------------
+-- WHY ORDER MATTERS (this is the money bug)
+--   An UPDATE against a missing row affects zero rows and reports SUCCESS. Five
+--   of these ten accounts have no `profiles` row at all — they predate migration
+--   001's `on_auth_user_created` trigger, which was never backfilled. Run
+--   standalone as an UPDATE, this migration would silently skip half the people
+--   it exists to fix and look like it worked.
+--
+--   Two independent defences, because "remember to run 018 first" is not one:
+--     - 018 creates the missing rows.
+--     - the statement below is an INSERT ... ON CONFLICT DO UPDATE, so it is
+--       correct even if 018 was skipped.
+--
+-- ---------------------------------------------------------------------------
+-- WHY `revoked_at is null`
+--   A refunded licence must not be upgraded. `hasDownloadAccess` treats a
+--   non-null `revoked_at` as no access, and this filter matches it, so a refund
+--   that has already been processed does not come back as full platform access.
+--
+-- ---------------------------------------------------------------------------
+-- SCOPE: measured 10 rows on production at the time of writing, every one with
+-- download_access = true and revoked_at = null, granted between 2026-08-23 and
+-- 2026-09-16. Re-running is a no-op for anyone already on the plan.
+
+insert into public.profiles (id, plan, plan_expires_at)
+select e.user_id, 'student_pro', null
+  from public.entitlements e
+ where e.download_access is true
+   and e.revoked_at is null
+on conflict (id) do update
+   -- Only the plan columns, so `display_name` on an existing row survives.
+   set plan = 'student_pro',
+       -- NULL is migration 015's encoding of "perpetual", which is what a
+       -- one-time payment buys. Written explicitly rather than left alone so a
+       -- stale expiry from an earlier time-limited grant cannot lapse them.
+       plan_expires_at = null;
+
+-- -----------------------------------------------------------------------------
+-- VERIFY
+-- -----------------------------------------------------------------------------
+--   -- Every active licence holder is now on the bundle plan. Must return 0:
+--   select count(*)
+--     from public.entitlements e
+--     join public.profiles p on p.id = e.user_id
+--    where e.download_access is true
+--      and e.revoked_at is null
+--      and p.plan <> 'student_pro';
+--
+--   -- Nobody WITHOUT an active licence was upgraded. Must return 0:
+--   select count(*)
+--     from public.profiles p
+--     left join public.entitlements e
+--       on e.user_id = p.id and e.download_access is true and e.revoked_at is null
+--    where p.plan = 'student_pro'
+--      and e.user_id is null;
+--
+--   -- Migration 015's `profiles_free_plan_no_expiry` still holds. Must return 0:
+--   select count(*) from public.profiles
+--    where plan = 'free' and plan_expires_at is not null;
