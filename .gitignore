@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Pre-migration snapshots of production rows, written by
+# scripts/snapshot-prod-plans.mjs so a data migration can be reversed row by row.
+# These contain the email address of every account and must never be committed.
+/.prod-snapshots/
+
 # vercel
 .vercel
 
