@@ -41,6 +41,25 @@ function jsonBytes(value: unknown): ArrayBuffer {
   return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
 }
 
+/**
+ * Typed accessor for a stubbed `fetch`'s call arguments.
+ *
+ * The stubs are declared as zero-argument `vi.fn(async () => ...)`, so TypeScript
+ * infers their call tuple as `[]` — which made every `calls[0][1]` an error the
+ * moment test files started being type-checked. Reading them through one helper
+ * states the shape once and leaves the assertions themselves unchanged.
+ */
+function fetchArgs(
+  mock: { mock: { calls: unknown[][] } },
+  index = 0
+): { url: string; init: RequestInit & { headers: Record<string, string> } } {
+  const call = mock.mock.calls[index] ?? [];
+  return {
+    url: call[0] as string,
+    init: (call[1] ?? {}) as RequestInit & { headers: Record<string, string> },
+  };
+}
+
 /** An abort-style rejection like a `fetch` aborted by an AbortController. */
 function abortError(): Error {
   const err = new Error('The operation was aborted');
@@ -68,7 +87,7 @@ describe('validateGroqKey', () => {
     expect(result).toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const [url, init] = fetchMock.mock.calls[0];
+    const { url, init } = fetchArgs(fetchMock);
     expect(url).toBe(MODELS_URL);
     expect(init.method).toBe('GET');
     expect(init.headers).toMatchObject({
@@ -147,7 +166,7 @@ describe('validateGroqKey', () => {
 
     expect(await pending).toEqual({ ok: false, reason: 'unavailable' });
     // The signal we aborted is the one handed to fetch.
-    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(fetchArgs(fetchMock).init.signal?.aborted).toBe(true);
   });
 });
 
@@ -164,7 +183,7 @@ describe('forwardToGroq', () => {
     const controller = new AbortController();
     await forwardToGroq('chat', { model: 'x' }, 'gsk_forward', controller.signal);
 
-    const [, init] = fetchMock.mock.calls[0];
+    const { init } = fetchArgs(fetchMock);
     expect(init.headers).toMatchObject({ Authorization: 'Bearer gsk_forward' });
     // The caller owns the 60s timeout: its exact signal instance is forwarded.
     expect(init.signal).toBe(controller.signal);
@@ -181,7 +200,7 @@ describe('forwardToGroq', () => {
 
     await forwardToGroq(endpoint, { a: 1 }, 'k', new AbortController().signal);
 
-    expect(fetchMock.mock.calls[0][0]).toBe(url);
+    expect(fetchArgs(fetchMock).url).toBe(url);
   });
 
   it('JSON-encodes plain-object payloads with a JSON content type (Req 3.6)', async () => {
@@ -191,7 +210,7 @@ describe('forwardToGroq', () => {
     const payload = { model: 'llama', messages: [{ role: 'user' }] };
     await forwardToGroq('chat', payload, 'k', new AbortController().signal);
 
-    const [, init] = fetchMock.mock.calls[0];
+    const { init } = fetchArgs(fetchMock);
     expect(init.headers).toMatchObject({ 'Content-Type': 'application/json' });
     expect(init.body).toBe(JSON.stringify(payload));
   });
@@ -204,7 +223,7 @@ describe('forwardToGroq', () => {
     form.append('file', 'audio-bytes');
     await forwardToGroq('transcribe', form, 'k', new AbortController().signal);
 
-    const [, init] = fetchMock.mock.calls[0];
+    const { init } = fetchArgs(fetchMock);
     expect(init.body).toBe(form);
     // fetch infers the multipart Content-Type — we must not force JSON.
     expect(init.headers['Content-Type']).toBeUndefined();

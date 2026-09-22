@@ -1,211 +1,359 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+import {
+  allProviders,
+  endpointsFor,
+  type ProviderId,
+} from '@/lib/ai/providers';
+import type { AiEndpoint } from '@/lib/ai/models';
 
 /**
- * `<ApiKeyManager />` — client component on `/account` that lets a
- * Free_Plan user add, replace, and remove their own Groq_Key. It is the
- * browser surface for the per-user key vault (ai-proxy-key-vault spec).
+ * `<ApiKeyManager />` — the `/account` browser surface for the per-user key
+ * vault (ai-proxy-key-vault spec), one row per AI provider.
  *
  * Security contract (Req 2.1, 2.2):
- *   This component NEVER receives or renders any character of the plaintext
- *   Groq_Key beyond the `last_four` metadata. The plaintext is typed into a
+ *   This component NEVER receives or renders any character of a plaintext key
+ *   beyond the `lastFour` metadata. The plaintext is typed into a
  *   `type="password"` input, POSTed once over HTTPS to `/api/keys`, and then
- *   dropped from component state. The API only ever returns `{ last_four }`
- *   on success — never ciphertext, nonce, auth tag, or the plaintext key.
+ *   dropped from component state. The API only ever returns `{ last_four }` on
+ *   success — never ciphertext, nonce, auth tag, or the plaintext key.
  *
- * State model:
- *   The server page passes the server-fetched `{ hasKey, lastFour }` as the
- *   initial props. We mirror them into local state so the UI can refresh
- *   in place after a Save (key now present) or Remove (key now absent)
- *   without a full page reload. When no key is stored we render the
- *   no-key state (Req 2.3); when a key is stored we render the masked
- *   key-set indicator with Replace/Remove controls (Req 2.1, 2.4).
+ * ---------------------------------------------------------------------------
+ * WHY CAPABILITY IS SHOWN PER PROVIDER
+ *
+ * Providers are not interchangeable. OpenRouter brokers chat models and has no
+ * audio transcription endpoint at all, so a user whose only key is OpenRouter
+ * can ask questions and read screenshots but voice notes will fail. That is not
+ * something to discover mid-interview, so each row states what its key can
+ * actually do, taken from the same registry the proxy routes with
+ * (`src/lib/ai/providers.ts`) rather than from copy that can drift.
+ *
+ * ---------------------------------------------------------------------------
+ * THE DEFAULT SELECTOR
+ *
+ * Only rendered with two or more keys saved, because with one there is nothing
+ * to choose — the proxy simply uses it. It matters when a request names a model
+ * we cannot attribute to a specific provider; see src/lib/ai/model-routing.ts.
  *
  * Validates: 1.1, 2.1, 2.2, 2.3.
  */
 
-interface ApiKeyManagerProps {
-  /** Whether a Groq_Key is already stored for the authenticated user. */
-  hasKey: boolean;
-  /** Final four characters of the stored key, or null when no key is set. */
-  lastFour: string | null;
-}
-
-/** Groq_Key text-input bounds (Req 1.1). */
+/** Key-input bounds (Req 1.1). */
 const MAX_KEY_LENGTH = 512;
 const MIN_KEY_LENGTH = 1;
 
+/** What each endpoint is called in the product, rather than in the API. */
+const ENDPOINT_LABELS: Record<AiEndpoint, string> = {
+  chat: 'Questions',
+  vision: 'Screenshots',
+  transcribe: 'Voice',
+};
+
+export interface SavedKey {
+  provider: string;
+  lastFour: string | null;
+  isPreferred: boolean;
+}
+
+interface ApiKeyManagerProps {
+  /** Keys already vaulted, one per provider. */
+  saved: SavedKey[];
+}
+
 /**
- * Maps an API error `code` to a friendly inline message. Anything that is
- * not a recognised code (including a missing code) falls back to a generic
- * message so we never surface a raw server detail to the user.
+ * Maps an API error `code` to a friendly inline message. Anything unrecognised
+ * (including a missing code) falls back to a generic message so a raw server
+ * detail is never surfaced.
  */
-function messageForCode(code: string | undefined): string {
+function messageForCode(code: string | undefined, message?: string): string {
+  // The server sends a precise `message` for cases where the code alone is too
+  // coarse — a key that is valid but saved under the wrong provider, say.
+  if (typeof message === 'string' && message.length > 0) return message;
   switch (code) {
     case 'invalid_groq_key':
-      return 'That Groq key looks invalid.';
+      return 'That key looks invalid.';
     case 'validation_unavailable':
       return 'Couldn\u2019t validate the key right now \u2014 try again.';
+    case 'unknown_provider':
+      return 'We cannot use keys from that provider yet.';
+    case 'rate_limited':
+      return 'Too many attempts. Wait a moment and try again.';
     default:
       return 'Something went wrong. Please try again.';
   }
 }
 
-export function ApiKeyManager({ hasKey, lastFour }: ApiKeyManagerProps) {
-  const [keyPresent, setKeyPresent] = useState(hasKey);
-  const [maskedLastFour, setMaskedLastFour] = useState<string | null>(lastFour);
-  // `editing` drives whether the input form is shown. When no key is stored
-  // we start in the editing state so the user can add one immediately;
-  // when a key is stored we start in the read-only masked view and only
-  // open the form when the user activates "Replace".
-  const [editing, setEditing] = useState(!hasKey);
-  const [value, setValue] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function ApiKeyManager({ saved }: ApiKeyManagerProps) {
+  const providers = useMemo(() => allProviders(), []);
 
+  const [keys, setKeys] = useState<SavedKey[]>(saved);
+  /** Which provider's input form is open. */
+  const [editing, setEditing] = useState<ProviderId | null>(null);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState<ProviderId | null>(null);
+  const [error, setError] = useState<{ provider: ProviderId; text: string } | null>(
+    null
+  );
+
+  const savedCount = keys.length;
   const trimmed = value.trim();
   const canSave =
-    !busy && trimmed.length >= MIN_KEY_LENGTH && trimmed.length <= MAX_KEY_LENGTH;
+    busy === null &&
+    trimmed.length >= MIN_KEY_LENGTH &&
+    trimmed.length <= MAX_KEY_LENGTH;
 
-  async function handleSave() {
+  function keyFor(provider: ProviderId): SavedKey | undefined {
+    return keys.find((k) => k.provider === provider);
+  }
+
+  function openForm(provider: ProviderId) {
+    setEditing(provider);
+    setValue('');
+    setError(null);
+  }
+
+  function closeForm() {
+    setEditing(null);
+    setValue('');
+    setError(null);
+  }
+
+  async function handleSave(provider: ProviderId) {
     if (!canSave) return;
-    setBusy(true);
+    setBusy(provider);
     setError(null);
     try {
       const res = await fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: trimmed }),
+        body: JSON.stringify({ api_key: trimmed, provider }),
       });
       const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; last_four?: string; code?: string }
+        | { ok?: boolean; last_four?: string; code?: string; message?: string }
         | null;
 
       if (!res.ok || !json?.ok) {
-        setError(messageForCode(json?.code));
+        setError({ provider, text: messageForCode(json?.code, json?.message) });
         return;
       }
 
-      // Success: refresh local state from the returned metadata and drop
-      // the plaintext from memory by clearing the input.
-      setKeyPresent(true);
-      setMaskedLastFour(json.last_four ?? null);
-      setValue('');
-      setEditing(false);
+      // Success: reflect the new key and drop the plaintext from memory.
+      setKeys((prev) => {
+        const next = prev.filter((k) => k.provider !== provider);
+        next.push({
+          provider,
+          lastFour: json.last_four ?? null,
+          // A first key needs no explicit default; the proxy just uses it.
+          isPreferred: prev.find((k) => k.provider === provider)?.isPreferred ?? false,
+        });
+        return next;
+      });
+      closeForm();
     } catch {
-      setError('Network error. Please try again.');
+      setError({ provider, text: 'Network error. Please try again.' });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
-  async function handleRemove() {
-    setBusy(true);
+  async function handleRemove(provider: ProviderId) {
+    setBusy(provider);
     setError(null);
     try {
-      const res = await fetch('/api/keys', { method: 'DELETE' });
+      const res = await fetch(`/api/keys?provider=${provider}`, {
+        method: 'DELETE',
+      });
       if (!res.ok) {
-        setError('Couldn\u2019t remove the key. Please try again.');
+        setError({ provider, text: 'Couldn\u2019t remove the key. Please try again.' });
         return;
       }
-      // Key removed: fall back to the no-key state.
-      setKeyPresent(false);
-      setMaskedLastFour(null);
-      setValue('');
-      setEditing(true);
+      setKeys((prev) => prev.filter((k) => k.provider !== provider));
+      if (editing === provider) closeForm();
     } catch {
-      setError('Network error. Please try again.');
+      setError({ provider, text: 'Network error. Please try again.' });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
-  // Key-set, read-only view: masked indicator + Replace / Remove (Req 2.1).
-  if (keyPresent && !editing) {
-    return (
-      <div className="account-actions" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-        <p className="lede" style={{ width: '100%' }}>
-          A Groq key is saved:{' '}
-          <strong>{`\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 ${maskedLastFour ?? ''}`}</strong>
-        </p>
-        <button
-          type="button"
-          className="cta cta-secondary"
-          onClick={() => {
-            setEditing(true);
-            setError(null);
-          }}
-          disabled={busy}
-          data-action="replace-key"
-        >
-          Replace
-        </button>
-        <button
-          type="button"
-          className="cta cta-secondary"
-          onClick={handleRemove}
-          disabled={busy}
-          data-action="remove-key"
-        >
-          {busy ? 'Removing\u2026' : 'Remove'}
-        </button>
-        {error ? (
-          <p className="lede" style={{ width: '100%' }} role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    );
+  async function handleMakeDefault(provider: ProviderId) {
+    setBusy(provider);
+    setError(null);
+    try {
+      const res = await fetch('/api/keys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; code?: string; message?: string }
+        | null;
+      if (!res.ok || !json?.ok) {
+        setError({ provider, text: messageForCode(json?.code, json?.message) });
+        return;
+      }
+      // At most one default, so setting one clears the rest.
+      setKeys((prev) =>
+        prev.map((k) => ({ ...k, isPreferred: k.provider === provider }))
+      );
+    } catch {
+      setError({ provider, text: 'Network error. Please try again.' });
+    } finally {
+      setBusy(null);
+    }
   }
 
-  // No-key / editing state: prompt + password input + Save (Req 2.3, 1.1).
   return (
-    <div className="account-actions" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-      <p className="lede" style={{ width: '100%' }}>
-        {keyPresent
-          ? 'Enter a new Groq key to replace the one currently saved.'
-          : 'Add your Groq key to enable AI features.'}
-      </p>
-      <input
-        type="password"
-        className="account-input"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={'gsk_\u2026'}
-        autoComplete="off"
-        maxLength={MAX_KEY_LENGTH}
-        disabled={busy}
-        aria-label="Groq API key"
-        data-action="key-input"
-        style={{ width: '100%' }}
-      />
-      <button
-        type="button"
-        className="cta cta-secondary"
-        onClick={handleSave}
-        disabled={!canSave}
-        data-action="save-key"
-      >
-        {busy ? 'Saving\u2026' : 'Save'}
-      </button>
-      {keyPresent ? (
-        <button
-          type="button"
-          className="cta cta-secondary"
-          onClick={() => {
-            setEditing(false);
-            setValue('');
-            setError(null);
-          }}
-          disabled={busy}
-        >
-          Cancel
-        </button>
+    <div className="account-keys">
+      {providers.map((provider) => {
+        const existing = keyFor(provider.id);
+        const isEditing = editing === provider.id;
+        const isBusy = busy === provider.id;
+        const rowError = error?.provider === provider.id ? error.text : null;
+        const supports = endpointsFor(provider.id);
+
+        return (
+          // Layout comes from `.account-key-row` in globals.css. It used to be
+          // inline here against a `--hairline` token that does not exist in this
+          // stylesheet, so the divider silently fell back to the literal rgba.
+          <div
+            key={provider.id}
+            className="account-key-row"
+            data-provider={provider.id}
+          >
+            <p className="lede" style={{ marginBottom: '0.25rem' }}>
+              <strong>{provider.label}</strong>
+              {existing ? (
+                <>
+                  {' \u2014 '}
+                  <span data-testid={`saved-${provider.id}`}>
+                    {`\u2022\u2022\u2022\u2022 ${existing.lastFour ?? ''}`}
+                  </span>
+                  {existing.isPreferred ? <em> (default)</em> : null}
+                </>
+              ) : (
+                <>{' \u2014 not connected'}</>
+              )}
+            </p>
+
+            {/* Capability, straight from the routing registry. */}
+            <p className="lede" style={{ fontSize: '0.9em', opacity: 0.8 }}>
+              {`Works for: ${supports
+                .map((e) => ENDPOINT_LABELS[e])
+                .join(', ')}`}
+              {supports.includes('transcribe') ? null : (
+                <>
+                  {' \u2014 '}
+                  <strong>no voice transcription</strong>
+                </>
+              )}
+            </p>
+
+            {isEditing ? (
+              // `.account-key-row .account-actions` in globals.css now owns the
+              // wrap and gap.
+              <div className="account-actions">
+                <input
+                  type="password"
+                  className="account-input"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder={provider.keyHint}
+                  autoComplete="off"
+                  maxLength={MAX_KEY_LENGTH}
+                  disabled={isBusy}
+                  aria-label={`${provider.label} API key`}
+                  data-action="key-input"
+                  style={{ width: '100%' }}
+                />
+                <button
+                  type="button"
+                  className="cta cta-secondary"
+                  onClick={() => handleSave(provider.id)}
+                  disabled={!canSave}
+                  data-action="save-key"
+                >
+                  {isBusy ? 'Saving\u2026' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  className="cta cta-secondary"
+                  onClick={closeForm}
+                  disabled={isBusy}
+                  data-action="cancel-key"
+                >
+                  Cancel
+                </button>
+                <a
+                  className="lede"
+                  href={provider.consoleUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  style={{ width: '100%', fontSize: '0.9em' }}
+                >
+                  {`Get a ${provider.label} key \u2192`}
+                </a>
+              </div>
+            ) : (
+              // `.account-key-row .account-actions` in globals.css now owns the
+              // wrap and gap.
+              <div className="account-actions">
+                <button
+                  type="button"
+                  className="cta cta-secondary"
+                  onClick={() => openForm(provider.id)}
+                  disabled={isBusy}
+                  data-action={existing ? 'replace-key' : 'add-key'}
+                >
+                  {existing ? 'Replace' : 'Add key'}
+                </button>
+                {existing ? (
+                  <button
+                    type="button"
+                    className="cta cta-secondary"
+                    onClick={() => handleRemove(provider.id)}
+                    disabled={isBusy}
+                    data-action="remove-key"
+                  >
+                    {isBusy ? 'Removing\u2026' : 'Remove'}
+                  </button>
+                ) : null}
+                {/* Nothing to choose with a single key. */}
+                {existing && savedCount > 1 && !existing.isPreferred ? (
+                  <button
+                    type="button"
+                    className="cta cta-secondary"
+                    onClick={() => handleMakeDefault(provider.id)}
+                    disabled={isBusy}
+                    data-action="make-default"
+                  >
+                    Make default
+                  </button>
+                ) : null}
+              </div>
+            )}
+
+            {rowError ? (
+              <p className="lede" role="alert" style={{ width: '100%' }}>
+                {rowError}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+
+      {savedCount === 0 ? (
+        <p className="lede" style={{ marginTop: '1rem' }}>
+          Add at least one key to enable AI features.
+        </p>
       ) : null}
-      {error ? (
-        <p className="lede" style={{ width: '100%' }} role="alert">
-          {error}
+
+      {savedCount > 1 && !keys.some((k) => k.isPreferred) ? (
+        <p className="lede" style={{ marginTop: '1rem' }}>
+          {'You have more than one key saved. Pick a default for models we ' +
+            'can\u2019t match to a provider \u2014 until you do, Groq is used.'}
         </p>
       ) : null}
     </div>

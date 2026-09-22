@@ -5,7 +5,7 @@ import { SiteShell } from '@/components/chrome/SiteShell';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-import { ApiKeyManager } from './ApiKeyManager';
+import { ApiKeyManager, type SavedKey } from './ApiKeyManager';
 import { LogoutButton } from './LogoutButton';
 import { SignOutAllButton } from './SignOutAllButton';
 
@@ -61,17 +61,34 @@ export default async function AccountPage() {
     redirect('/login?redirectedFrom=%2Faccount');
   }
 
-  // Fetch the user's Groq key status server-side, mirroring the GET /api/keys
-  // logic: select ONLY `last_four` (never ciphertext/nonce/tag) via the
+  // Fetch the user's saved keys server-side, mirroring GET /api/keys: select
+  // ONLY provider/last_four/is_preferred (never ciphertext/nonce/tag) via the
   // service-role client, scoped explicitly to this user (Req 2.1, 2.3).
+  //
+  // A LIST, not `.maybeSingle()`. Since migration 016 a user may hold one key
+  // per provider, and `.maybeSingle()` ERRORS on multiple matches — so the old
+  // read here would have broken this whole page for the first user to save a
+  // second key.
   const admin = supabaseAdmin();
-  const { data: keyRow } = await admin
+  const { data: keyRows } = await admin
     .from('user_api_keys')
-    .select('last_four')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const lastFour = keyRow?.last_four ?? null;
-  const hasKey = lastFour !== null;
+    .select('provider, last_four, is_preferred')
+    .eq('user_id', user.id);
+
+  const savedKeys: SavedKey[] = (Array.isArray(keyRows) ? keyRows : []).map(
+    (row) => {
+      const r = row as {
+        provider?: unknown;
+        last_four?: unknown;
+        is_preferred?: unknown;
+      };
+      return {
+        provider: typeof r.provider === 'string' ? r.provider : '',
+        lastFour: typeof r.last_four === 'string' ? r.last_four : null,
+        isPreferred: r.is_preferred === true,
+      };
+    }
+  );
 
   return (
     <SiteShell>
@@ -85,16 +102,20 @@ export default async function AccountPage() {
             Signed in as <strong>{user.email ?? 'unknown'}</strong>.
           </p>
           <div className="account-actions">
+            <a className="cta cta-secondary" href="/services">
+              Your services
+            </a>
             <LogoutButton />
           </div>
           <div className="account-block">
-            <p className="eyebrow">AI key</p>
+            <p className="eyebrow">AI keys</p>
             <p className="lede">
-              Add your own Groq key to enable AI features. Your key is
-              encrypted and stored securely — we only ever show the last four
-              characters.
+              Bring your own key from any provider below to enable AI features.
+              Keys are encrypted and stored securely — we only ever show the
+              last four characters. Note that providers differ in what they can
+              do; each one says so.
             </p>
-            <ApiKeyManager hasKey={hasKey} lastFour={lastFour} />
+            <ApiKeyManager saved={savedKeys} />
           </div>
           <div className="account-block">
             <p className="eyebrow">Desktop sessions</p>

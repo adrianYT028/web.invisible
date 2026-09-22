@@ -1,15 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 
 import { type SupabaseClient } from '@supabase/supabase-js';
 
 import { verifyAccessToken } from '@/lib/auth/desktop-tokens';
-import {
-  decrypt,
-  KeyDecryptError,
-  type KeyEnvelope,
-} from '@/lib/crypto/key-vault';
+// Only the error type: decryption itself now happens inside
+// `@/lib/ai/user-keys`, which is the single reader of the vault.
+import { KeyDecryptError } from '@/lib/crypto/key-vault';
 import { env } from '@/lib/env';
-import { forwardToGroq, type GroqUsage } from '@/lib/groq/client';
 import {
   getEndpointCapConfig,
   getReasoningSuppression,
@@ -22,6 +19,19 @@ import {
   applyPromptPolicy,
   PROMPT_POLICY_VERSION,
 } from '@/lib/ai/prompt-policy';
+import {
+  DEFAULT_PLAN,
+  planAllowsPremiumModels,
+  planFundsInference,
+} from '@/lib/ai/plans';
+import { readEffectivePlan as readPlan } from '@/lib/plans/read-plan';
+import { resolveProvider } from '@/lib/ai/model-routing';
+import type { ProviderId } from '@/lib/ai/providers';
+import { forwardToProvider, type UpstreamUsage } from '@/lib/ai/upstream';
+import {
+  listVaultedProviders,
+  readProviderKey,
+} from '@/lib/ai/user-keys';
 import { extractBearer, jsonError, logSafe } from '@/lib/http';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -47,20 +57,25 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 //      day's usage `>= cap`. The day window is UTC-pinned to match
 //      `public.utc_date()`.
 //   6. Key resolution (Req 3.4, 4.1, 6.6, 6.7, P13) — for a non-premium
-//      request, read the caller's `user_api_keys` row; no row → `403
-//      no_api_key` with no upstream call; otherwise `decrypt()` it.
+//      request, decide which PROVIDER serves it (`resolveProvider`, from the
+//      model plus the providers the caller has vaulted), then read and decrypt
+//      that provider's key. No usable key → `403 no_api_key` with no upstream
+//      call; a provider that cannot serve the endpoint at all → `400
+//      endpoint_unsupported`.
 //   7. Decrypt failure (Req 3.5, 8.3, 8.4) — `KeyDecryptError` → `500
 //      key_decrypt_failed`, no upstream call, the vault row left unchanged, no
 //      key material in the response.
-//   8. Forward (Req 3.6, 3.7) — `forwardToGroq` under a 60s AbortController;
+//   8. Forward (Req 3.6, 3.7) — `forwardToProvider` under a 60s AbortController;
 //      timeout/transport failure → `502 upstream_unavailable`; otherwise the
-//      upstream payload is returned verbatim.
+//      upstream payload is returned verbatim. Verbatim matters: shipped desktop
+//      builds parse replies by scanning for `"content":`, so only providers that
+//      speak the OpenAI shape may be registered.
 //   9. Log (Req 3.8, 10.5) — a `finally` block ALWAYS inserts exactly one
 //      `api_usage` row with only the seven allowed columns (token counts
 //      default 0, `latency_ms` = receipt→response wall clock). No prompt,
 //      response, audio, or secret content is ever recorded.
 //
-// The decrypted Groq key lives only in a local variable for the duration of a
+// The decrypted provider key lives only in a local variable for the duration of a
 // single request; it is never written to a response body, header, or redirect
 // (Req 3.9, P8) and never logged (logging goes through `logSafe`).
 // -----------------------------------------------------------------------------
@@ -78,14 +93,6 @@ export interface HandleAiProxyOptions {
    * multipart FormData for transcribe). Defaults to reading `payload.model`.
    */
   extractModel?: (payload: unknown) => string | undefined;
-}
-
-/** The subset of a `user_api_keys` row needed to decrypt the stored key. */
-interface KeyVaultRow {
-  key_ciphertext: string;
-  key_nonce: string;
-  key_auth_tag: string;
-  key_version: number;
 }
 
 /**
@@ -111,7 +118,7 @@ export async function handleAiProxy(
 
   // These are captured for the guaranteed usage-log in the `finally` block.
   let model: string | null = null;
-  let usage: GroqUsage | null = null;
+  let usage: UpstreamUsage | null = null;
   let response: Response = jsonError(500, 'internal_error');
 
   try {
@@ -193,10 +200,9 @@ export async function handleAiProxy(
 
     // --- 3. Plan ------------------------------------------------------------
     const plan = await readPlan(admin, userId);
-    const isFree = plan === 'free';
 
     // --- 4. Premium gate (Req 6.1, 6.2, 6.5, P14) ---------------------------
-    if (premium && isFree) {
+    if (premium && !planAllowsPremiumModels(plan)) {
       response = jsonError(403, 'premium_required');
       return response;
     }
@@ -213,37 +219,114 @@ export async function handleAiProxy(
     }
 
     // --- 6. Resolve the upstream key ----------------------------------------
+    //
+    // Two funding models (see src/lib/ai/plans.ts):
+    //
+    //   PLATFORM FUNDED — a premium model (Req 6.2), or ANY request from a plan
+    //     that includes inference. The second condition is what makes the
+    //     subscription tier possible: a Student Pro subscriber has already paid
+    //     for inference, so they must never be asked for a Groq key, and their own
+    //     key must never be spent on what they bought from us.
+    //
+    //   BRING YOUR OWN KEY — everyone else. Marginal cost stays zero, which is
+    //     what keeps the one-time desktop licence viable.
+    //
+    // Gating on the PLAN rather than only on the model is the change that
+    // unblocked the resume analyser: its calls use an ordinary model, so a
+    // premium-model-only check would have sent subscribers down the
+    // `no_api_key` path.
+    const platformFunded = premium || planFundsInference(plan);
+
     let apiKey: string;
-    if (premium) {
-      // Premium request on a premium plan: forward with the platform key
-      // (Req 6.2), never the user's vaulted key.
+    // Which provider this request is sent to. On the platform-funded path it is
+    // always Groq, because that is the account we hold. On the bring-your-own-key
+    // path it is decided by `resolveProvider` from the model plus what the user has
+    // vaulted — see src/lib/ai/model-routing.ts.
+    let provider: ProviderId;
+
+    if (platformFunded) {
+      provider = 'groq';
       const platformKey = env.groqApiKey;
       if (!platformKey) {
+        // Distinguished in the log because the two causes need different fixes:
+        // a premium request means the premium path was enabled before the key was
+        // provisioned; a plan-funded request means a PAYING subscriber is being
+        // turned away, which is a billing incident, not a config nit.
         logSafe('ai_proxy_platform_key_missing', {
           endpoint: options.endpoint,
+          reason: premium ? 'premium_model' : 'plan_funded',
         });
         response = jsonError(500, 'internal_error');
         return response;
       }
       apiKey = platformKey;
     } else {
-      // Non-premium request: the caller's own vaulted Groq key.
-      const row = await readKeyRow(admin, userId);
-      if (!row) {
-        // Req 4.1, 6.7, P13 — AI is disabled until a key is present. This is a
-        // single indexed lookup, comfortably within the 2s budget, and never
-        // reaches an upstream provider.
-        response = jsonError(403, 'no_api_key');
+      // Bring your own key. The user may now hold one key per provider, so this
+      // is two steps: decide WHICH provider serves this request, then read that
+      // provider's key.
+      const vaulted = await listVaultedProviders(admin, userId);
+      const routing = resolveProvider({
+        endpoint: options.endpoint,
+        model: effectiveModel,
+        vaulted,
+      });
+
+      if (!routing.ok) {
+        logSafe('ai_proxy_routing_failed', {
+          endpoint: options.endpoint,
+          failure: routing.failure,
+          // Which provider was implicated, when one was. Never the key.
+          provider: routing.provider,
+          vaulted_count: vaulted.length,
+        });
+
+        if (routing.failure === 'endpoint_unsupported') {
+          // They hold a key, it just cannot do this. Saying `no_api_key` here
+          // would send them to add a key they already have.
+          response = jsonError(
+            400,
+            'endpoint_unsupported',
+            routing.provider === null
+              ? 'None of your saved AI keys support this feature.'
+              : `Your ${routing.provider} key cannot be used for this feature.`
+          );
+          return response;
+        }
+
+        // Both `no_api_key` and `provider_key_missing` mean "we need a key we do
+        // not have". They share the 403 `no_api_key` code deliberately: shipped
+        // desktop builds special-case exactly that code and show an actionable
+        // "add your key" prompt, whereas an unrecognised code falls through to a
+        // generic failure message. The `message` carries the precise detail for
+        // clients that render it.
+        //
+        // Req 4.1, 6.7, P13 — AI is disabled until a key is present. No upstream
+        // provider is reached.
+        response = jsonError(
+          403,
+          'no_api_key',
+          routing.failure === 'provider_key_missing' && routing.provider !== null
+            ? `This model runs on ${routing.provider}. Add a ${routing.provider} key to use it.`
+            : undefined
+        );
         return response;
       }
+
+      provider = routing.provider;
+
       try {
-        const envelope: KeyEnvelope = {
-          ciphertext: row.key_ciphertext,
-          iv: row.key_nonce,
-          authTag: row.key_auth_tag,
-          version: row.key_version,
-        };
-        apiKey = decrypt(envelope);
+        const vaultedKey = await readProviderKey(admin, userId, provider);
+        if (vaultedKey === null) {
+          // `listVaultedProviders` said this provider was present and the row read
+          // then found nothing — a delete raced this request, or the read failed.
+          logSafe('ai_proxy_vault_row_vanished', {
+            endpoint: options.endpoint,
+            provider,
+          });
+          response = jsonError(403, 'no_api_key');
+          return response;
+        }
+        apiKey = vaultedKey;
       } catch (err) {
         // Req 3.5, 8.3, 8.4 — unknown master-key version or auth-tag failure.
         // No upstream call, the vault row is left unchanged, and no key
@@ -263,7 +346,8 @@ export async function handleAiProxy(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
     try {
-      const forwarded = await forwardToGroq(
+      const forwarded = await forwardToProvider(
+        provider,
         options.endpoint,
         payload,
         apiKey,
@@ -298,15 +382,50 @@ export async function handleAiProxy(
     // ALWAYS runs exactly once for an authenticated request — success or
     // failure — and records ONLY the seven allowed columns. No prompt,
     // response, audio, or secret content.
+    //
+    // DEFERRED WITH `after()`, NOT AWAITED.
+    //
+    // This used to `await` a Supabase INSERT before the response was returned,
+    // so every AI call — including every transcription — paid a full database
+    // round trip that the caller was waiting on. Nothing in the response depends
+    // on the row existing: it is billing and observability, read later by the
+    // quota checker on the NEXT request, never by this one.
+    //
+    // `after()` (Next 15+) runs the callback once the response has been flushed
+    // while keeping the serverless invocation alive. That last part is why this is
+    // not simply a floating promise: an un-awaited promise on Vercel races the
+    // function being frozen after the response, which would drop usage rows
+    // silently and under-count exactly the heaviest users.
+    //
+    // The latency is still measured to the moment the response was ready, not to
+    // when the row was written, so the recorded number remains what the user
+    // actually experienced.
     const latencyMs = Date.now() - startedAt;
-    await insertUsage(admin, {
-      userId,
-      endpoint: options.endpoint,
-      model,
-      usage,
-      latencyMs,
-      statusCode: response.status,
-    });
+    const statusCode = response.status;
+    const write = () =>
+      insertUsage(admin, {
+        userId,
+        endpoint: options.endpoint,
+        model,
+        usage,
+        latencyMs,
+        statusCode,
+      });
+
+    try {
+      after(write);
+    } catch {
+      // `after()` throws when there is no request scope, which is the case when
+      // `handleAiProxy` is called directly rather than through a route handler —
+      // i.e. from the unit tests. Falling back to awaiting keeps the usage row
+      // written in that context instead of silently skipping it, so the tests
+      // still assert on real logging behaviour.
+      //
+      // Deliberately NOT a bare floating promise here: unhandled, it would reject
+      // into nothing, and this branch is the one running in tests where a swallowed
+      // failure is exactly what hides a regression.
+      await write();
+    }
   }
 }
 
@@ -348,20 +467,10 @@ async function readPayload(request: Request): Promise<unknown> {
   return await request.text();
 }
 
-/** Read `profiles.plan`, defaulting to `free` when missing (Req 6.1). */
-async function readPlan(
-  admin: SupabaseClient,
-  userId: string
-): Promise<string> {
-  const { data, error } = await admin
-    .from('profiles')
-    .select('plan')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error || !data) return 'free';
-  const plan = (data as { plan?: unknown }).plan;
-  return typeof plan === 'string' && plan.length > 0 ? plan : 'free';
-}
+// The plan lookup lives in `@/lib/plans/read-plan` (imported as `readPlan`
+// above). It used to be a private copy here, byte-identical to the one in
+// `src/lib/resume/quota.ts` — which is precisely how the expiry rule would have
+// been applied to resume quotas and silently skipped for inference funding.
 
 /**
  * Read the cap value for a plan + column from `feature_limits`. A missing row
@@ -411,19 +520,12 @@ async function countDailyUsage(
   return count;
 }
 
-/** Read the caller's vaulted-key row, or `null` when none exists (Req 4.1). */
-async function readKeyRow(
-  admin: SupabaseClient,
-  userId: string
-): Promise<KeyVaultRow | null> {
-  const { data, error } = await admin
-    .from('user_api_keys')
-    .select('key_ciphertext, key_nonce, key_auth_tag, key_version')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data as KeyVaultRow;
-}
+// The vaulted-key read used to live here as `readKeyRow`, selecting without a
+// provider filter and calling `.maybeSingle()`. Migration 016 allows a user more
+// than one key, and `.maybeSingle()` ERRORS on multiple matches — so that
+// function would have broken the AI proxy for the first user to add a second key.
+// It now lives in `@/lib/ai/user-keys`, filtered by the provider that
+// `resolveProvider` chose.
 
 /**
  * Insert exactly one `api_usage` row with ONLY the seven allowed columns
@@ -436,7 +538,7 @@ async function insertUsage(
     userId: string;
     endpoint: AiEndpoint;
     model: string | null;
-    usage: GroqUsage | null;
+    usage: UpstreamUsage | null;
     latencyMs: number;
     statusCode: number;
   }

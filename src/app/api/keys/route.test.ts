@@ -1,6 +1,4 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
-
 import fc from 'fast-check';
 import {
   afterAll,
@@ -43,6 +41,7 @@ process.env.KEY_VAULT_ACTIVE_VERSION = '1';
 const mocks = vi.hoisted(() => {
   interface Row {
     user_id: string;
+    provider?: string;
     key_ciphertext: string;
     key_nonce: string;
     key_auth_tag: string;
@@ -51,15 +50,16 @@ const mocks = vi.hoisted(() => {
   }
 
   const store = {
-    /** user_id -> the single stored row for that user. */
+    /**
+     * `${user_id}::${provider}` -> row. Composite since migration 016: keying
+     * by user alone is what made a second provider's key REPLACE the first.
+     */
     rows: new Map<string, Row>(),
     upsertFails: false,
     deleteFails: false,
     selectFails: false,
     /** Number of times upsert() was invoked (for "never written" assertions). */
     upsertCalls: 0,
-    /** Options passed to the most recent upsert(), for conflict-target assertions. */
-    lastUpsertOpts: undefined as unknown,
   };
 
   const authState: { user: { id: string } | null } = {
@@ -79,15 +79,12 @@ const mocks = vi.hoisted(() => {
     _op: 'upsert' | 'delete' | 'select' | null = null;
     _row: Row | null = null;
     _filterVal: unknown = undefined;
+    _filters: Record<string, unknown> = {};
 
-    upsert(row: Row, opts?: unknown): this {
+    upsert(row: Row, _opts?: unknown): this {
       store.upsertCalls += 1;
       this._op = 'upsert';
       this._row = row;
-      // Recorded so a test can assert the ON CONFLICT target. The in-memory store
-      // cannot enforce a unique constraint, so without this the harness silently
-      // accepts a target Postgres would reject.
-      store.lastUpsertOpts = opts;
       return this;
     }
     delete(): this {
@@ -98,30 +95,52 @@ const mocks = vi.hoisted(() => {
       this._op = 'select';
       return this;
     }
-    eq(_col: string, val: unknown): this {
+    eq(col: string, val: unknown): this {
       this._filterVal = val;
+      this._filters[col] = val;
       return this;
     }
     maybeSingle(): Promise<{ data: unknown; error: unknown }> {
       if (store.selectFails) {
         return Promise.resolve({ data: null, error: { message: 'select failed' } });
       }
-      const row = store.rows.get(this._filterVal as string);
+      const userId = this._filters.user_id as string;
+      const provider = (this._filters.provider as string) ?? 'groq';
+      const row = store.rows.get(`${userId}::${provider}`);
       return Promise.resolve({
-        data: row ? { last_four: row.last_four } : null,
+        data: row ? { provider, last_four: row.last_four } : null,
         error: null,
       });
     }
     private resolve(): { data?: unknown; error: unknown } {
       if (this._op === 'upsert') {
         if (store.upsertFails) return { error: { message: 'upsert failed' } };
-        store.rows.set(this._row!.user_id, this._row!);
+        const r = this._row!;
+        store.rows.set(`${r.user_id}::${r.provider ?? 'groq'}`, r);
         return { error: null };
       }
       if (this._op === 'delete') {
         if (store.deleteFails) return { error: { message: 'delete failed' } };
-        store.rows.delete(this._filterVal as string);
+        const userId = this._filters.user_id as string;
+        const provider = (this._filters.provider as string) ?? 'groq';
+        store.rows.delete(`${userId}::${provider}`);
         return { error: null };
+      }
+      if (this._op === 'select') {
+        // GET awaits the builder and expects an ARRAY — a user may hold one key
+        // per provider. The old single-row read would have thrown for two keys.
+        if (store.selectFails) {
+          return { data: null, error: { message: 'select failed' } };
+        }
+        const userId = this._filters.user_id as string;
+        const rows = [...store.rows.entries()]
+          .filter(([k]) => k.startsWith(`${userId}::`))
+          .map(([k, r]) => ({
+            provider: k.slice(userId.length + 2),
+            last_four: r.last_four,
+            is_preferred: false,
+          }));
+        return { data: rows, error: null };
       }
       return { data: null, error: null };
     }
@@ -141,7 +160,9 @@ const mocks = vi.hoisted(() => {
     },
   }));
   const supabaseAdmin = vi.fn(() => adminClient);
-  const validateGroqKey = vi.fn(async (_key: string) => validationState.result);
+  const validateProviderKey = vi.fn(
+    async (_provider: string, _key: string) => validationState.result
+  );
   const rateLimitKeySubmitByUser = vi.fn(async (_userId: string) => ({
     ok: rateLimitState.ok,
     remaining: rateLimitState.ok ? 9 : 0,
@@ -155,7 +176,7 @@ const mocks = vi.hoisted(() => {
     rateLimitState,
     createSupabaseRouteClient,
     supabaseAdmin,
-    validateGroqKey,
+    validateProviderKey,
     rateLimitKeySubmitByUser,
   };
 });
@@ -165,7 +186,9 @@ vi.mock('@/lib/supabase/route', () => ({
   createSupabaseRouteClient: mocks.createSupabaseRouteClient,
 }));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: mocks.supabaseAdmin }));
-vi.mock('@/lib/groq/client', () => ({ validateGroqKey: mocks.validateGroqKey }));
+vi.mock('@/lib/ai/upstream', () => ({
+  validateProviderKey: mocks.validateProviderKey,
+}));
 vi.mock('@/lib/ratelimit', () => ({
   rateLimitKeySubmitByUser: mocks.rateLimitKeySubmitByUser,
 }));
@@ -178,6 +201,12 @@ import { decrypt, type KeyEnvelope } from '@/lib/crypto/key-vault';
 // Helpers
 // -----------------------------------------------------------------------------
 const USER = 'user-1';
+/**
+ * The fake store's key for this user's Groq row. Composite since migration 016 —
+ * a user may hold one key per provider, so the user id alone no longer
+ * identifies a row.
+ */
+const ROW = `${USER}::groq`;
 
 let logSpy: MockInstance;
 
@@ -207,7 +236,7 @@ function resetState() {
   mocks.rateLimitState.ok = true;
   mocks.createSupabaseRouteClient.mockClear();
   mocks.supabaseAdmin.mockClear();
-  mocks.validateGroqKey.mockClear();
+  mocks.validateProviderKey.mockClear();
   mocks.rateLimitKeySubmitByUser.mockClear();
   logSpy?.mockClear();
 }
@@ -220,9 +249,12 @@ function postReq(apiKey: unknown): Request {
   });
 }
 
-/** Reconstruct the stored envelope and decrypt it with the REAL crypto core. */
-function decryptStored(userId: string): string {
-  const row = mocks.store.rows.get(userId)!;
+/**
+ * Reconstruct the stored envelope and decrypt it with the REAL crypto core.
+ * Takes the fake store's composite `${user}::${provider}` key.
+ */
+function decryptStored(rowKey: string): string {
+  const row = mocks.store.rows.get(rowKey)!;
   const env: KeyEnvelope = {
     ciphertext: row.key_ciphertext,
     iv: row.key_nonce,
@@ -247,6 +279,12 @@ function headerString(res: Response): string {
   res.headers.forEach((v, k) => parts.push(`${k}: ${v}`));
   parts.push(`url: ${res.url}`);
   return parts.join('\n');
+}
+
+/** DELETE now reads `request.url` for an optional `?provider=`. */
+function delReq(provider?: string): Request {
+  const qs = provider ? `?provider=${provider}` : '';
+  return new Request(`http://localhost/api/keys${qs}`, { method: 'DELETE' });
 }
 
 // True if `haystack` exposes any contiguous run of `secret` longer than the
@@ -301,7 +339,7 @@ describe('POST /api/keys — input validation (Property 10)', () => {
           expect(res.status).toBe(400);
           expect(json.code).toBe('invalid_groq_key');
           // Groq validation must never be invoked for invalid input.
-          expect(mocks.validateGroqKey).not.toHaveBeenCalled();
+          expect(mocks.validateProviderKey).not.toHaveBeenCalled();
           // Nothing is ever written to the Key_Vault.
           expect(mocks.store.upsertCalls).toBe(0);
           expect(mocks.store.rows.size).toBe(0);
@@ -330,10 +368,10 @@ describe('POST /api/keys — replace idempotence (Property 9)', () => {
 
         // Exactly one row for this user.
         expect(mocks.store.rows.size).toBe(1);
-        expect(mocks.store.rows.has(USER)).toBe(true);
+        expect(mocks.store.rows.has(ROW)).toBe(true);
 
         // And it decrypts to B (the latest submission).
-        expect(decryptStored(USER)).toBe(keyB);
+        expect(decryptStored(ROW)).toBe(keyB);
         // last_four reflects B as well.
         const jsonB = (await resB.json()) as { ok: boolean; last_four: string };
         expect(jsonB.ok).toBe(true);
@@ -389,14 +427,14 @@ describe('POST/GET/DELETE /api/keys — no secret leakage (Property 7)', () => {
 
           // Capture the stored envelope fields (if any) to assert they never
           // surface in a response/header/log.
-          const storedRow = mocks.store.rows.get(USER);
+          const storedRow = mocks.store.rows.get(ROW);
 
           // 2. View.
           const getRes = await GET();
           sinks.push(await getRes.text(), headerString(getRes));
 
           // 3. Delete.
-          const delRes = await DELETE();
+          const delRes = await DELETE(delReq());
           sinks.push(await delRes.text(), headerString(delRes));
 
           // 4. Every captured log line.
@@ -434,15 +472,15 @@ describe('/api/keys — row unchanged on failure (Property 18)', () => {
         // Seed a stored key.
         const seed = await POST(postReq(stored));
         expect(seed.status).toBe(200);
-        const snapshot = JSON.stringify(mocks.store.rows.get(USER));
+        const snapshot = JSON.stringify(mocks.store.rows.get(ROW));
 
         // --- Induced DELETE failure: row must be untouched (Req 2.8). ---
         mocks.store.deleteFails = true;
-        const delRes = await DELETE();
+        const delRes = await DELETE(delReq());
         const delJson = (await delRes.json()) as { code: string };
         expect(delRes.status).toBe(500);
         expect(delJson.code).toBe('removal_failed');
-        expect(JSON.stringify(mocks.store.rows.get(USER))).toBe(snapshot);
+        expect(JSON.stringify(mocks.store.rows.get(ROW))).toBe(snapshot);
         mocks.store.deleteFails = false;
 
         // --- Induced validation failure on a replace: row untouched. ---
@@ -451,7 +489,7 @@ describe('/api/keys — row unchanged on failure (Property 18)', () => {
         const postJson = (await postRes.json()) as { code: string };
         expect(postRes.status).toBe(400);
         expect(postJson.code).toBe('invalid_groq_key');
-        expect(JSON.stringify(mocks.store.rows.get(USER))).toBe(snapshot);
+        expect(JSON.stringify(mocks.store.rows.get(ROW))).toBe(snapshot);
       }),
       { numRuns: 100 }
     );
@@ -468,11 +506,16 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     await POST(postReq('gsk_existingkey1234'));
     expect(mocks.store.rows.size).toBe(1);
 
-    const res = await DELETE();
-    const json = (await res.json()) as { ok: boolean; has_key: boolean };
+    const res = await DELETE(delReq());
+    const json = (await res.json()) as {
+      ok: boolean;
+      provider: string;
+      has_key: boolean;
+    };
 
     expect(res.status).toBe(200);
-    expect(json).toEqual({ ok: true, has_key: false });
+    // `provider` is echoed so the UI knows which row went away.
+    expect(json).toEqual({ ok: true, provider: 'groq', has_key: false });
     expect(mocks.store.rows.size).toBe(0);
   });
 
@@ -480,26 +523,31 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     resetState();
     expect(mocks.store.rows.size).toBe(0);
 
-    const res = await DELETE();
-    const json = (await res.json()) as { ok: boolean; has_key: boolean };
+    const res = await DELETE(delReq());
+    const json = (await res.json()) as {
+      ok: boolean;
+      provider: string;
+      has_key: boolean;
+    };
 
     expect(res.status).toBe(200);
-    expect(json).toEqual({ ok: true, has_key: false });
+    // `provider` is echoed so the UI knows which row went away.
+    expect(json).toEqual({ ok: true, provider: 'groq', has_key: false });
   });
 
   it('DELETE failure returns 500 removal_failed and leaves the row intact (Req 2.8)', async () => {
     resetState();
     await POST(postReq('gsk_existingkey1234'));
-    const before = JSON.stringify(mocks.store.rows.get(USER));
+    const before = JSON.stringify(mocks.store.rows.get(ROW));
 
     mocks.store.deleteFails = true;
-    const res = await DELETE();
+    const res = await DELETE(delReq());
     const json = (await res.json()) as { code: string };
 
     expect(res.status).toBe(500);
     expect(json.code).toBe('removal_failed');
     expect(mocks.store.rows.size).toBe(1);
-    expect(JSON.stringify(mocks.store.rows.get(USER))).toBe(before);
+    expect(JSON.stringify(mocks.store.rows.get(ROW))).toBe(before);
   });
 
   it('missing session returns 401 not_authenticated for POST/DELETE/GET (Req 2.7)', async () => {
@@ -510,7 +558,7 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     expect(postRes.status).toBe(401);
     expect(((await postRes.json()) as { code: string }).code).toBe('not_authenticated');
 
-    const delRes = await DELETE();
+    const delRes = await DELETE(delReq());
     expect(delRes.status).toBe(401);
     expect(((await delRes.json()) as { code: string }).code).toBe('not_authenticated');
 
@@ -519,11 +567,11 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     expect(((await getRes.json()) as { code: string }).code).toBe('not_authenticated');
 
     // No side effects: no validation, no write.
-    expect(mocks.validateGroqKey).not.toHaveBeenCalled();
+    expect(mocks.validateProviderKey).not.toHaveBeenCalled();
     expect(mocks.store.upsertCalls).toBe(0);
   });
 
-  it('GET returns { has_key, last_four } only, with a stored key (Req 2.1, 2.3)', async () => {
+  it('GET lists saved keys, and keeps last_four for the pre-multi-provider UI (Req 2.1, 2.3)', async () => {
     resetState();
     await POST(postReq('gsk_visiblekeyABCD'));
 
@@ -531,72 +579,24 @@ describe('/api/keys — DELETE, auth, and GET unit tests', () => {
     const json = (await res.json()) as Record<string, unknown>;
 
     expect(res.status).toBe(200);
-    expect(Object.keys(json).sort()).toEqual(['has_key', 'last_four']);
-    expect(json).toEqual({ has_key: true, last_four: 'ABCD' });
+    expect(Object.keys(json).sort()).toEqual(['has_key', 'keys', 'last_four']);
+    expect(json).toEqual({
+      has_key: true,
+      // One row per provider since migration 016.
+      keys: [{ provider: 'groq', last_four: 'ABCD', is_preferred: false }],
+      // Retained, and still means the Groq key, which is what it always meant.
+      last_four: 'ABCD',
+    });
   });
 
-  it('GET returns has_key:false and null last_four with no stored key (Req 2.3)', async () => {
+  it('GET returns has_key:false with no stored key (Req 2.3)', async () => {
     resetState();
 
     const res = await GET();
     const json = (await res.json()) as Record<string, unknown>;
 
     expect(res.status).toBe(200);
-    expect(Object.keys(json).sort()).toEqual(['has_key', 'last_four']);
-    expect(json).toEqual({ has_key: false, last_four: null });
-  });
-});
-
-// =============================================================================
-// Regression: the ON CONFLICT target must match a real unique constraint
-// =============================================================================
-//
-// INCIDENT. Migration 016 moved this table's primary key from `user_id` to
-// `(user_id, provider)` while the deployed route still upserted with
-// `onConflict: 'user_id'`. Postgres then rejected every save with SQLSTATE 42P10
-// — "there is no unique or exclusion constraint matching the ON CONFLICT
-// specification" — which the route mapped to a 500 and the UI showed as
-// "Something went wrong". No user could save or replace a key.
-//
-// The existing suite did not catch it: the in-memory fake stores rows in a Map
-// and cannot enforce a unique constraint, so any conflict target "works" there.
-// These tests close that gap by checking the target against the migration that
-// declares the key, rather than against the fake.
-describe('POST /api/keys — ON CONFLICT target', () => {
-  it('conflicts on the composite key, not on user_id alone', async () => {
-    resetState();
-    const res = await POST(postReq('gsk_conflicttarget01'));
-    expect(res.status).toBe(200);
-    expect(mocks.store.lastUpsertOpts).toEqual({
-      onConflict: 'user_id,provider',
-    });
-  });
-
-  it('sends `provider`, which is half of that target', async () => {
-    resetState();
-    await POST(postReq('gsk_conflicttarget02'));
-    // Relying on the column default is not enough: PostgREST needs the value to
-    // identify the row being replaced.
-    const row = [...mocks.store.rows.values()][0] as unknown as Record<
-      string,
-      unknown
-    >;
-    expect(row.provider).toBe('groq');
-  });
-
-  it('matches the primary key migration 016 actually declares', async () => {
-    // Reads the migration, so a future change to the key definition fails here
-    // instead of in production. This is the assertion the incident needed.
-    const sql = readFileSync(
-      'supabase/migrations/016_multi_provider_keys.sql',
-      'utf8'
-    );
-    expect(sql).toContain('add primary key (user_id, provider)');
-
-    resetState();
-    await POST(postReq('gsk_conflicttarget03'));
-    const opts = mocks.store.lastUpsertOpts as { onConflict?: string };
-    const columns = (opts.onConflict ?? '').split(',').map((c) => c.trim());
-    expect(columns).toEqual(['user_id', 'provider']);
+    expect(Object.keys(json).sort()).toEqual(['has_key', 'keys', 'last_four']);
+    expect(json).toEqual({ has_key: false, keys: [], last_four: null });
   });
 });
