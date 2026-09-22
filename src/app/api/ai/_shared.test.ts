@@ -516,9 +516,23 @@ describe('handleAiProxy — plan-funded inference', () => {
     expect(getKey()).toBe('platform-groq-key');
   });
 
-  it("never spends a subscriber's own vaulted key, even when one is stored", async () => {
-    // They pay a subscription so we cover inference. Quietly using their key
-    // instead would bill them twice for the same request.
+  it("prefers a subscriber's own vaulted key when they have one", async () => {
+    // REVERSED DELIBERATELY. This test previously asserted the opposite — that a
+    // subscriber's own key is never spent, on the reasoning that they have already
+    // paid for inference and using their key bills them twice.
+    //
+    // That reasoning is sound and still the long-term intent. It was changed
+    // because of a measurement. The three endpoints in this module are the DESKTOP
+    // app's, and production usage shows a single active desktop session peaking at
+    // 6,599 tokens in one minute against a Groq tier that allows 8,000 per minute
+    // IN TOTAL. Ten paying users each spend their own 8,000/min today; pooling
+    // them into ours means the second concurrent meeting gets rate limited.
+    //
+    // So honouring "we pay" literally would have degraded the product for exactly
+    // the people who paid, and consumed the budget the resume analyser runs on.
+    // Their key first; ours as the fallback that guarantees it works at all.
+    //
+    // Revert this to the platform key once the Groq tier is raised.
     resetState();
     mocks.state.plan = 'student_pro';
     mocks.state.keyRows = [keyRow()];
@@ -530,8 +544,40 @@ describe('handleAiProxy — plan-funded inference', () => {
     });
 
     expect(res.status).toBe(200);
+    expect(getKey()).toBe('gsk_theusersownkey000');
+  });
+
+  it('falls back to the platform key when a subscriber key cannot serve the endpoint', async () => {
+    // The user holds a key, but not one that can do this. Refusing here would tell
+    // a paying customer to add a key they already have, so we cover the request.
+    resetState();
+    mocks.state.plan = 'student_pro';
+    mocks.state.keyRows = [keyRow('openrouter')];
+    mocks.state.decryptValue = 'or_theusersownkey000';
+    const getKey = captureKey();
+
+    const res = await handleAiProxy(aiReq('transcribe', {}), {
+      endpoint: 'transcribe',
+    });
+
+    expect(res.status).toBe(200);
     expect(getKey()).toBe('platform-groq-key');
-    expect(getKey()).not.toBe('gsk_theusersownkey000');
+  });
+
+  it('still refuses a FREE user whose key cannot serve the endpoint', async () => {
+    // The fallback is a paid benefit. If it applied to everyone, the free tier
+    // would get platform-funded inference by storing a key for the wrong provider.
+    resetState();
+    mocks.state.plan = 'free';
+    mocks.state.keyRows = [keyRow('openrouter')];
+    mocks.state.decryptValue = 'or_theusersownkey000';
+
+    const res = await handleAiProxy(aiReq('transcribe', {}), {
+      endpoint: 'transcribe',
+    });
+
+    expect(res.status).not.toBe(200);
+    expect(mocks.forwardToProvider).not.toHaveBeenCalled();
   });
 
   it('still requires a free user to bring their own key', async () => {
@@ -572,12 +618,18 @@ describe('handleAiProxy — plan-funded inference', () => {
     expect(getKey()).toBe('gsk_theusersownkey000');
   });
 
-  it('fails closed when a subscriber requests inference and no platform key is configured', async () => {
-    // This is a billing incident rather than a config nit — a paying user is
-    // being turned away — so it must not silently fall back to their own key.
+  it('fails closed when a subscriber has NO key and no platform key is configured', async () => {
+    // A paying user is being turned away and we have nothing to serve them with.
+    // That is a billing incident, not a config nit, so it is a 500 with a distinct
+    // log reason rather than a generic "add your key" pointed at someone who has
+    // already paid.
+    //
+    // Note the `keyRows: []` — with a usable key of their own they would now be
+    // served from it, so the missing platform key only bites when there is no
+    // alternative.
     resetState();
     mocks.state.plan = 'student_pro';
-    mocks.state.keyRows = [keyRow()];
+    mocks.state.keyRows = [];
     mocks.state.groqApiKey = undefined;
 
     const res = await handleAiProxy(aiReq('chat', { model: 'llama-x' }), {
@@ -1136,12 +1188,31 @@ describe('handleAiProxy — provider routing', () => {
     expect(mocks.state.forwardedProvider).toBe('groq');
   });
 
-  it('routes a plan-funded request to Groq on the platform key', async () => {
-    // A subscriber's inference is ours to pay for, so it never consults the vault
-    // and always uses our own Groq account.
+  it('routes a plan-funded request to the provider the vault can serve', async () => {
+    // Previously asserted Groq + platform key unconditionally. A subscriber's own
+    // key is now preferred where it can serve the request, so a vaulted OpenAI key
+    // for an unrecognised model routes to OpenAI on THEIR key. See the reversed
+    // test in the plan-funded describe block for why.
     resetState();
     mocks.state.plan = 'student_pro';
     mocks.state.keyRows = [keyRow('openai', true)];
+    mocks.state.decryptValue = 'sk_theusersownkey000';
+    const getKey = captureKey();
+
+    const res = await handleAiProxy(aiReq('chat', { model: 'mystery' }), {
+      endpoint: 'chat',
+    });
+
+    expect(res.status).toBe(200);
+    expect(mocks.state.forwardedProvider).toBe('openai');
+    expect(getKey()).toBe('sk_theusersownkey000');
+  });
+
+  it('routes a plan-funded request with an EMPTY vault to Groq on the platform key', async () => {
+    // The fallback that makes the subscription work without any configuration.
+    resetState();
+    mocks.state.plan = 'student_pro';
+    mocks.state.keyRows = [];
     const getKey = captureKey();
 
     const res = await handleAiProxy(aiReq('chat', { model: 'mystery' }), {

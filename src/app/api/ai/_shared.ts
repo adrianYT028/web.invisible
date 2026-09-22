@@ -231,11 +231,34 @@ export async function handleAiProxy(
     //   BRING YOUR OWN KEY — everyone else. Marginal cost stays zero, which is
     //     what keeps the one-time desktop licence viable.
     //
-    // Gating on the PLAN rather than only on the model is the change that
-    // unblocked the resume analyser: its calls use an ordinary model, so a
-    // premium-model-only check would have sent subscribers down the
-    // `no_api_key` path.
-    const platformFunded = premium || planFundsInference(plan);
+    // Gating on the PLAN rather than only on the model is what lets a subscriber
+    // use the desktop app without ever holding a key of their own.
+    //
+    // -----------------------------------------------------------------------
+    // WHY A PLAN-FUNDED USER'S OWN KEY IS STILL PREFERRED WHEN THEY HAVE ONE
+    //
+    // The three endpoints in this module are the DESKTOP app's (chat, transcribe,
+    // vision). The resume analyser does not come through here — it calls the
+    // platform key directly in src/lib/resume/ai/client.ts.
+    //
+    // So "plan funds inference" used unconditionally would move every paying
+    // desktop user off their own Groq account and onto ours. Measured against
+    // production usage before making this change: a single active desktop session
+    // peaked at 6,599 tokens in one minute, and the whole account's observed peak
+    // was 10,474. Our Groq tier allows 8,000 tokens per minute IN TOTAL.
+    //
+    // Today each of those users spends their own key and therefore their own
+    // 8,000/min. Pooling ten of them into one 8,000/min bucket means the second
+    // concurrent meeting starts getting 429s — so honouring the funding promise
+    // literally would have made the product worse for the people who paid for it,
+    // and would have spent the budget the resume analyser needs.
+    //
+    // Hence: their key first, our key only when they have none that can serve the
+    // request. The promise that matters to a paying user is "this works without
+    // you configuring anything", and the fallback is what delivers it — one
+    // production customer has paid and never added a key, and is currently
+    // getting 403s. Revisit this once the Groq tier is raised.
+    const planFunded = planFundsInference(plan);
 
     let apiKey: string;
     // Which provider this request is sent to. On the platform-funded path it is
@@ -244,17 +267,15 @@ export async function handleAiProxy(
     // vaulted — see src/lib/ai/model-routing.ts.
     let provider: ProviderId;
 
-    if (platformFunded) {
+    if (premium) {
+      // A premium model always runs on our account, whatever the user has
+      // vaulted: premium is the thing we are selling, not a passthrough.
       provider = 'groq';
       const platformKey = env.groqApiKey;
       if (!platformKey) {
-        // Distinguished in the log because the two causes need different fixes:
-        // a premium request means the premium path was enabled before the key was
-        // provisioned; a plan-funded request means a PAYING subscriber is being
-        // turned away, which is a billing incident, not a config nit.
         logSafe('ai_proxy_platform_key_missing', {
           endpoint: options.endpoint,
-          reason: premium ? 'premium_model' : 'plan_funded',
+          reason: 'premium_model',
         });
         response = jsonError(500, 'internal_error');
         return response;
@@ -271,7 +292,28 @@ export async function handleAiProxy(
         vaulted,
       });
 
-      if (!routing.ok) {
+      if (!routing.ok && planFunded) {
+        // They have paid, and hold no key that can serve this request. We cover
+        // it rather than refusing them something they bought.
+        provider = 'groq';
+        const platformKey = env.groqApiKey;
+        if (!platformKey) {
+          // A PAYING subscriber is being turned away. That is a billing
+          // incident, not a config nit, and the log says so.
+          logSafe('ai_proxy_platform_key_missing', {
+            endpoint: options.endpoint,
+            reason: 'plan_funded_fallback',
+          });
+          response = jsonError(500, 'internal_error');
+          return response;
+        }
+        logSafe('ai_proxy_plan_funded_fallback', {
+          endpoint: options.endpoint,
+          failure: routing.failure,
+          vaulted_count: vaulted.length,
+        });
+        apiKey = platformKey;
+      } else if (!routing.ok) {
         logSafe('ai_proxy_routing_failed', {
           endpoint: options.endpoint,
           failure: routing.failure,
@@ -310,35 +352,42 @@ export async function handleAiProxy(
             : undefined
         );
         return response;
-      }
+      } else {
+        // Routing succeeded: spend the user's own key for the provider it chose.
+        provider = routing.provider;
 
-      provider = routing.provider;
-
-      try {
-        const vaultedKey = await readProviderKey(admin, userId, provider);
-        if (vaultedKey === null) {
-          // `listVaultedProviders` said this provider was present and the row read
-          // then found nothing — a delete raced this request, or the read failed.
-          logSafe('ai_proxy_vault_row_vanished', {
-            endpoint: options.endpoint,
-            provider,
-          });
-          response = jsonError(403, 'no_api_key');
-          return response;
+        try {
+          const vaultedKey = await readProviderKey(admin, userId, provider);
+          if (vaultedKey === null) {
+            // `listVaultedProviders` said this provider was present and the row read
+            // then found nothing — a delete raced this request, or the read failed.
+            logSafe('ai_proxy_vault_row_vanished', {
+              endpoint: options.endpoint,
+              provider,
+            });
+            response = jsonError(403, 'no_api_key');
+            return response;
+          }
+          apiKey = vaultedKey;
+        } catch (err) {
+          // Req 3.5, 8.3, 8.4 — unknown master-key version or auth-tag failure.
+          // No upstream call, the vault row is left unchanged, and no key
+          // material is surfaced (KeyDecryptError messages carry none).
+          //
+          // NOT dropped to the platform key for a plan-funded user, even though
+          // that would unblock them: a decrypt failure means we hold a key we can
+          // no longer read, which is a fault in our own key management. Papering
+          // over it here would hide a crypto regression behind a working product.
+          // "No usable key" and "key we cannot decrypt" are different problems.
+          if (err instanceof KeyDecryptError) {
+            logSafe('ai_proxy_key_decrypt_failed', {
+              endpoint: options.endpoint,
+            });
+            response = jsonError(500, 'key_decrypt_failed');
+            return response;
+          }
+          throw err;
         }
-        apiKey = vaultedKey;
-      } catch (err) {
-        // Req 3.5, 8.3, 8.4 — unknown master-key version or auth-tag failure.
-        // No upstream call, the vault row is left unchanged, and no key
-        // material is surfaced (KeyDecryptError messages carry none).
-        if (err instanceof KeyDecryptError) {
-          logSafe('ai_proxy_key_decrypt_failed', {
-            endpoint: options.endpoint,
-          });
-          response = jsonError(500, 'key_decrypt_failed');
-          return response;
-        }
-        throw err;
       }
     }
 
