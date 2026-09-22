@@ -82,9 +82,14 @@
 
 import { SiteShell } from '@/components/chrome/SiteShell';
 import { HeroSection } from '@/components/hero/HeroSection';
-import { ScreenSimulator } from '@/components/hero/ScreenSimulator';
+import { ServiceCube } from '@/components/hero/ServiceCube';
+import {
+  FULL_ACCESS_PRICE,
+  formatInrCompact,
+} from '@/lib/payments/pricing';
 import { TrustStrip } from '@/components/sections/TrustStrip';
 import { FeatureGrid } from '@/components/sections/FeatureGrid';
+import { ServicesOverview } from '@/components/sections/ServicesOverview';
 import { HowItWorks } from '@/components/sections/HowItWorks';
 import { GuideCards } from '@/components/sections/GuideCards';
 import { SITE_META } from '@/components/constants/site-meta';
@@ -96,33 +101,40 @@ export default function HomePage() {
   return (
     <SiteShell>
       <HeroSection
-        eyebrow="Stealth-mode AI overlay"
+        eyebrow="Four services, one payment"
         headline={
           <>
-            The intelligence
+            Everything you need
             <br />
-            they can&apos;t <em>see</em>.
+            to <em>get hired</em>.
           </>
         }
-        sub="A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses every screen-capture pipeline."
-        demo={<ScreenSimulator />}
+        sub="An invisible interview overlay, an ATS resume analyser, matched job openings, and drafted outreach. One payment, no subscription."
+        demo={<ServiceCube />}
         primary={{
-          // Routes through the login-gated purchase page
-          // (src/app/download/page.tsx) rather than linking a release asset.
-          // The installer is served only by /api/download/[platform] after an
-          // entitlement check, so no asset URL exists in this bundle. This
-          // page itself stays public for SEO.
-          label: 'Get Unviewable',
-          href: '/download',
+          // Points at /pricing rather than /download now that the desktop app is
+          // one of four things being sold. /download still exists and is still
+          // the fulfilment surface — it is just no longer the whole product, so
+          // leading with it undersold three quarters of the purchase.
+          label: 'See what you get',
+          href: '/pricing',
           variant: 'primary',
           trailing: (
-            <span className="cta-version">v{SITE_META.softwareVersion}</span>
+            <span className="cta-version">
+              {formatInrCompact(FULL_ACCESS_PRICE.baseAmountPaise)} once
+            </span>
           ),
         }}
         secondary={{
-          label: 'Mac',
-          state: 'coming-soon',
-          trailing: <span className="cta-version">Coming soon</span>,
+          // The desktop app keeps a direct route for returning visitors who came
+          // for it specifically, and carries the version pill it used to show in
+          // the primary slot.
+          label: 'Download the app',
+          href: '/download',
+          variant: 'secondary',
+          trailing: (
+            <span className="cta-version">v{SITE_META.softwareVersion}</span>
+          ),
         }}
         spotlight
         antigravity={{
@@ -160,6 +172,10 @@ export default function HomePage() {
         }}
       />
       <Reveal><TrustStrip /></Reveal>
+      {/* Placed here, above the desktop-app feature grid, so the breadth of the
+          product is visible before the page narrows to the overlay's features.
+          The hero's positioning is untouched — see ServicesOverview's header. */}
+      <Reveal><ServicesOverview /></Reveal>
       <Reveal><FeatureGrid /></Reveal>
       <Reveal><HowItWorks /></Reveal>
       <Reveal><GuideCards /></Reveal>

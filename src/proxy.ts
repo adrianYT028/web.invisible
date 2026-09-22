@@ -36,6 +36,13 @@ function isPublicPath(pathname: string) {
   if (pathname === '/guides/setup') return true;
   if (pathname === '/guides/usage') return true;
   if (pathname === '/feedback') return true;
+  // Pricing. This one MUST be anonymous: a pricing page behind a login wall
+  // cannot sell to anyone who does not already have an account, which is
+  // everyone we are trying to reach. It reads the session when there is one, to
+  // show what the visitor already owns instead of selling it to them twice, but
+  // it renders fully without one. Razorpay's activation review also expects to
+  // find prices without signing in.
+  if (pathname === '/pricing') return true;
   // The /download page runs its own session check and redirects anonymous
   // users to /login itself (see src/app/download/page.tsx), so it is "public"
   // to the middleware. Gating happens in two places the middleware does not

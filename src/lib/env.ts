@@ -82,6 +82,13 @@ export const env = {
     // required() once premium ships.
     return optional(process.env.GROQ_API_KEY);
   },
+  get cronSecret() {
+    // Shared secret for scheduled routes (the job-index sync). Optional so the
+    // app boots without it; the route refuses to run when it is absent rather
+    // than exposing an unauthenticated trigger. Vercel Cron sends it as
+    // `Authorization: Bearer <secret>`.
+    return optional(process.env.CRON_SECRET);
+  },
   get kvRestApiUrl() {
     // Optional in dev — ratelimit.ts falls back to in-memory when absent.
     return optional(process.env.KV_REST_API_URL);

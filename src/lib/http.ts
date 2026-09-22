@@ -33,11 +33,28 @@ import { NextResponse } from 'next/server';
 // razorpay pay-to-download additions:
 //   payment_not_configured   503  Razorpay env vars absent — checkout disabled
 //   already_purchased        409  /api/payments/*: user already has the license
+//   unknown_product          400  /api/payments/order: product not in the catalogue
+//   endpoint_unsupported     400  /api/ai/*: the user's key's provider has no
+//                                 such endpoint (e.g. OpenRouter has no audio
+//                                 transcription API at all)
 //   order_create_failed      502  Razorpay Orders API rejected or timed out
 //   invalid_signature        400  webhook/checkout HMAC did not verify
 //   payment_required         402  /api/download/*: no download entitlement
 //   release_not_found        404  /api/download|releases: no published build
 //   download_unavailable     503  entitled, but the signed URL could not be minted
+//
+// resume analyser additions:
+//   no_file                  400  /api/resume/upload: no file part in the form
+//   empty_file               400  /api/resume/upload: zero-byte upload
+//   file_too_large           413  /api/resume/upload: over the size cap
+//   unsupported_type         415  /api/resume/upload: not PDF/DOCX/TXT
+//   document_unreadable      422  encrypted, corrupt, or renamed document
+//   parse_quality_too_low    422  /api/resume/scan: parse gate refused the file
+//   quota_exceeded           429  daily resume upload/scan allowance spent
+//   analysis_busy            429  provider rate limit (Groq TPM) — retryable
+//   analysis_unavailable     503  platform Groq key absent or provider down
+//   storage_failed           500  the private bucket write failed
+//   resume_not_found         404  /api/resume/scan: no such resume for this user
 // -----------------------------------------------------------------------------
 
 export type ErrorCode =
@@ -64,11 +81,27 @@ export type ErrorCode =
   | 'removal_failed'
   | 'payment_not_configured'
   | 'already_purchased'
+  | 'unknown_product'
+  | 'endpoint_unsupported'
+  | 'unknown_provider'
   | 'order_create_failed'
   | 'invalid_signature'
   | 'payment_required'
   | 'release_not_found'
-  | 'download_unavailable';
+  | 'download_unavailable'
+  | 'no_file'
+  | 'empty_file'
+  | 'file_too_large'
+  | 'unsupported_type'
+  | 'document_unreadable'
+  | 'parse_quality_too_low'
+  | 'quota_exceeded'
+  | 'analysis_busy'
+  | 'analysis_unavailable'
+  | 'storage_failed'
+  | 'resume_not_found'
+  | 'job_not_found'
+  | 'duplicate_job';
 
 export function jsonError(
   status: number,
@@ -112,6 +145,10 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   payment_not_configured:
     'Payments are temporarily unavailable. Please try again later.',
   already_purchased: 'You already own this. Head to the download page.',
+  unknown_product: 'That is not something we sell.',
+  endpoint_unsupported:
+    'None of your saved AI keys support this feature. Add a key from a provider that does.',
+  unknown_provider: 'We cannot use keys from that provider yet.',
   order_create_failed:
     'We could not start the payment. No money has left your account — please try again.',
   invalid_signature: 'Payment verification failed.',
@@ -119,6 +156,24 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   release_not_found: 'No release is published for this platform yet.',
   download_unavailable:
     'Your download link could not be generated. Please try again in a moment.',
+  no_file: 'No file was attached to the request.',
+  empty_file: 'That file is empty.',
+  file_too_large: 'That file is too large. Resumes should be under 5 MB.',
+  unsupported_type:
+    'Upload a PDF, a Word .docx, or a plain .txt file. Older .doc files are not supported.',
+  document_unreadable:
+    'This document could not be read. Try re-exporting it from the original file.',
+  parse_quality_too_low:
+    'We could not read this resume well enough to score it. Fix the file problems listed first — scoring it as-is would grade text you never wrote.',
+  quota_exceeded: 'You have used your resume allowance for today.',
+  analysis_busy:
+    'Too many analyses are running right now. Try again in a moment.',
+  analysis_unavailable:
+    'Resume analysis is temporarily unavailable. Please try again shortly.',
+  storage_failed: 'The file could not be saved. Please try again.',
+  resume_not_found: 'That resume could not be found.',
+  job_not_found: 'That job could not be found in your tracker.',
+  duplicate_job: 'That job is already in your tracker.',
 };
 
 export function extractBearer(req: Request): string | null {

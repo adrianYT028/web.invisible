@@ -4,6 +4,9 @@ import { createSupabaseRouteClient } from '@/lib/supabase/route';
 import { jsonError, logSafe } from '@/lib/http';
 import { getRequestIp, rateLimitDownloadByUser } from '@/lib/ratelimit';
 import { hasDownloadAccess } from '@/lib/payments/entitlements';
+import { readEffectivePlan } from '@/lib/plans/read-plan';
+import { hasServiceAccess } from '@/lib/plans/services';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import {
   createSignedDownloadUrl,
   getLatestRelease,
@@ -53,9 +56,19 @@ export async function GET(
   } = await sb.auth.getUser();
   if (!user) return jsonError(401, 'not_authenticated');
 
-  // Entitlement gate. `hasDownloadAccess` fails closed on a database error, so
-  // a Supabase outage returns 402 rather than leaking the build.
-  if (!(await hasDownloadAccess(user.id))) {
+  // Entitlement gate. Two things grant the desktop app: the one-time ₹99
+  // licence (`entitlements.download_access`) and the platform bundle, which
+  // includes it. `hasServiceAccess` is what combines them — checking
+  // `hasDownloadAccess` alone would sell someone the bundle and then refuse them
+  // the installer it advertises.
+  //
+  // Both inputs fail closed on a database error, so a Supabase outage returns 402
+  // rather than leaking the build.
+  const [plan, downloadAccess] = await Promise.all([
+    readEffectivePlan(supabaseAdmin(), user.id),
+    hasDownloadAccess(user.id),
+  ]);
+  if (!hasServiceAccess({ plan, downloadAccess }, 'desktop')) {
     logSafe('download_denied_unpaid', { user_id: user.id, platform });
     return jsonError(402, 'payment_required');
   }
