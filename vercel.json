@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobs/sync",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/reap-resumes",
+      "schedule": "30 3 * * *"
+    }
+  ]
+}
