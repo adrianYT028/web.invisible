@@ -74,6 +74,24 @@ const nextConfig: NextConfig = {
    */
   outputFileTracingIncludes: {
     "/api/resume/upload": [
+      // THE ACTUAL CAUSE OF THE PRODUCTION 500.
+      //
+      // Node's module resolver reads a package's own `package.json` to work out
+      // the package boundary and its module type before it will load ANY file
+      // inside it. Tracing recorded `pdf.mjs` and skipped `package.json`, so the
+      // deployed function held the parser source with no way to resolve it, and
+      // `await import('pdfjs-dist/legacy/build/pdf.mjs')` threw
+      // ERR_MODULE_NOT_FOUND on a file that was sitting right there.
+      //
+      // Nothing about this is visible locally: `next start` and vitest both run
+      // against a complete node_modules, where package.json is always present.
+      "./node_modules/pdfjs-dist/package.json",
+
+      // The worker, a SEPARATE bug found first and fixed in the same place. The
+      // fake-worker import is computed from the module's own URL at runtime, so
+      // static tracing cannot see it either. Missing it fails differently —
+      // `422 extraction_failed` rather than a 500 — which is what made it a
+      // plausible but wrong first diagnosis.
       "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
     ],
   },
