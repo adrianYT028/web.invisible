@@ -54,6 +54,20 @@ const REQUIRED = [
     match: 'pdf.worker.mjs',
     why: 'pdfjs cannot start its fake worker (422 extraction_failed)',
   },
+  {
+    // The one that actually kept it broken. Node has no DOMMatrix on any version;
+    // pdfjs polyfills it from this optional dependency. Because it is optional and
+    // our code never imports it, tracing does not pick it up on its own.
+    match: '@napi-rs/canvas',
+    why: 'pdf.mjs throws "DOMMatrix is not defined" on load (500 internal_error)',
+  },
+  {
+    // Platform-suffixed native binary. On Vercel this is canvas-linux-x64-gnu; on
+    // a dev Mac, canvas-darwin-arm64. Matching the extension rather than a
+    // platform name keeps the check honest on both.
+    match: '.node',
+    why: 'the Skia native binary is absent, so @napi-rs/canvas cannot load',
+  },
 ];
 
 if (!existsSync(TRACE)) {

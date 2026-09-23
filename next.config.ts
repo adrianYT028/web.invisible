@@ -29,7 +29,10 @@ const nextConfig: NextConfig = {
    * library with no business being bundled for the browser — though it has no
    * worker and did not fail.
    */
-  serverExternalPackages: ["pdfjs-dist", "mammoth"],
+  // `@napi-rs/canvas` is a NATIVE module (a prebuilt Skia `.node` binary).
+  // Bundling it is not merely wasteful, it cannot work — a `.node` file has to be
+  // loaded by Node's own dlopen, not inlined into a JS chunk.
+  serverExternalPackages: ["pdfjs-dist", "mammoth", "@napi-rs/canvas"],
 
   /**
    * Force `pdf.worker.mjs` into the deployed function bundle.
@@ -93,6 +96,39 @@ const nextConfig: NextConfig = {
       // `422 extraction_failed` rather than a 500 — which is what made it a
       // plausible but wrong first diagnosis.
       "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+
+      // -----------------------------------------------------------------------
+      // DOMMatrix. This is what actually kept PDF upload broken.
+      //
+      // Node provides no `DOMMatrix` on any version (verified: undefined on both
+      // 20 and 22). pdfjs polyfills it from `@napi-rs/canvas`, which it declares
+      // as an OPTIONAL dependency — so it is installed, it is never imported by
+      // our code, and tracing therefore never saw it. Without it, loading
+      // pdf.mjs throws `DOMMatrix is not defined`.
+      //
+      // Measured with scripts/probe-pdfjs-minimal.mjs, which builds sandboxes
+      // containing only a candidate file set:
+      //
+      //   pdf.mjs only ................... FAIL  DOMMatrix is not defined
+      //   + package.json ................. FAIL  DOMMatrix is not defined
+      //   + package.json + worker ........ FAIL  DOMMatrix is not defined
+      //   + wasm/ ........................ FAIL  DOMMatrix is not defined
+      //   whole pdfjs, no canvas ......... FAIL  DOMMatrix is not defined
+      //   pdfjs + @napi-rs/canvas ........ PASS  pages=1 chars=46
+      //
+      // The binary is platform-suffixed and npm installs only the host's variant,
+      // so the glob matches `canvas-linux-x64-gnu` on Vercel and
+      // `canvas-darwin-arm64` here. It does not multiply the bundle across
+      // platforms.
+      //
+      // Roughly 34 MB, against Vercel's 250 MB uncompressed limit. A hand-written
+      // DOMMatrix shim would be far smaller and was rejected: the layout analysis
+      // in src/lib/resume/extraction/layout.ts reads text transforms to detect
+      // columns and tables, so a subtly wrong matrix would not crash — it would
+      // silently mis-score resumes, which is worse than being 34 MB larger.
+      "./node_modules/@napi-rs/canvas/**",
+      "./node_modules/@napi-rs/canvas-*/**",
+      "./node_modules/@napi-rs/wasm-runtime/**",
     ],
   },
 };
