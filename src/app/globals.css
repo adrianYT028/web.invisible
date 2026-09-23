@@ -7121,3 +7121,118 @@ textarea.field-control {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ===========================================================================
+   Screen-reader-only text
+   ---------------------------------------------------------------------------
+   Needed by the loading placeholder, which announces "Loading…" to assistive
+   technology while showing nothing but grey boxes visually. There was no such
+   utility in this file before.
+
+   `clip-path` plus a 1px box rather than `display:none` or `visibility:hidden`,
+   because both of those remove the element from the accessibility tree — which
+   would make the announcement silent and the whole point moot. Kept
+   non-focusable; this is for status text, not skip links.
+   =========================================================================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===========================================================================
+   Loading placeholder
+   ---------------------------------------------------------------------------
+   Used by every `loading.tsx`. See src/components/chrome/PageSkeleton.tsx for
+   why it exists.
+
+   DELIBERATELY NOT A SHIMMER. This stylesheet repeatedly rejects sweeping
+   gradients and pulsing borders on the real components, so a skeleton that swept
+   would be the loudest thing on the page and would do it for ~400ms before
+   disappearing. These blocks are flat and low contrast: they reserve the space,
+   they do not perform.
+
+   The one animation is a single fade-in, and it starts from 0 with a short delay
+   so a FAST navigation shows nothing at all. That is the important detail — a
+   skeleton that appears for 80ms and vanishes is a flash of content, which reads
+   as jank rather than as loading. Below roughly 120ms the user sees a normal
+   instant transition; past it, the placeholder settles in.
+   =========================================================================== */
+.skeleton-group {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+
+  opacity: 0;
+  animation: skeleton-settle 240ms ease-out 120ms forwards;
+}
+
+@keyframes skeleton-settle {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.skeleton-block {
+  background-color: var(--surface-overlay);
+  border-radius: 8px;
+}
+
+.skeleton-title {
+  height: clamp(2rem, 3vw, 2.75rem);
+  width: min(60%, 26rem);
+  border-radius: 10px;
+}
+
+.skeleton-lede {
+  height: 1.1rem;
+  width: min(85%, 40rem);
+}
+
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 1.5vw, 1.125rem);
+  margin-top: clamp(0.5rem, 1.5vw, 1.25rem);
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: clamp(1.1rem, 2vw, 1.6rem);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background-color: var(--surface-raised);
+}
+
+.skeleton-line {
+  height: 0.85rem;
+  width: 100%;
+  border-radius: 6px;
+}
+
+.skeleton-line--head {
+  height: 1.05rem;
+  width: min(40%, 14rem);
+  background-color: var(--border-strong);
+}
+
+.skeleton-line--short {
+  width: min(65%, 22rem);
+}
+
+/* No fade for anyone who has asked for less motion. The placeholder is still
+   visible and still does its job — it just arrives without the transition,
+   rather than being hidden entirely, which would leave a blank page. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-group {
+    opacity: 1;
+    animation: none;
+  }
+}
