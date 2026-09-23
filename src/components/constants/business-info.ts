@@ -44,13 +44,16 @@ export const BUSINESS_INFO = {
   /**
    * Registered legal entity name, exactly as on your PAN/GST registration.
    *
-   * TODO: For a Sole Proprietorship, Razorpay's KYC is in the PROPRIETOR'S
-   * legal name, not the brand. 'Unviewable' is the trading name. This should
-   * read something like 'Adrian <Surname>, trading as Unviewable' — matching
-   * the name on the PAN you gave Razorpay, or activation will be rejected for
-   * a name mismatch.
+   * For a Sole Proprietorship, Razorpay's KYC is held in the PROPRIETOR'S legal
+   * name, not the brand — so this is the person, with the brand named as the
+   * trading style. It must match the PAN character for character or activation is
+   * rejected for a name mismatch.
+   *
+   * Until now this read "TODO proprietor legal name (as on PAN), trading as
+   * Unviewable" and that string was RENDERING TO CUSTOMERS on /contact, /terms
+   * and /privacy.
    */
-  legalName: 'TODO proprietor legal name (as on PAN), trading as Unviewable',
+  legalName: 'Kartik Bhat, trading as Unviewable',
 
   /** e.g. 'Sole Proprietorship', 'Private Limited Company', 'LLP'. */
   entityType: 'Sole Proprietorship',

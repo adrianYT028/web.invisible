@@ -38,8 +38,19 @@ if (!envFile || !VALID.has(segment)) {
   process.exit(2);
 }
 
-/** The project's own account. Not a customer; useful as a test send. */
-const OWN_ACCOUNTS = new Set(['join.invisibleai@gmail.com', 'adriayt028@gmail.com']);
+/**
+ * The project's own accounts. Not customers; useful as test sends.
+ *
+ * `kartikbhat028@` is the proprietor — see `legalName` in
+ * src/components/constants/business-info.ts. It was sitting in the 74-address
+ * "safe to send" list, which would have counted the owner reading his own launch
+ * email as an open.
+ */
+const OWN_ACCOUNTS = new Set([
+  'join.invisibleai@gmail.com',
+  'adriayt028@gmail.com',
+  'kartikbhat028@gmail.com',
+]);
 const excludeOwn = flags.includes('--exclude-own');
 
 const env = {};
