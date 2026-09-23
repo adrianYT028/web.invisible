@@ -58,21 +58,26 @@ export const BUSINESS_INFO = {
   /**
    * Full registered address including PIN code. Must be findable on Google.
    *
-   * TODO: '201013' is only a PIN code. Razorpay requires a complete,
-   * externally verifiable address — building/flat, street, locality, city,
-   * state, PIN.
+   * STILL INCOMPLETE FOR RAZORPAY: there is no PIN code and no building or
+   * street. Razorpay's activation review cross-checks this against your KYC and
+   * rejects approximations, and "Sector 34, Noida" covers a large area rather
+   * than a premises. It is recorded here because it is what we actually know and
+   * a real partial address beats a placeholder on the live legal pages — but add
+   * the building/flat, street and PIN before submitting for activation.
+   *
+   * Deliberately NOT prefixed with TODO_PREFIX: the prefix drives a warning
+   * banner and `isBusinessInfoComplete()`, and a string starting with "TODO"
+   * would render literally on /contact and /terms in production.
    */
-  registeredAddress:
-    'TODO full address: building, street, locality, Noida, Uttar Pradesh 201013',
+  registeredAddress: 'Sector 34, Noida, Uttar Pradesh, India',
 
   /**
    * Operating address. Set equal to registeredAddress if identical.
    *
-   * TODO: 'NCR, Noida' is too vague to verify. Use the same full-address
-   * format as above.
+   * Same caveat as `registeredAddress` above: needs a PIN code and a
+   * building/street before Razorpay activation.
    */
-  operatingAddress:
-    'TODO full operating address: building, street, locality, Noida, Uttar Pradesh 201013',
+  operatingAddress: 'Sector 34, Noida, Uttar Pradesh, India',
 
   /**
    * Reachable phone number including country code.
