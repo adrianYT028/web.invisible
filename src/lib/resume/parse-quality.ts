@@ -376,7 +376,12 @@ export function assessParseQuality(raw: RawExtraction): ExtractionAssessment {
     encodingDamageSuspected: detectEncodingDamage(text),
     hasEmail: email !== null,
     hasPhone: phone !== null,
-    pagesRead: raw.pageCount,
+    // `?? undefined`, not `?? 1`. The diagnostics blob is persisted and read back
+    // by `warningsFromDiagnostics`, which guards on `typeof === 'number'` — so
+    // omitting the field means "unknown" and correctly produces no page-based
+    // advice, whereas defaulting it to 1 would assert a page count we do not have
+    // and is exactly the bug this replaced.
+    pagesRead: raw.pageCount ?? undefined,
     pagesInDocument: raw.pagesInDocument,
   };
 

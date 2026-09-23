@@ -69,7 +69,18 @@ export interface RawExtraction {
    * misleading: a long upload reported its full length beside a fraction of its
    * text, so truncation looked like a sparse document.
    */
-  pageCount: number;
+  /**
+   * NULL means genuinely unknown, and must be reported as unknown — not as 1.
+   *
+   * PDF always knows. DOCX knows only when the writing tool recorded it (see
+   * `readRecordedPageCount`). Plain text has no pagination at all and is always
+   * null.
+   *
+   * This was a non-nullable `number` with DOCX and TXT hardcoding 1, which showed
+   * "Pages: 1" for a three-page resume and disabled the too-long warning for every
+   * DOCX upload.
+   */
+  pageCount: number | null;
   /**
    * Pages the document CLAIMS to have, when the format reports it.
    *

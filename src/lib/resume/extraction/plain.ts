@@ -33,7 +33,10 @@ export function extractPlainText(bytes: Uint8Array): RawExtraction {
 
   return {
     text: normalised,
-    pageCount: 1,
+    // Plain text has no pagination whatsoever — not "one page", none. Reporting 1
+    // was a claim about a property the format does not have. Null, and the UI says
+    // "not reported".
+    pageCount: null,
     pages: [{ pageNumber: 1, text: normalised, hasImages: false }],
     hasTextLayer: normalised.trim().length > 0,
     columnLayoutSuspected: false,

@@ -55,7 +55,8 @@ interface UploadResult {
   reused: boolean;
   parseIntegrity: number;
   diagnostics: Diagnostics;
-  pageCount: number;
+  /** Null when the format does not record one — see the Pages row below. */
+  pageCount: number | null;
   scannable: boolean;
   warnings: string[];
 }
@@ -432,7 +433,21 @@ export function ResumeAnalyser({
             </div>
             <div>
               <dt>Pages</dt>
-              <dd>{upload.pageCount}</dd>
+              {/* A .docx does not paginate itself and a .txt has no pages at all,
+                  so the count is only known when the writing tool recorded it. This
+                  showed a flat "1" for every DOCX, which a user with a three-page
+                  resume spotted at once — and a report that is wrong about the one
+                  figure the reader can check against their own file earns no trust
+                  for the figures they cannot. */}
+              <dd>
+                {typeof upload.pageCount === 'number' ? (
+                  upload.pageCount
+                ) : (
+                  <span title="A .docx stores no page count unless the app that saved it recorded one. Plain text has no pages.">
+                    not reported
+                  </span>
+                )}
+              </dd>
             </div>
           </dl>
         </section>

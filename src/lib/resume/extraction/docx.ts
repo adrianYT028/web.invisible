@@ -41,14 +41,35 @@ export async function extractDocx(bytes: Uint8Array): Promise<RawExtraction> {
 
   const tablesDetected = /<table[\s>]/i.test(html);
   const text = htmlToText(html);
+  const pageCount = await readRecordedPageCount(bytes);
 
   return {
     text,
-    // A .docx has no fixed pagination — pagination is computed by the renderer
-    // from fonts and page size, so there is no page count in the file to read.
-    // Reporting 1 is honest for a format that does not paginate itself, and the
-    // per-page diagnostics below are correspondingly whole-document.
-    pageCount: 1,
+    // -----------------------------------------------------------------------
+    // NULL, NOT 1, WHEN THE PAGE COUNT IS UNKNOWN.
+    //
+    // This used to report 1 unconditionally, with a comment arguing that was
+    // "honest for a format that does not paginate itself". It is not honest: "1"
+    // is a specific factual claim, and a user who uploaded a three-page resume was
+    // shown "Pages: 1". They noticed immediately, and were right to — a report
+    // that is wrong about the one thing the reader can verify by looking at their
+    // own document earns no trust for the numbers they cannot check.
+    //
+    // It also silently disabled advice. `truncationWarning` in parse-quality.ts
+    // tells a user their resume is too long to be read in full, and it can only
+    // fire when the page count is known. With 1 hardcoded it could never fire for
+    // DOCX — which is the format most resumes arrive in.
+    //
+    // `readRecordedPageCount` recovers the real figure when Word left it in the
+    // file. When it did not, null means unknown and the UI says so.
+    // -----------------------------------------------------------------------
+    pageCount,
+    // Word's own count of the whole document. Equal to `pageCount` here because,
+    // unlike the PDF reader, nothing is skipped — mammoth converts all of it. The
+    // field exists so a reader does not have to know that.
+    pagesInDocument: pageCount ?? undefined,
+    // One synthetic page holding the whole document. This is the unit the
+    // image-only-page check works in, and for DOCX that check is whole-document.
     pages: [{ pageNumber: 1, text, hasImages: /<img[\s>]/i.test(html) }],
     // If mammoth produced any text, the document has readable text. A .docx
     // containing only images is possible but rare.
@@ -91,6 +112,54 @@ export function htmlToText(html: string): string {
       .replace(/\n{3,}/g, '\n\n')
       .trim()
   );
+}
+
+/**
+ * The page count Word recorded in the file, or null.
+ *
+ * A .docx does not paginate itself — pagination is computed by whatever renders
+ * it, from the page size and the fonts actually available. But Word (and LibreOffice,
+ * and Pages) write the count from their LAST render into `docProps/app.xml` as
+ * `<Pages>`. That is exactly the number the author saw, which is the number worth
+ * reporting.
+ *
+ * WHAT IT IS NOT
+ *   It is not computed, and it can be stale — it reflects the last save, so a
+ *   document edited by a tool that does not update it will disagree. It is also
+ *   absent entirely from some exporters, notably Google Docs. Both cases return
+ *   null rather than a guess.
+ *
+ *   Estimating pages from character count was considered and rejected. It would be
+ *   wrong often enough to be worse than saying nothing, and the specific harm is
+ *   that `truncationWarning` would then tell people to cut a resume that is
+ *   already short.
+ *
+ * NEVER THROWS. A missing or malformed app.xml is normal, not an error, and a
+ * document that converted successfully must not fail over a metadata field.
+ */
+async function readRecordedPageCount(bytes: Uint8Array): Promise<number | null> {
+  try {
+    // jszip is already how mammoth opens the container, so this adds no new
+    // dependency at runtime — but it is declared directly in package.json rather
+    // than relied on transitively, because a mammoth upgrade could drop it and the
+    // only symptom would be page counts quietly becoming null again.
+    const { default: JSZip } = await import('jszip');
+    const zip = await JSZip.loadAsync(Buffer.from(bytes));
+    const appXml = zip.file('docProps/app.xml');
+    if (!appXml) return null;
+
+    const xml = await appXml.async('string');
+    const match = /<Pages>\s*(\d+)\s*<\/Pages>/i.exec(xml);
+    if (!match) return null;
+
+    const pages = Number(match[1]);
+    // 0 appears in files saved by tools that write the element without filling it
+    // in. An absurd value means we are reading something we do not understand.
+    if (!Number.isSafeInteger(pages) || pages < 1 || pages > 1000) return null;
+    return pages;
+  } catch {
+    return null;
+  }
 }
 
 function translateDocxError(err: unknown): ExtractionError {
