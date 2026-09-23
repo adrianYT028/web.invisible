@@ -268,9 +268,13 @@ export function ApiKeyManager({ saved }: ApiKeyManagerProps) {
                   data-action="key-input"
                   style={{ width: '100%' }}
                 />
+                {/* PRIMARY. Save and Cancel were both `cta-secondary`, so the
+                    action that completes the task looked exactly like the one that
+                    abandons it. Cancel stays secondary — that is the hierarchy, not
+                    a pair of equals. */}
                 <button
                   type="button"
-                  className="cta cta-secondary"
+                  className="cta cta-primary"
                   onClick={() => handleSave(provider.id)}
                   disabled={!canSave}
                   data-action="save-key"

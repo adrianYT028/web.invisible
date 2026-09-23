@@ -37,8 +37,11 @@ export default function RedirectToDesktop({
   if (!showRetry) return null;
 
   return (
+    // PRIMARY: this only renders after the automatic hand-off has already failed
+    // for three seconds. At that point it is the sole control on the screen and the
+    // entire purpose of the page, so there is nothing for it to be secondary TO.
     <div className="account-actions" style={{ marginTop: '1.5rem' }}>
-      <a className="cta cta-secondary" href={target}>
+      <a className="cta cta-primary" href={target}>
         Open Unviewable Desktop
       </a>
     </div>

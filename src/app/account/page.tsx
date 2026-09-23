@@ -101,8 +101,11 @@ export default async function AccountPage() {
           <p className="lede">
             Signed in as <strong>{user.email ?? 'unknown'}</strong>.
           </p>
+          {/* PRIMARY. "Your services" sat at the same weight as "Log out", so
+              going to use the product looked identical to leaving. Log out stays
+              secondary. */}
           <div className="account-actions">
-            <a className="cta cta-secondary" href="/services">
+            <a className="cta cta-primary" href="/services">
               Your services
             </a>
             <LogoutButton />

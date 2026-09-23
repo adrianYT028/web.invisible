@@ -69,8 +69,12 @@ export function ServicesOverview() {
           ))}
         </div>
 
+        {/* PRIMARY. This is the only action in the section and the conversion path
+            out of it — a marketing block that ends in a ghost link is asking for
+            nothing. `ServicePaywall` already treats /pricing as primary, so this
+            also makes the two agree. */}
         <p className="account-actions">
-          <a className="cta cta-secondary" href="/pricing">
+          <a className="cta cta-primary" href="/pricing">
             See pricing
           </a>
         </p>
