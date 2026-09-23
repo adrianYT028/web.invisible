@@ -47,7 +47,42 @@ const MAX_IMAGE_PIXELS = 8_000_000;
  * from the library, so that hardening flag is obsolete rather than missing.
  */
 export async function extractPdf(bytes: Uint8Array): Promise<RawExtraction> {
-  const { getDocument, OPS } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  // LOADING pdfjs is inside the try, not just USING it.
+  //
+  // This import previously sat outside any handler. When it failed, the raw error
+  // escaped `extractDocument` and the upload route's generic catch answered
+  // `500 internal_error` — "An unexpected error occurred." — which tells the user
+  // nothing and points the developer at the database rather than at the parser.
+  //
+  // That is exactly how the production outage presented: plain text and .docx
+  // uploads returned 200 while every PDF returned 500, because `pdfjs-dist@6`
+  // declares `engines: { node: ">=22.13.0 || >=24" }` and the deployed function
+  // was on an older Node, so the module never loaded. mammoth asks only for
+  // Node >= 12, which is why .docx was unaffected and the fault looked like a
+  // database problem rather than a runtime-version one.
+  //
+  // `engines.node` is now pinned in package.json so the deployment cannot drift
+  // below what pdfjs requires. This try/catch is the second line of defence: if
+  // it ever happens again the answer is a clear `engine_unavailable`, not a
+  // shrug.
+  let getDocument: Awaited<
+    typeof import('pdfjs-dist/legacy/build/pdf.mjs')
+  >['getDocument'];
+  let OPS: Awaited<typeof import('pdfjs-dist/legacy/build/pdf.mjs')>['OPS'];
+  try {
+    const mod = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    getDocument = mod.getDocument;
+    OPS = mod.OPS;
+  } catch (err) {
+    logSafe('resume_pdf_engine_load_failed', {
+      node: process.version,
+      error: err instanceof Error ? err.message.slice(0, 200) : 'unknown',
+    });
+    throw new ExtractionError(
+      'engine_unavailable',
+      'PDF reading is temporarily unavailable. Please try a .docx or .txt copy, or try again shortly.'
+    );
+  }
 
   let doc;
   try {

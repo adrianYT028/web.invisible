@@ -172,7 +172,14 @@ export class ExtractionError extends Error {
       | 'corrupt_document'
       | 'encrypted_document'
       | 'empty_document'
-      | 'extraction_failed',
+      | 'extraction_failed'
+      // OUR fault, not the document's: the parser library could not be loaded at
+      // all. Kept distinct from `extraction_failed` because every other code here
+      // means "there is something wrong with your file", and telling someone to
+      // re-export a perfectly good PDF while the real problem is our runtime is
+      // how a server bug gets reported as a user error. The route maps this one to
+      // 503 rather than 422 for the same reason.
+      | 'engine_unavailable',
     message: string,
     /**
      * The underlying failure, preserved.

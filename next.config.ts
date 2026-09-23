@@ -30,6 +30,53 @@ const nextConfig: NextConfig = {
    * worker and did not fail.
    */
   serverExternalPackages: ["pdfjs-dist", "mammoth"],
+
+  /**
+   * Force `pdf.worker.mjs` into the deployed function bundle.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THIS IS NEEDED ON TOP OF serverExternalPackages
+   *
+   * `serverExternalPackages` fixed the DEV failure above by leaving pdfjs in
+   * node_modules, where `pdf.mjs` and `pdf.worker.mjs` sit side by side. It did
+   * NOT fix production, because Vercel does not deploy node_modules — it deploys
+   * only the files Next's static tracing decided each route needs.
+   *
+   * The fake worker's import is COMPUTED at runtime from the module's own URL, so
+   * static tracing cannot see it. Measured on the built output before adding this:
+   *
+   *     .next/server/app/api/resume/upload/route.js.nft.json
+   *       pdfjs-dist files traced: 3   (pdf.mjs, and two chunk shims)
+   *       pdf.worker.* traced:     0
+   *
+   * So the deployed function contained the parser entry point and not the worker
+   * it loads. Every PDF upload in production threw inside `extractDocument`, hit
+   * the generic catch in /api/resume/upload, and answered
+   * `500 internal_error` — surfaced to the user as "An unexpected error
+   * occurred." Locally it worked, in dev it worked, and all 867 tests passed,
+   * because vitest and `next dev` both resolve pdfjs straight from node_modules.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY NOT THE OTHER FIXES
+   *
+   * Setting `GlobalWorkerOptions.workerSrc` does not help: it changes WHICH path
+   * is imported, and the problem is that no worker file is present at any path.
+   * Bundling pdfjs instead of externalising it reintroduces the original dev bug.
+   * The file has to be shipped, so ship it.
+   *
+   * Only `/api/resume/upload` is listed because it is the only route whose trace
+   * contains pdf.mjs at all — `/api/resume/scan` reads `extracted_text` back out
+   * of the database and never touches pdfjs. If another route starts extracting,
+   * it needs an entry here too, and the symptom will be this exact 500.
+   *
+   * `pdf.worker.mjs`, not `.min.mjs`: `pdf.mjs` names the unminified file, once.
+   * It is 2.3 MB, against Vercel's 250 MB uncompressed function limit.
+   */
+  outputFileTracingIncludes: {
+    "/api/resume/upload": [
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+    ],
+  },
 };
 
 export default nextConfig;

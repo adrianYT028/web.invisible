@@ -147,10 +147,19 @@ export async function POST(request: Request) {
     assessment = assessParseQuality(raw);
   } catch (err) {
     if (err instanceof ExtractionError) {
-      // A readable, actionable failure: password-protected, corrupt, renamed.
+      // 422 says "your document is unprocessable", which is true for every code
+      // here EXCEPT `engine_unavailable` — that one means our parser would not
+      // load and the user's file was never even read. Answering 422 there tells
+      // someone to go and re-export a file that is perfectly fine, and hides an
+      // outage as a content problem. 503 is the honest answer, and it is the one
+      // uptime checks and clients already understand as "retry later".
+      const status = err.code === 'engine_unavailable' ? 503 : 422;
+      if (status === 503) {
+        logSafe('resume_upload_engine_unavailable', { user_id: user.id });
+      }
       return NextResponse.json(
         { code: err.code, message: err.message },
-        { status: 422 }
+        { status }
       );
     }
     logSafe('resume_upload_extract_failed', {
