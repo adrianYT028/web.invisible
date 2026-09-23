@@ -1,0 +1,44 @@
+Your ₹99 now covers three more tools
+
+You bought Unviewable when ₹99 bought the desktop overlay. We have since
+added three more tools, and the price has not changed.
+
+So they are already on your account. There is nothing to pay and nothing
+to activate. Sign in and they are there.
+
+
+WHAT YOU NOW HAVE
+
+Resume analyser
+  Check whether a parser can read your resume at all, then score it
+  against a job description and get a tailored rewrite.
+
+Job tracker
+  Every role you are pursuing, with its match score, stage and your
+  notes. Exports to a spreadsheet.
+
+Auto-apply and cold mail
+  Prepare a batch of applications in one action: scored, rewritten, with
+  a cold email drafted and the contact found.
+
+Desktop overlay (you already had this)
+  The invisible overlay for Windows. Answers on screen, invisible to
+  screen capture.
+
+
+Open your services:
+https://www.unviewable.online/services
+
+Signs you in to the same account you bought with.
+
+
+---
+You are getting this because you bought Unviewable. It is a one-off note
+about what your purchase now includes.
+
+Questions, or something not working? Reply to this email, or write to
+join.invisibleai@gmail.com
+
+Unviewable · {{POSTAL_ADDRESS}}
+
+Unsubscribe: {{UNSUBSCRIBE_URL}}
