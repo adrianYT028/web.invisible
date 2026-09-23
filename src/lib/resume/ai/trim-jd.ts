@@ -94,11 +94,45 @@ const KEEP_SECTIONS = [
 /**
  * Characters kept after trimming.
  *
- * Sized so prompt cost lands near 1,200 tokens rather than 3,000. Requirements
- * appear early in essentially every posting, so a hard cap loses little even when
- * the boilerplate strip does not fire.
+ * LOWERED FROM 5,000 after measuring where extraction actually fails.
+ *
+ * The old value was chosen to keep PROMPT cost near 1,200 tokens, which was the
+ * wrong thing to size against. The binding constraint is the COMPLETION budget —
+ * `MAX_TOKENS = 1300` in extract-jd.ts — and a longer posting produces more
+ * requirements, so it produces more JSON. Measured against the live provider
+ * (budget-headroom.integration.test.ts):
+ *
+ *     20 requirements   2,008 chars   OK, 22 extracted
+ *     30 requirements   2,978 chars   OK, 32 extracted
+ *     45 requirements   4,433 chars   TRUNCATED
+ *
+ * So the previous 5,000 cap sat ABOVE the point where extraction breaks. A posting
+ * that trimmed to 4,500 characters was accepted, sent, and then failed with
+ * "too long to analyse in one pass" — after the user's daily scan quota had already
+ * been spent.
+ *
+ * 3,000 is the largest value proven to work. Requirements appear early in
+ * essentially every posting, so the tail this removes is the least useful part.
+ *
+ * CHARACTERS ARE A PROXY, NOT THE REAL LIMIT. What actually drives output size is
+ * the NUMBER of requirements, and a terse posting can pack more of them into 3,000
+ * characters than the fixture above did. This cap makes truncation rare, not
+ * impossible, which is why `MAX_REQUIREMENT_LINES` below bounds the real driver as
+ * well. Raise both together, and only after the provider tier is raised — the Groq
+ * account allows 8,000 tokens per minute in total, so a bigger budget buys fewer
+ * concurrent scans.
  */
-const MAX_CHARS = 5000;
+const MAX_CHARS = 3000;
+
+/**
+ * Most requirement-like lines kept.
+ *
+ * Bounds the thing the completion budget actually responds to. 32 requirements were
+ * extracted successfully in the measurement above, and no real posting lists 40
+ * distinct requirements — a document that appears to is almost always repeating
+ * itself or has had another section misread as requirements.
+ */
+const MAX_REQUIREMENT_LINES = 40;
 
 function startsAny(line: string, prefixes: readonly string[]): boolean {
   return prefixes.some((p) => line.startsWith(p));
@@ -152,5 +186,67 @@ export function trimJobDescription(text: string): string {
   const useTrimmed = trimmed.length >= Math.min(400, text.length * 0.25);
   const chosen = useTrimmed ? trimmed : text.trim();
 
-  return chosen.length > MAX_CHARS ? `${chosen.slice(0, MAX_CHARS)}\n[truncated]` : chosen;
+  return capLength(capRequirementLines(chosen));
+}
+
+/** A bullet, dash, or numbered line — how a posting lists its requirements. */
+function isRequirementLine(line: string): boolean {
+  return /^\s*(?:[-*•‣◦·]|\d+[.)])\s+\S/.test(line);
+}
+
+/**
+ * Keep at most `MAX_REQUIREMENT_LINES` requirement lines, dropping the rest.
+ *
+ * Bounds the real driver of output size. A character cap alone does not: a posting
+ * with fifty terse one-line requirements is well under 3,000 characters and still
+ * asks the model for fifty JSON objects.
+ *
+ * Non-requirement lines are untouched, so the job title, company and section
+ * headings all survive — cutting those would cost more than it saves.
+ */
+function capRequirementLines(text: string): string {
+  const lines = text.split('\n');
+  let seen = 0;
+  const out: string[] = [];
+  let dropped = 0;
+
+  for (const line of lines) {
+    if (isRequirementLine(line)) {
+      seen += 1;
+      if (seen > MAX_REQUIREMENT_LINES) {
+        dropped += 1;
+        continue;
+      }
+    }
+    out.push(line);
+  }
+
+  if (dropped === 0) return text;
+  // Said explicitly rather than silently, so a reader of the prompt (or of a
+  // logged prompt) can tell the difference between a short posting and a cut one.
+  return `${out.join('\n')}\n[${dropped} further requirement line(s) omitted]`;
+}
+
+/**
+ * Cap the length, cutting at a LINE boundary.
+ *
+ * `slice(0, MAX_CHARS)` cuts mid-word, which hands the model a fragment like
+ * "- Strong experience with Postgre". That is worse than dropping the line: the
+ * model will faithfully extract a requirement for a technology that does not
+ * exist, and the resume then gets scored against it. A half-requirement is a
+ * fabricated requirement.
+ */
+function capLength(text: string): string {
+  if (text.length <= MAX_CHARS) return text;
+
+  const hardCut = text.slice(0, MAX_CHARS);
+  const lastBreak = hardCut.lastIndexOf('\n');
+
+  // Only honour the line boundary if it does not throw away most of the budget —
+  // a single very long line (a posting written as one paragraph) would otherwise
+  // be cut to almost nothing.
+  const body =
+    lastBreak > MAX_CHARS * 0.5 ? hardCut.slice(0, lastBreak) : hardCut.trimEnd();
+
+  return `${body.trimEnd()}\n[truncated]`;
 }
