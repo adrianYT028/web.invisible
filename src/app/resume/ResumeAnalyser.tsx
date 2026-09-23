@@ -503,12 +503,25 @@ export function ResumeAnalyser({
             </p>
           </div>
 
-          {/* Permanent, not fine print. Every competitor is vague about this;
-              being the one that is not is the position. */}
+          {/* ------------------------------------------------------------------
+              PRIMARY, not secondary.
+              
+              This is the only way a role reaches the tracker, and it used to be a
+              ghost button sitting below the whole score breakdown. The result was a
+              loop with no exit: /jobs is empty, its empty state sends you to
+              /resume, you scan, you miss the faint button, you go back to /jobs and
+              it is still empty. Measured on production — one account had three
+              scans on the same day and zero tracked jobs.
+              
+              Nothing was broken. The save works; it just did not look like the next
+              step, so nobody took it. The hint below says out loud what the button
+              is for, because "Save to tracker" does not explain that the tracker is
+              otherwise empty by definition.
+              ------------------------------------------------------------------ */}
           <div className="resume-actions">
             <button
               type="button"
-              className="cta cta-secondary"
+              className="cta cta-primary"
               disabled={saveState === 'saving' || saveState === 'saved'}
               onClick={() => void handleSaveToTracker()}
             >
@@ -518,15 +531,24 @@ export function ResumeAnalyser({
                   ? 'Saving\u2026'
                   : 'Save to tracker'}
             </button>
+
+            {saveState === 'saved' || saveState === 'duplicate' ? (
+              <Link className="cta cta-secondary" href="/jobs">
+                View tracker
+              </Link>
+            ) : null}
+
             {saveState === 'duplicate' && (
               <span className="resume-counter">Already in your tracker</span>
             )}
-            {saveState === 'saved' && (
-              <Link className="resume-counter" href="/jobs">
-                View tracker
-              </Link>
-            )}
           </div>
+
+          {saveState === 'idle' && (
+            <p className="resume-counter">
+              Keeps this role and its score in your{' '}
+              <Link href="/jobs">tracker</Link>. Scanning alone does not add it.
+            </p>
+          )}
 
           <p className="resume-score-honesty">
             This is our score, not the employer’s. No applicant tracking system
