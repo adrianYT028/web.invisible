@@ -59,6 +59,10 @@ function isPublicPath(pathname: string) {
   if (pathname === '/refund') return true;
   if (pathname === '/contact') return true;
   if (pathname === '/about') return true;
+  // Reached from an unsubscribe link in an email, usually signed out.
+  if (pathname === '/unsubscribed') return true;
+  // Free, no-login ATS checker: the page people find from search.
+  if (pathname === '/ats-checker') return true;
   // Generated social-share images (next/og). Social platforms and AI
   // crawlers fetch these unauthenticated, so they must never be gated.
   if (pathname === '/opengraph-image') return true;

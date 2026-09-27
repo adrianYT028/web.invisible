@@ -25,6 +25,7 @@ import {
   planFundsInference,
 } from '@/lib/ai/plans';
 import { readEffectivePlan as readPlan } from '@/lib/plans/read-plan';
+import { checkFairUse } from '@/lib/plans/fair-use';
 import { resolveProvider } from '@/lib/ai/model-routing';
 import type { ProviderId } from '@/lib/ai/providers';
 import { forwardToProvider, type UpstreamUsage } from '@/lib/ai/upstream';
@@ -312,6 +313,19 @@ export async function handleAiProxy(
           failure: routing.failure,
           vaulted_count: vaulted.length,
         });
+        // Fair use (src/lib/plans/fair-use.ts): only checked here, where the call
+        // would run on OUR key. A user on their own key costs us nothing and is
+        // never paused. Answers with `plan_limit_exceeded`, the 429 shipped
+        // desktop builds already understand, so no app update is needed.
+        const fair = await checkFairUse(admin, userId, 'desktop');
+        if (!fair.allowed) {
+          response = jsonError(
+            429,
+            'plan_limit_exceeded',
+            'Unusually heavy use: AI is paused for a while. Add your own Groq key in Account to keep going now.'
+          );
+          return response;
+        }
         apiKey = platformKey;
       } else if (!routing.ok) {
         logSafe('ai_proxy_routing_failed', {

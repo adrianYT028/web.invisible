@@ -40,6 +40,7 @@ const EXPECTED: Expectation[] = [
     path: 'src/app/api/jobs/[id]/route.ts',
     gated: [],
     open: {
+      GET: 'reads the caller’s own row and its saved job description',
       PATCH: 'edits the caller’s own row',
       DELETE: 'deletes the caller’s own row, which must always be possible',
     },
@@ -72,6 +73,22 @@ const EXPECTED: Expectation[] = [
     },
   },
 ];
+
+/**
+ * Where a handler rejects an unauthenticated caller, or -1 if it never does.
+ *
+ * Two accepted shapes: the original cookie-only check that returns
+ * `not_authenticated`, and the shared cookie-or-bearer helper
+ * (src/lib/auth/request-user.ts) followed by its 401 short-circuit, used by
+ * routes the browser extension also calls.
+ */
+function authCheckIndex(body: string): number {
+  const cookie = body.indexOf('not_authenticated');
+  if (cookie > -1) return cookie;
+  const helper = body.indexOf('resolveRequestUser(request)');
+  const reject = body.indexOf('if (!auth.ok) return jsonError(401');
+  return helper > -1 && reject > helper ? reject : -1;
+}
 
 /** Split a route module into its exported handlers. */
 function handlers(source: string): Record<string, string> {
@@ -110,7 +127,7 @@ describe('service entitlement gates', () => {
 
         it(`${verb} gates AFTER authenticating`, () => {
           const body = read(path)[verb];
-          const auth = body.indexOf("not_authenticated");
+          const auth = authCheckIndex(body);
           const gate = body.indexOf('requireService(user.id');
           expect(auth).toBeGreaterThan(-1);
           // Otherwise `user.id` would be read before the null check.
@@ -124,7 +141,7 @@ describe('service entitlement gates', () => {
           expect(body).toBeDefined();
           expect(body).not.toContain('requireService(user.id');
           // Still authenticated, and still scoped to the caller.
-          expect(body).toContain('not_authenticated');
+          expect(authCheckIndex(body)).toBeGreaterThan(-1);
         });
       }
     });

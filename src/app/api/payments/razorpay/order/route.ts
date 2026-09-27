@@ -13,6 +13,7 @@ import { createRazorpayOrder, RazorpayError } from '@/lib/payments/razorpay';
 import { hasDownloadAccess } from '@/lib/payments/entitlements';
 import { readEffectivePlan } from '@/lib/plans/read-plan';
 import { isBundlePlan } from '@/lib/plans/services';
+import { trackEvent } from '@/lib/analytics/track';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -228,6 +229,8 @@ export async function POST(request: Request) {
     });
     return jsonError(502, 'order_create_failed');
   }
+
+  await trackEvent('checkout_started', user.id, { product: product.id });
 
   logSafe('order_created', {
     user_id: user.id,

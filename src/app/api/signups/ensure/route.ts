@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
+import { trackEvent } from '@/lib/analytics/track';
+import { sendWelcomeEmail } from '@/lib/email/lifecycle';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +43,16 @@ export async function POST() {
     // Non-critical: log server-side but don't return 400 to avoid console noise
     console.warn('[signups/ensure] upsert error:', error.message);
     return NextResponse.json({ ok: false, detail: error.message });
+  }
+
+  // This route runs on every signed-in page load, so "signup" and the welcome
+  // email must only fire for a NEW account. The welcome email's own dedupe key
+  // (email_log) makes this idempotent even if two tabs race.
+  const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+  const isNew = Date.now() - createdAt < 24 * 60 * 60 * 1000;
+  if (isNew) {
+    const sent = await sendWelcomeEmail(user.id, email, name || 'there');
+    if (sent) await trackEvent('signup', user.id, {});
   }
 
   return NextResponse.json({ ok: true });

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 /**
  * `<JobTracker />` — the application pipeline.
@@ -27,8 +27,32 @@ export interface TrackedJob {
   scan_id: string | null;
   match_score: number | null;
   notes: string | null;
+  /** 'YYYY-MM-DD' — when to follow up. Set automatically a week after "Applied". */
+  follow_up_at: string | null;
   applied_at: string | null;
   created_at: string;
+}
+
+/** Today's date as 'YYYY-MM-DD' in the user's own timezone. */
+function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function inDaysLocal(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Human "Follow up today / in 3 days / 2 days overdue". */
+function followUpLabel(date: string): { text: string; due: boolean } {
+  const today = todayLocal();
+  const days = Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
+  if (days === 0) return { text: 'Follow up today', due: true };
+  if (days < 0) return { text: `Follow up (${-days} day${days === -1 ? '' : 's'} overdue)`, due: true };
+  if (days === 1) return { text: 'Follow up tomorrow', due: false };
+  return { text: `Follow up on ${date}`, due: false };
 }
 
 type JobStatus =
@@ -60,6 +84,8 @@ export function JobTracker({ initialJobs }: { initialJobs: TrackedJob[] }) {
   const [jobs, setJobs] = useState<TrackedJob[]>(initialJobs);
   const [filter, setFilter] = useState<JobStatus | 'all'>('all');
   const [error, setError] = useState<string | null>(null);
+  /** The one row whose details panel is open. One at a time keeps the list calm. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     let active = 0;
@@ -112,6 +138,31 @@ export function JobTracker({ initialJobs }: { initialJobs: TrackedJob[] }) {
     }
   }
 
+  /** Save notes or a follow-up date. Not optimistic: the field shows "Saving…". */
+  async function saveFields(
+    id: string,
+    fields: { notes?: string; follow_up_at?: string | null }
+  ): Promise<boolean> {
+    setError(null);
+    try {
+      const res = await fetch(`/api/jobs/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message ?? 'That change did not save. Try again.');
+      }
+      const body = (await res.json()) as { job: TrackedJob };
+      setJobs((current) => current.map((j) => (j.id === id ? body.job : j)));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That change did not save. Try again.');
+      return false;
+    }
+  }
+
   async function remove(id: string) {
     const previous = jobs;
     setJobs((current) => current.filter((j) => j.id !== id));
@@ -131,14 +182,16 @@ export function JobTracker({ initialJobs }: { initialJobs: TrackedJob[] }) {
         <section className="resume-step">
           <h2 className="resume-step-title">Nothing tracked yet</h2>
           <p className="resume-lede">
-            Scan a resume against a job description and choose{' '}
-            <strong>Save to tracker</strong>. The role lands here with its match
-            score attached, so you can see at a glance which applications are worth
-            your time.
+            Save jobs from <strong>Job openings</strong>, from a resume check, or
+            from any job site with the browser extension. Each job shows its stage,
+            match score, notes and a follow-up reminder.
           </p>
           <div className="resume-actions">
-            <Link className="cta cta-primary" href="/resume">
-              Scan a resume
+            <Link className="cta cta-primary" href="/jobs/discover">
+              Browse job openings
+            </Link>
+            <Link className="cta cta-secondary" href="/resume">
+              Check my resume
             </Link>
           </div>
         </section>
@@ -223,11 +276,20 @@ export function JobTracker({ initialJobs }: { initialJobs: TrackedJob[] }) {
                   {job.is_remote ? ' · Remote' : ''}
                   {job.source !== 'manual' ? ` · ${job.source}` : ''}
                 </p>
-                {job.applied_at && (
+                {(job.applied_at || job.follow_up_at) && (
                   <p className="resume-job-meta">
-                    Applied {job.applied_at.slice(0, 10)}
+                    {job.applied_at ? `Applied ${job.applied_at.slice(0, 10)}` : ''}
+                    {job.applied_at && job.follow_up_at ? ' · ' : ''}
+                    {job.follow_up_at ? (
+                      <span className={followUpLabel(job.follow_up_at).due ? 'tracker-due' : undefined}>
+                        {followUpLabel(job.follow_up_at).text}
+                      </span>
+                    ) : null}
                   </p>
                 )}
+                {job.notes && openId !== job.id ? (
+                  <p className="resume-job-meta">Note: {job.notes.length > 90 ? `${job.notes.slice(0, 90)}…` : job.notes}</p>
+                ) : null}
               </div>
 
               <div className="resume-job-score">
@@ -263,16 +325,147 @@ export function JobTracker({ initialJobs }: { initialJobs: TrackedJob[] }) {
                 <button
                   type="button"
                   className="resume-job-remove"
+                  aria-expanded={openId === job.id}
+                  aria-controls={`job-details-${job.id}`}
+                  onClick={() => setOpenId(openId === job.id ? null : job.id)}
+                >
+                  {openId === job.id ? 'Close' : 'Details'}
+                </button>
+                <button
+                  type="button"
+                  className="resume-job-remove"
                   aria-label={`Remove ${job.job_title} at ${job.company}`}
                   onClick={() => void remove(job.id)}
                 >
                   Remove
                 </button>
               </div>
+
+              {openId === job.id ? (
+                <JobDetails job={job} onSave={(fields) => saveFields(job.id, fields)} />
+              ) : null}
             </li>
           ))}
         </ul>
       </section>
+    </div>
+  );
+}
+
+/**
+ * The per-row details panel: follow-up date, notes, and the job description that
+ * was saved with the job (fetched when the panel opens, since descriptions are
+ * long and most rows are never opened).
+ */
+function JobDetails({
+  job,
+  onSave,
+}: {
+  job: TrackedJob;
+  onSave: (fields: { notes?: string; follow_up_at?: string | null }) => Promise<boolean>;
+}) {
+  const [notes, setNotes] = useState(job.notes ?? '');
+  const [savingNotes, setSavingNotes] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [jd, setJd] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/jobs/${job.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { job?: { jd_text?: string | null } } | null) => {
+        if (!cancelled) setJd(body?.job?.jd_text ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setJd(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [job.id]);
+
+  async function saveNotes() {
+    setSavingNotes('saving');
+    const ok = await onSave({ notes });
+    setSavingNotes(ok ? 'saved' : 'idle');
+  }
+
+  const fieldId = `job-details-${job.id}`;
+
+  return (
+    <div className="tracker-details" id={fieldId}>
+      <div className="tracker-field">
+        <label className="resume-label" htmlFor={`${fieldId}-follow`}>
+          Follow up on
+        </label>
+        <div className="tracker-inline">
+          <input
+            id={`${fieldId}-follow`}
+            type="date"
+            className="tracker-date"
+            value={job.follow_up_at ?? ''}
+            min={todayLocal()}
+            onChange={(e) => void onSave({ follow_up_at: e.target.value || null })}
+          />
+          <button
+            type="button"
+            className="resume-job-remove"
+            onClick={() => void onSave({ follow_up_at: inDaysLocal(7) })}
+          >
+            In 7 days
+          </button>
+          {job.follow_up_at ? (
+            <button
+              type="button"
+              className="resume-job-remove"
+              onClick={() => void onSave({ follow_up_at: null })}
+            >
+              No reminder
+            </button>
+          ) : null}
+        </div>
+        <p className="resume-note">
+          We email you on this date so you remember to check in with the recruiter.
+        </p>
+      </div>
+
+      <div className="tracker-field">
+        <label className="resume-label" htmlFor={`${fieldId}-notes`}>
+          Notes
+        </label>
+        <textarea
+          id={`${fieldId}-notes`}
+          className="resume-jd tracker-notes"
+          value={notes}
+          maxLength={4000}
+          placeholder="Recruiter name, referral, interview dates, salary…"
+          onChange={(e) => {
+            setNotes(e.target.value);
+            setSavingNotes('idle');
+          }}
+        />
+        <div className="tracker-inline">
+          <button
+            type="button"
+            className="cta cta-secondary"
+            disabled={savingNotes === 'saving' || notes === (job.notes ?? '')}
+            onClick={() => void saveNotes()}
+          >
+            {savingNotes === 'saving' ? 'Saving…' : 'Save notes'}
+          </button>
+          {savingNotes === 'saved' ? <span className="resume-note">Saved.</span> : null}
+        </div>
+      </div>
+
+      <div className="tracker-field">
+        <span className="resume-label">Saved job description</span>
+        {jd === undefined ? (
+          <p className="resume-note">Loading…</p>
+        ) : jd ? (
+          <p className="tracker-jd">{jd}</p>
+        ) : (
+          <p className="resume-note">No description was saved with this job.</p>
+        )}
+      </div>
     </div>
   );
 }

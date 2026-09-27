@@ -50,3 +50,14 @@ export function appliedAtFor(
   if (PRE_APPLICATION.has(next)) return null;
   return existing ?? now.toISOString();
 }
+
+/** Days after applying before the tracker suggests following up (migration 023). */
+export const DEFAULT_FOLLOW_UP_DAYS = 7;
+
+/** 'YYYY-MM-DD' for the calendar date `days` after `now`, in UTC. */
+export function dateInDays(days: number, now: Date = new Date()): string {
+  const d = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + days)
+  );
+  return d.toISOString().slice(0, 10);
+}

@@ -5,8 +5,8 @@
  * surfaces. Values are typed `as const` so consumers see narrow string-literal
  * types and the constant can never drift from the JSON-LD output.
  *
- * IMPORTANT: The `softwareVersion`, `ratingValue`, and `ratingCount` strings
- * MUST stay byte-identical to the strings that appear in the JSON-LD schema.
+ * IMPORTANT: `softwareVersion` MUST stay byte-identical to the string that
+ * appears in the JSON-LD schema.
  *
  * ---------------------------------------------------------------------------
  * REMOVED: `downloadUrl`.
@@ -27,11 +27,16 @@
  * is the only sanctioned entry point.
  * ---------------------------------------------------------------------------
  */
+import { BUSINESS_INFO } from './business-info';
+
 export const SITE_META = {
   softwareVersion: '2.1.0',
-  ratingValue: '4.9',
-  ratingCount: '124',
-  contactEmail: 'join.invisibleai@gmail.com',
+  // ratingValue / ratingCount were removed: they were hardcoded (4.9 / 124)
+  // while production had 4 reviews. The public rating now comes from the real
+  // `reviews` table — see src/lib/reviews/aggregate.ts. Do not re-add them here.
+  // Derived, not duplicated: BUSINESS_INFO.email is what Razorpay KYC checks,
+  // so the footer, /feedback and guides can never show a different address.
+  contactEmail: BUSINESS_INFO.email,
   instagramUrl: 'https://www.instagram.com/unviewable.online/',
 } as const;
 

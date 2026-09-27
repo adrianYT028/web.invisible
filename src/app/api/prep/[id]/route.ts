@@ -6,6 +6,7 @@ import { tickPrepRun } from '@/lib/jobs/prep';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 import { requireService } from '@/lib/plans/guard';
+import { checkFairUse, fairUseResponse } from '@/lib/plans/fair-use';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -98,6 +99,11 @@ export async function POST(
   // directly.
   const gate = await requireService(user.id, 'outreach');
   if (gate) return gate;
+
+  // Each tick spends inference; the fair-use timeout pauses it like any other
+  // AI feature. The run is resumable, so it simply continues afterwards.
+  const fair = await checkFairUse(supabaseAdmin(), user.id, 'web');
+  if (!fair.allowed) return fairUseResponse(fair);
 
   const result = await tickPrepRun(supabaseAdmin(), id, user.id);
   return NextResponse.json(result);

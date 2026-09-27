@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Chrome extension is plain browser JS loaded unpacked by Chrome, not
+    // part of the Next.js app, so the Next/React lint rules do not apply to it.
+    "extension/**",
   ]),
 ]);
 

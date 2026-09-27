@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { SiteShell } from '@/components/chrome/SiteShell';
+import { SectionTabs } from '@/components/chrome/SectionTabs';
 import { ServicePaywall } from '@/components/sections/ServicePaywall';
 import { userHasService } from '@/lib/plans/guard';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
@@ -42,6 +43,7 @@ export default async function PrepPage() {
     <SiteShell>
       <section className="account-section">
         <div className="account-inner">
+          <SectionTabs section="jobs" current="/prep" />
           <p className="eyebrow">Prepare</p>
           <h1 className="section-serif-em">
             Stop doing this <em>one job at a time</em>

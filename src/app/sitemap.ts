@@ -12,11 +12,29 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 1.0,
     },
+    // Pricing is the one public page that describes all four services, so it is
+    // the second most important URL after `/`. It was missing from the sitemap
+    // while the legacy desktop-only /downloads page sat at 0.9.
+    {
+      url: `${siteUrl}/pricing`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    // Legacy desktop-only page, no longer in the nav. Still public and linked
+    // from older posts, so kept indexable but demoted.
+    // The free, no-login checker: the page people find from search.
+    {
+      url: `${siteUrl}/ats-checker`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
     {
       url: `${siteUrl}/downloads`,
       lastModified: now,
       changeFrequency: 'monthly',
-      priority: 0.9,
+      priority: 0.4,
     },
     {
       url: `${siteUrl}/guides/setup`,

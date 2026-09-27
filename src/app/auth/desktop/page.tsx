@@ -3,14 +3,9 @@ import { redirect } from 'next/navigation';
 
 import { SiteShell } from '@/components/chrome/SiteShell';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
-import { supabaseAdmin } from '@/lib/supabase/admin';
-import {
-  isValidDeviceCode,
-  isValidUuid,
-  sha256Hex,
-} from '@/lib/auth/desktop-tokens';
+import { isValidDeviceCode, isValidUuid } from '@/lib/auth/desktop-tokens';
 
-import RedirectToDesktop from './RedirectToDesktop';
+import { approveDesktop } from './actions';
 
 /**
  * `/auth/desktop?device_code=...&device_id=...`
@@ -19,9 +14,10 @@ import RedirectToDesktop from './RedirectToDesktop';
  * Unviewable_Desktop EXE opened the user's default browser to this URL
  * with a freshly-generated 43-char base64url device_code and a UUIDv4
  * device_id. After we confirm the user has an authenticated Supabase
- * session, we record the device_code (hashed) in `desktop_link_codes`
- * and then redirect the browser to `unviewable://auth/callback?...`
- * which Windows hands back to the EXE.
+ * session, we ask them to confirm. Only on that click (./actions.ts) is the
+ * device_code (hashed) recorded in `desktop_link_codes`; the browser then
+ * goes to /auth/desktop/open, which redirects to
+ * `unviewable://auth/callback?...` for Windows to hand back to the EXE.
  *
  * The desktop then redeems the device_code at /api/desktop/exchange to
  * obtain a refresh + access token. Property P2 (single-use device code)
@@ -67,43 +63,30 @@ export default async function AuthDesktopPage({ searchParams }: PageProps) {
     redirect(`/login?redirectedFrom=${ret}`);
   }
 
-  // Insert the link-code row server-side using the service-role client so
-  // RLS doesn't block us. The exchange route will look it up by SHA-256
-  // hash. We do this here (not by calling /api/desktop/link) because we
-  // already have a verified Supabase session on this server-rendered
-  // request, and avoiding the extra fetch saves ~200ms on cold start.
-  const admin = supabaseAdmin();
-  const codeHash = sha256Hex(device_code);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
-  const { error } = await admin.from('desktop_link_codes').insert({
-    user_id: user.id,
-    device_code_hash: codeHash,
-    device_id,
-    expires_at: expiresAt,
-  });
-  if (error) {
-    // We deliberately don't expose the DB error to the user. The desktop
-    // will time out waiting for the unviewable:// callback and prompt the
-    // user to try again.
-    console.error('desktop_link_codes insert failed:', error.message);
-  }
-
-  // Browser-side redirect to unviewable://. Cannot do this from the server
-  // because Next.js's `redirect()` only emits absolute or http(s)/relative
-  // URLs — custom protocols must be set on `window.location`.
+  // Nothing is recorded on page load. The link code is stored only when the
+  // user clicks "Sign in the desktop app" (./actions.ts explains why), which
+  // then continues to /auth/desktop/open for the unviewable:// hand-off.
   return (
     <SiteShell hideFooter>
       <section className="account-section">
         <div className="account-inner">
-          <p className="eyebrow">Linking your desktop</p>
-          <h1>Sending you back to Unviewable…</h1>
+          <p className="eyebrow">Desktop app</p>
+          <h1>Sign in the Unviewable desktop app?</h1>
           <p className="lede">
-            Signed in as <strong>{user.email ?? 'your account'}</strong>. If the
-            desktop app does not pop up in a few seconds, you can close this
-            tab and try launching Unviewable again.
+            This signs the desktop app in as{' '}
+            <strong>{user.email ?? 'your account'}</strong>.
           </p>
-          <RedirectToDesktop deviceCode={device_code!} />
+          <p className="lede">
+            Only continue if you just clicked <em>Sign in</em> in the desktop app
+            yourself. If someone sent you this link, close this tab.
+          </p>
+          <form action={approveDesktop}>
+            <input type="hidden" name="device_code" value={device_code} />
+            <input type="hidden" name="device_id" value={device_id} />
+            <button type="submit" className="cta cta-primary">
+              Sign in the desktop app
+            </button>
+          </form>
         </div>
       </section>
     </SiteShell>

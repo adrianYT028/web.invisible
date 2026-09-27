@@ -101,7 +101,9 @@ export type ErrorCode =
   | 'storage_failed'
   | 'resume_not_found'
   | 'job_not_found'
-  | 'duplicate_job';
+  | 'duplicate_job'
+  | 'tracker_full'
+  | 'no_resume';
 
 export function jsonError(
   status: number,
@@ -174,6 +176,9 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   resume_not_found: 'That resume could not be found.',
   job_not_found: 'That job could not be found in your tracker.',
   duplicate_job: 'That job is already in your tracker.',
+  tracker_full:
+    'Your free tracker is full. Remove a job you no longer need, or get full access for unlimited saves.',
+  no_resume: 'Upload a resume first, then try again.',
 };
 
 export function extractBearer(req: Request): string | null {

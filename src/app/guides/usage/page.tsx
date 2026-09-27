@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { SiteShell } from '@/components/chrome/SiteShell';
 import { GuideShell, type GuideStepData } from '@/components/guides/GuideShell';
+import { SITE_META } from '@/components/constants/site-meta';
 
 /**
  * Metadata is preserved verbatim from the legacy `usage` page so the
@@ -287,7 +288,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: React.ReactNode }> = [
       <>
         If you are experiencing issues or have questions, please reach out to
         our team directly at{' '}
-        <a href="mailto:join.invisibleai@gmail.com">join.invisibleai@gmail.com</a>.
+        <a href={`mailto:${SITE_META.contactEmail}`}>{SITE_META.contactEmail}</a>.
         We&apos;re here to help.
       </>
     ),

@@ -9,18 +9,13 @@ import {
  * than the desktop app.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS IS ADDITIVE RATHER THAN A REWRITE
+ * POSITIONING (updated 2026-09)
  *
- * The hero above it still positions Unviewable as the invisible overlay, and that
- * copy is deliberate brand work ("The intelligence they can't see"). Rewriting it
- * to lead on four services is a positioning decision with real consequences for
- * how the product is understood, and it belongs to whoever owns the brand — not
- * to a refactor.
- *
- * So this section adds the breadth without touching the hero: a visitor arriving
- * for the overlay still finds what they came for, and now also learns the other
- * three services exist. If the positioning does change later, this is the section
- * that gets promoted, and nothing has to be untangled first.
+ * The positioning has since changed: the hero now leads on the job-search suite
+ * ("Everything you need to get hired"), and the site metadata, OG card and JSON-LD
+ * were brought in line with it (see src/app/layout.tsx). This section is the
+ * breadth statement directly under the hero; the desktop overlay is one of the
+ * four services listed, not the headline.
  *
  * The list iterates `PLATFORM_SERVICES`, so marketing copy cannot claim a service
  * the code does not actually unlock.
@@ -29,12 +24,12 @@ import {
 /** One line per service, aimed at someone who has not used the product. */
 const PITCH: Record<PlatformService, string> = {
   resume:
-    'Find out whether a parser can even read your resume, then see requirement by requirement what a job asks for and what you actually evidence.',
-  jobs: 'Live openings from company job boards, ordered by how much of your resume they ask for.',
+    'Find out whether software can read your resume, see what a job asks for that yours does not show, and download a stronger version. Writes your LinkedIn profile too.',
+  jobs: 'Openings matched to your resume, and a free tracker with follow-up reminders. Save jobs from any site with the browser extension.',
   outreach:
     'Prepare a batch of applications in one action — scored, rewritten toward each role, with the cold email drafted for you to send.',
   desktop:
-    'Answers on your screen during interviews and meetings, invisible to screen capture.',
+    'Practise real interview questions on the website with feedback on every answer, then use the Windows app for notes on screen during the call.',
 };
 
 export function ServicesOverview() {
@@ -52,7 +47,8 @@ export function ServicesOverview() {
         </h2>
         <p className="lede">
           Finding a role, tailoring your resume to it, writing the cold email, and
-          getting through the call itself. One payment covers all four.
+          getting through the interview. Start free: the job tracker, openings, a
+          daily resume check and interview practice cost nothing.
         </p>
 
         {/* `services-grid` pins this to two columns. The shared `features-grid`
@@ -74,7 +70,10 @@ export function ServicesOverview() {
             nothing. `ServicePaywall` already treats /pricing as primary, so this
             also makes the two agree. */}
         <p className="account-actions">
-          <a className="cta cta-primary" href="/pricing">
+          <a className="cta cta-primary" href="/ats-checker">
+            Check my resume free
+          </a>
+          <a className="cta cta-secondary" href="/pricing">
             See pricing
           </a>
         </p>

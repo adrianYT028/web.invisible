@@ -55,11 +55,21 @@
  */
 
 import { SITE_META } from '@/components/constants/site-meta';
+import {
+  getPublicReviewAggregate,
+  type ReviewAggregate,
+} from '@/lib/reviews/aggregate';
+
+// UPDATE (2026-09): the rating is no longer a constant. It used to be a
+// hardcoded "4.9 from 124" while production held 4 reviews. It now comes from
+// the real `reviews` table via `getPublicReviewAggregate()`, and the stars are
+// omitted entirely until there are MIN_PUBLIC_REVIEWS real reviews. The version
+// pill always renders. The JSON-LD aggregateRating was removed for the same
+// reason (see src/app/layout.tsx).
 
 /**
  * Round to the nearest 0.5 step. We do this for visual fidelity only —
- * the displayed rating string remains the original `SITE_META.ratingValue`
- * so the visible number always matches the JSON-LD schema (Req 10.1).
+ * the displayed number remains the real one-decimal average.
  */
 function roundToHalf(n: number): number {
   return Math.round(n * 2) / 2;
@@ -77,30 +87,28 @@ function offsetForStar(rating: number, index: number): number {
   return 0;
 }
 
-export function TrustStrip() {
-  const { ratingValue, ratingCount, softwareVersion } = SITE_META;
+export async function TrustStrip() {
+  const { softwareVersion } = SITE_META;
+  const rating = await getPublicReviewAggregate();
 
-  // Runtime guard for Req 10.5. We accept only non-empty strings; empty,
-  // null, or undefined values cause the component to render nothing rather
-  // than fabricating defaults.
-  if (!ratingValue || !ratingCount || !softwareVersion) {
-    return null;
-  }
-
-  const numericRating = Number(ratingValue);
-
-  // If `ratingValue` ever becomes a non-numeric string at runtime,
-  // `Number()` returns NaN. Guarding here keeps the star fill logic from
-  // emitting `NaN%` offsets and falls back to omitting the strip entirely
-  // — same posture as Req 10.5: no fabricated signal.
-  if (!Number.isFinite(numericRating)) {
-    return null;
-  }
-
-  const displayRating = roundToHalf(numericRating);
+  if (!rating && !softwareVersion) return null;
 
   return (
     <section className="trust-strip" aria-label="Product trust signals">
+      {rating ? <RatingBlock rating={rating} /> : null}
+      {softwareVersion ? (
+        <p className="trust-version">Version {softwareVersion}</p>
+      ) : null}
+    </section>
+  );
+}
+
+function RatingBlock({ rating }: { rating: ReviewAggregate }) {
+  const displayRating = roundToHalf(rating.average);
+  const label = rating.average.toFixed(1);
+
+  return (
+    <>
       <div className="trust-stars" aria-hidden="true">
         {[1, 2, 3, 4, 5].map((index) => {
           const offset = offsetForStar(displayRating, index);
@@ -137,9 +145,8 @@ export function TrustStrip() {
         })}
       </div>
       <p className="trust-rating">
-        <strong>{ratingValue}</strong> from {ratingCount} reviewers
+        <strong>{label}</strong> from {rating.count} reviewers
       </p>
-      <p className="trust-version">Version {softwareVersion}</p>
-    </section>
+    </>
   );
 }

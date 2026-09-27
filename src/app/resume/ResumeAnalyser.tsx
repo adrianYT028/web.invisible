@@ -669,6 +669,33 @@ export function ResumeAnalyser({
             </section>
           )}
 
+          {/* Download the resume with the stronger wording already applied.
+              Shown even with no rewrites: a clean ATS-safe copy is useful too. */}
+          <section className="resume-block">
+            <h3>Download your resume</h3>
+            <p className="resume-lede">
+              {scan.report.rewrite.length > 0
+                ? 'Your resume with the stronger wording above already applied, in a simple one-column layout applicant tracking systems read well.'
+                : 'Your resume in a simple one-column layout applicant tracking systems read well.'}{' '}
+              Check it before you send it.
+            </p>
+            <div className="resume-actions">
+              {/* Plain anchors: these are file downloads / a print page, not app
+                  navigations (see the note on Export CSV in JobTracker). */}
+              <a className="cta cta-primary" href={`/api/resume/export/${scan.scanId}`} download>
+                Download Word (.docx)
+              </a>
+              <a
+                className="cta cta-secondary"
+                href={`/resume/print/${scan.scanId}`}
+                target="_blank"
+                rel="noopener"
+              >
+                Save as PDF
+              </a>
+            </div>
+          </section>
+
           {scan.report.genuineGaps.length > 0 && (
             <section className="resume-block">
               <h3>Genuinely missing</h3>

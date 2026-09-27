@@ -72,7 +72,9 @@ const FORWARD_ACTIONS: ForwardAction[] = [
   },
   {
     file: 'src/components/sections/ServicesOverview.tsx',
-    label: 'See pricing',
+    // The free check is now the first step for a new visitor; "See pricing"
+    // sits beside it as the secondary action.
+    label: 'Check my resume free',
     because: 'the conversion path out of the section',
   },
   {

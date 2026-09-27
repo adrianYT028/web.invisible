@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 
 import { jsonError, logSafe } from '@/lib/http';
-import { isJobStatus, appliedAtFor, type JobStatus } from '@/lib/resume/job-status';
+import {
+  isJobStatus,
+  appliedAtFor,
+  dateInDays,
+  DEFAULT_FOLLOW_UP_DAYS,
+  type JobStatus,
+} from '@/lib/resume/job-status';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createSupabaseRouteClient } from '@/lib/supabase/route';
+import { resolveRequestUser } from '@/lib/auth/request-user';
 import { requireService } from '@/lib/plans/guard';
+import { checkTrackerLimit } from '@/lib/plans/limits';
+import { readEffectivePlan } from '@/lib/plans/read-plan';
+import { trackEvent } from '@/lib/analytics/track';
+
+const DEFAULT_TRACKER_FULL_MESSAGE =
+  'Your free tracker is full. Remove a job you no longer need, or get full access for unlimited saves.';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,18 +34,17 @@ export const runtime = 'nodejs';
 
 /** Columns the client is allowed to see. `jd_text` is deliberately excluded. */
 const SELECT =
-  'id, source, external_id, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, applied_at, created_at';
+  'id, source, external_id, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, follow_up_at, applied_at, created_at';
 
 const MAX_NOTES = 4000;
 const MAX_JD = 20_000;
 const MAX_FIELD = 300;
 
 export async function GET(request: Request) {
-  const sb = await createSupabaseRouteClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return jsonError(401, 'not_authenticated');
+  // Cookie (website) or bearer (browser extension). See src/lib/auth/request-user.ts.
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+  const user = { id: auth.userId };
 
   // Not entitlement-gated: this reads only the caller's own rows.
   // Full access buys creating and discovering new work, not reading back
@@ -63,17 +74,32 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const sb = await createSupabaseRouteClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return jsonError(401, 'not_authenticated');
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+  const user = { id: auth.userId };
 
   // Entitlement gate (the job tracker). Gating the API and not only the page is
   // the point: a page check alone is bypassed by calling this endpoint
   // directly.
   const gate = await requireService(user.id, 'jobs');
   if (gate) return gate;
+
+  // Free plans can save up to `feature_limits.max_tracked_jobs` (50) jobs.
+  // 402 rather than 429: the limit does not reset with time, and the fix is
+  // either removing a job or buying full access.
+  const plan = await readEffectivePlan(supabaseAdmin(), user.id);
+  const limit = await checkTrackerLimit(supabaseAdmin(), user.id, plan);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        code: 'tracker_full',
+        message: DEFAULT_TRACKER_FULL_MESSAGE,
+        cap: limit.cap,
+        used: limit.used,
+      },
+      { status: 402 }
+    );
+  }
 
   const body = (await request.json().catch(() => null)) as Record<
     string,
@@ -113,7 +139,7 @@ export async function POST(request: Request) {
 
   const row = {
     user_id: user.id,
-    source: typeof body.source === 'string' ? body.source : 'manual',
+    source: jobSource(body.source),
     external_id: trimmed(body.external_id, MAX_FIELD),
     company,
     job_title: jobTitle,
@@ -127,6 +153,11 @@ export async function POST(request: Request) {
     notes: trimmed(body.notes, MAX_NOTES),
     // Kept consistent with the status — see src/lib/resume/job-status.ts.
     applied_at: appliedAtFor(status, null),
+    // Saved as already applied (e.g. from the extension): suggest a follow-up.
+    follow_up_at:
+      status === 'applied' || status === 'interviewing'
+        ? dateInDays(DEFAULT_FOLLOW_UP_DAYS)
+        : null,
   };
 
   const { data, error } = await supabaseAdmin()
@@ -143,7 +174,29 @@ export async function POST(request: Request) {
     return jsonError(500, 'internal_error');
   }
 
+  await trackEvent('job_saved', user.id, { source: row.source, plan, scored: scanId !== null });
+
   return NextResponse.json({ job: data }, { status: 201 });
+}
+
+/**
+ * Mirrors `tracked_jobs_source_check` (migrations 012 and 022). Validated here so
+ * an unknown source degrades to 'manual' instead of tripping the CHECK and
+ * surfacing as a 500. 'extension' is a job saved from the browser extension.
+ */
+const JOB_SOURCES = [
+  'manual',
+  'extension',
+  'greenhouse',
+  'lever',
+  'ashby',
+  'adzuna',
+] as const;
+
+function jobSource(value: unknown): (typeof JOB_SOURCES)[number] {
+  return (JOB_SOURCES as readonly unknown[]).includes(value)
+    ? (value as (typeof JOB_SOURCES)[number])
+    : 'manual';
 }
 
 /** Trim to a maximum length, mapping blank to null. */

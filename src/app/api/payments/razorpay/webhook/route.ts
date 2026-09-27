@@ -14,6 +14,7 @@ import {
   findProduct,
 } from '@/lib/payments/pricing';
 import { fulfilPayment, reversePayment } from '@/lib/payments/fulfilment';
+import { trackEvent } from '@/lib/analytics/track';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -238,6 +239,11 @@ async function handlePaymentCaptured(
     order_id: payment.orderId,
     user_id: userId,
     fulfilment,
+  });
+  // Razorpay may redeliver a webhook; the report counts distinct payment_id.
+  await trackEvent('payment_captured', userId, {
+    payment_id: payment.id,
+    amount_paise: payment.amountPaise,
   });
   return { status: 200, body: { ok: true, granted: true, fulfilment } };
 }

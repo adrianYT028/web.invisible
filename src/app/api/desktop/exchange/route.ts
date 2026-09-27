@@ -10,6 +10,7 @@ import {
 } from '@/lib/auth/desktop-tokens';
 import { jsonError } from '@/lib/http';
 import { getRequestIp, rateLimitExchangeByIp } from '@/lib/ratelimit';
+import { trackEvent } from '@/lib/analytics/track';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,6 +34,8 @@ export const runtime = 'nodejs';
 
 interface ExchangeBody {
   device_code?: unknown;
+  /** Optional. 'extension' for the browser extension; absent for the desktop app. */
+  client?: unknown;
 }
 
 export async function POST(req: Request) {
@@ -105,11 +108,17 @@ export async function POST(req: Request) {
   }
 
   // Upsert the device row so /account can show "Your devices" later.
+  //
+  // The browser extension redeems codes through this same route and sends
+  // `client: 'extension'`. Anything else (including shipped desktop builds, which
+  // send no `client`) is recorded as the Windows app, exactly as before.
+  const isExtension = body.client === 'extension';
   await admin.from('devices').upsert(
     {
       user_id,
       device_id,
-      os: 'windows',
+      os: isExtension ? 'browser-extension' : 'windows',
+      ...(isExtension ? { device_name: 'Browser extension' } : {}),
       last_seen_at: new Date().toISOString(),
     },
     { onConflict: 'user_id,device_id', ignoreDuplicates: false }
@@ -121,6 +130,8 @@ export async function POST(req: Request) {
     admin.from('profiles').select('plan').eq('id', user_id).maybeSingle(),
     admin.auth.admin.getUserById(user_id),
   ]);
+
+  if (isExtension) await trackEvent('extension_connected', user_id, {});
 
   const accessToken = await issueAccessToken(user_id, device_id);
 

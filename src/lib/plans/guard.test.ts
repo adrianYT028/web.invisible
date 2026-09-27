@@ -45,8 +45,9 @@ describe('requireService', () => {
     }
   });
 
+  // `outreach` rather than `jobs`: the tracker is free since migration 023.
   it('refuses a free user with 402 payment_required', async () => {
-    const res = await requireService('u1', 'jobs');
+    const res = await requireService('u1', 'outreach');
     expect(res).not.toBeNull();
     expect(res?.status).toBe(402);
     const body = (await res?.json()) as {
@@ -57,7 +58,7 @@ describe('requireService', () => {
     // Same code /api/download/[platform] already uses for "authenticated, well
     // formed, just unpaid" — one convention rather than two.
     expect(body.code).toBe('payment_required');
-    expect(body.service).toBe('jobs');
+    expect(body.service).toBe('outreach');
     expect(body.message).toContain('/pricing');
   });
 
@@ -66,9 +67,13 @@ describe('requireService', () => {
   it('honours the desktop licence for desktop only', async () => {
     licenceState.downloadAccess = true;
     await expect(requireService('u1', 'desktop')).resolves.toBeNull();
-    for (const service of ['resume', 'jobs', 'outreach'] as const) {
+    for (const service of ['resume', 'outreach'] as const) {
       expect(await requireService('u1', service)).not.toBeNull();
     }
+  });
+
+  it('lets a free user use the job tracker', async () => {
+    await expect(requireService('u1', 'jobs')).resolves.toBeNull();
   });
 
   it('denies a lapsed plan, since readEffectivePlan already resolved it', async () => {
@@ -105,9 +110,9 @@ describe('requireService', () => {
 describe('userHasService', () => {
   it('mirrors requireService as a boolean, for pages', async () => {
     planState.plan = BUNDLE_PLAN;
-    await expect(userHasService('u1', 'jobs')).resolves.toBe(true);
+    await expect(userHasService('u1', 'outreach')).resolves.toBe(true);
     planState.plan = 'free';
-    await expect(userHasService('u1', 'jobs')).resolves.toBe(false);
+    await expect(userHasService('u1', 'outreach')).resolves.toBe(false);
   });
 });
 

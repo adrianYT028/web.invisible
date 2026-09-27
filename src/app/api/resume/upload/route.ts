@@ -12,6 +12,7 @@ import { checkResumeQuota, readPlan } from '@/lib/resume/quota';
 import { PARSE_INTEGRITY_FLOOR } from '@/lib/resume/scoring/weights';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
+import { trackEvent } from '@/lib/analytics/track';
 
 export const dynamic = 'force-dynamic';
 // pdfjs and mammoth are Node libraries — this cannot run on the edge runtime.
@@ -232,6 +233,7 @@ export async function POST(request: Request) {
     scannable: assessment.scannable,
     engine: assessment.raw.engine,
   });
+  await trackEvent('resume_uploaded', user.id, { scannable: assessment.scannable });
 
   return NextResponse.json({
     resumeId: row.id,

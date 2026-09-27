@@ -1,11 +1,18 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { ThemeScript } from '@/components/theme/theme-script';
 import { SITE_META } from '@/components/constants/site-meta';
 import { DOWNLOAD_LICENSE_PRICE } from '@/lib/payments/pricing';
 import './globals.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.unviewable.online';
+
+/** One description for search, social cards and JSON-LD, so they cannot drift. */
+const SITE_DESCRIPTION =
+  'Score your resume against any job description, fix what ATS filters reject without inventing experience, find matched openings, track applications and draft outreach. Built for students and freshers in India.';
+
+const SHARE_TITLE = 'Unviewable — Everything you need to get hired';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -29,22 +36,30 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  // POSITIONING (2026-09): the site sells a job-search suite — resume analyser,
+  // matched openings, tracker, outreach — with the desktop overlay as one of four
+  // services. This metadata previously described ONLY the overlay ("100%
+  // unviewable… bypasses all screen-capture pipelines", keywords like
+  // "undetectable AI"), so search results, link previews and AI answer engines
+  // all described a different product from the homepage hero. Keep this block,
+  // the OG image (opengraph-image.tsx) and the hero in src/app/page.tsx saying
+  // the same thing.
   title: {
-    default: 'Unviewable — The Intelligence They Can\'t See',
+    default: 'Unviewable — ATS Resume Checker, Job Matches & Outreach for Freshers',
     template: '%s | Unviewable',
   },
-  description:
-    'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines using Windows Display Affinity API.',
+  description: SITE_DESCRIPTION,
   keywords: [
     'unviewable',
-    'AI overlay',
-    'screen capture bypass',
-    'meeting assistant',
-    'interview helper',
-    'stealth AI',
-    'Windows overlay',
-    'AI assistant',
-    'undetectable AI',
+    'ATS resume checker',
+    'resume score',
+    'resume analyser',
+    'tailor resume to job description',
+    'job application tracker',
+    'fresher jobs India',
+    'internships for students',
+    'cold email for jobs',
+    'AI interview assistant',
   ],
   authors: [{ name: 'Unviewable' }],
   creator: 'Unviewable',
@@ -70,17 +85,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: 'Unviewable',
-    title: 'Unviewable — The Intelligence They Can\'t See',
-    description:
-      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+    title: SHARE_TITLE,
+    description: SITE_DESCRIPTION,
     url: '/',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Unviewable — The Intelligence They Can\'t See',
-    description:
-      'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+    title: SHARE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
@@ -117,9 +130,10 @@ export default function RootLayout({
     {
       '@context': 'https://schema.org',
       '@type': 'SiteNavigationElement',
-      name: ['Downloads', 'Setup Guide', 'Usage Guide', 'Feedback', 'Login'],
+      name: ['Free ATS Checker', 'Pricing', 'Setup Guide', 'Usage Guide', 'Feedback', 'Login'],
       url: [
-        `${siteUrl}/downloads`,
+        `${siteUrl}/ats-checker`,
+        `${siteUrl}/pricing`,
         `${siteUrl}/guides/setup`,
         `${siteUrl}/guides/usage`,
         `${siteUrl}/feedback`,
@@ -130,10 +144,11 @@ export default function RootLayout({
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
       name: 'Unviewable',
-      applicationCategory: 'UtilitiesApplication',
-      operatingSystem: 'Windows 10+',
+      // Web app first (resume, jobs, outreach), plus the Windows desktop app.
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web, Windows 10+',
       softwareVersion: SITE_META.softwareVersion,
-      description: 'A 100% unviewable AI assistant for high-stakes interviews and meetings. Bypasses all screen-capture pipelines.',
+      description: SITE_DESCRIPTION,
       url: siteUrl,
       // Points at the PUBLIC downloads page, never at the asset.
       //
@@ -144,11 +159,11 @@ export default function RootLayout({
       // The binary is private (Supabase Storage) and only reachable via
       // /api/download/[platform] after an entitlement check.
       downloadUrl: `${siteUrl}/downloads`,
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: SITE_META.ratingValue,
-        ratingCount: SITE_META.ratingCount
-      },
+      // No `aggregateRating`. It used to emit a hardcoded 4.9 / 124 while the
+      // reviews table held 4 rows — a fabricated rating in structured data is a
+      // Google manual-action risk and a misleading claim. Re-add it only from
+      // real data (src/lib/reviews/aggregate.ts) AND only on a page that also
+      // shows those reviews, which Google requires for review markup.
       offers: {
         '@type': 'Offer',
         // Advertised, GST-EXCLUSIVE price. `valueAddedTaxIncluded: false`
@@ -188,7 +203,13 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Page views only (no cookies, no personal data). Turn it on under
+            Project > Analytics in the Vercel dashboard. Product funnel events
+            are first-party, in the funnel_events table. */}
+        <Analytics />
+      </body>
     </html>
   );
 }

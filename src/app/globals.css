@@ -5808,6 +5808,71 @@ h2 em,
   }
 }
 
+/* --- tracker row details: notes, follow-up, saved description ------------- */
+/*
+   Opened per row with the "Details" button. Spans every column so the row's
+   grid does not reflow, and uses the same inputs as the rest of /resume.
+*/
+
+.tracker-details {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+}
+
+.tracker-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tracker-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tracker-date {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--text);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  color-scheme: light dark;
+}
+
+.tracker-date:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.tracker-notes {
+  min-height: 6rem;
+}
+
+.tracker-jd {
+  max-height: 16rem;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+/* "Follow up today" badge in the row meta line. */
+.tracker-due {
+  color: var(--signal);
+  font-weight: 600;
+}
+
 /* --- filter toggles (/jobs/discover) ------------------------------------- */
 /*
    A native checkbox is another OS control with no design-system presence, so it
@@ -7235,4 +7300,169 @@ textarea.field-control {
     opacity: 1;
     animation: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Printable tailored resume (/resume/print/[scanId])
+
+   Always black on white, whatever the site theme, because it is a document
+   people print or save as PDF. Single column, no decoration: the layout ATS
+   parsers read best. The toolbar disappears when printing.
+   --------------------------------------------------------------------------- */
+
+.print-page {
+  min-height: 100vh;
+  padding: var(--space-8) var(--space-4);
+  background: #efeee9;
+}
+
+.print-toolbar {
+  max-width: 210mm;
+  margin: 0 auto var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  color: #3a3a38;
+  font-size: var(--fs-caption);
+}
+
+.print-toolbar p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.print-resume {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 16mm 15mm;
+  background: #ffffff;
+  color: #111111;
+  font-family: Calibri, Carlito, 'Segoe UI', Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.35;
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.12);
+}
+
+.print-resume h1 {
+  margin: 0 0 2pt;
+  font-size: 18pt;
+  text-align: center;
+  color: #111111;
+}
+
+.print-contact {
+  margin: 0 0 10pt;
+  text-align: center;
+  font-size: 9.5pt;
+  color: #444444;
+}
+
+.print-resume h2 {
+  margin: 10pt 0 4pt;
+  padding-bottom: 2pt;
+  font-size: 11pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #999999;
+  color: #111111;
+}
+
+.print-resume p {
+  margin: 0 0 4pt;
+}
+
+.print-item {
+  margin: 0 0 6pt;
+  break-inside: avoid;
+}
+
+.print-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8pt;
+}
+
+.print-item-head span {
+  color: #444444;
+  white-space: nowrap;
+}
+
+.print-item-sub {
+  font-style: italic;
+  color: #444444;
+}
+
+.print-resume ul {
+  margin: 2pt 0 0;
+  padding-left: 14pt;
+}
+
+.print-resume li {
+  margin: 0 0 2pt;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  .print-page {
+    padding: 0;
+    background: #ffffff;
+  }
+  .print-toolbar {
+    display: none;
+  }
+  .print-resume {
+    box-shadow: none;
+    max-width: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Section tabs (Resume / Jobs / Interview pages)
+
+   A plain underlined tab row above the page heading. The current page is marked
+   with aria-current, which is also what styles it, so the visual state and the
+   accessible state cannot disagree.
+   --------------------------------------------------------------------------- */
+
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-6);
+  margin: 0 0 var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-tab {
+  padding: var(--space-2) 0;
+  margin-bottom: -1px;
+  font-size: var(--fs-caption);
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition:
+    color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.section-tab:hover {
+  color: var(--text);
+}
+
+.section-tab[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.section-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Free and Full access cards stack on /pricing; keep them apart. */
+.plan + .plan {
+  margin-top: var(--space-8);
 }

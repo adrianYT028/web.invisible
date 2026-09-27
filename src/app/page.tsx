@@ -92,16 +92,20 @@ import { FeatureGrid } from '@/components/sections/FeatureGrid';
 import { ServicesOverview } from '@/components/sections/ServicesOverview';
 import { HowItWorks } from '@/components/sections/HowItWorks';
 import { GuideCards } from '@/components/sections/GuideCards';
-import { SITE_META } from '@/components/constants/site-meta';
 import { Reveal } from '@/components/motion/Reveal';
 
 import { HomeClient } from './HomeClient';
+
+// The TrustStrip reads the real review aggregate from the database. Revalidating
+// hourly keeps `/` statically served (fast, cheap) while a new review shows up
+// within the hour, instead of querying Supabase on every homepage hit.
+export const revalidate = 3600;
 
 export default function HomePage() {
   return (
     <SiteShell>
       <HeroSection
-        eyebrow="Four services, one payment"
+        eyebrow="Resume · Jobs · Interview"
         headline={
           <>
             Everything you need
@@ -109,31 +113,24 @@ export default function HomePage() {
             to <em>get hired</em>.
           </>
         }
-        sub="An invisible interview overlay, an ATS resume analyser, matched job openings, and drafted outreach. One payment, no subscription."
+        sub="Check your resume against real jobs, find openings that match you, track every application, and practise the interview. Start free."
         demo={<ServiceCube />}
         primary={{
-          // Points at /pricing rather than /download now that the desktop app is
-          // one of four things being sold. /download still exists and is still
-          // the fulfilment surface — it is just no longer the whole product, so
-          // leading with it undersold three quarters of the purchase.
-          label: 'See what you get',
-          href: '/pricing',
+          // The free, no-login check is the first step for a new visitor: it
+          // shows the product working before asking for anything. Pricing and
+          // the desktop app are one click away in the nav and the section below.
+          label: 'Check my resume free',
+          href: '/ats-checker',
           variant: 'primary',
-          trailing: (
-            <span className="cta-version">
-              {formatInrCompact(FULL_ACCESS_PRICE.baseAmountPaise)} once
-            </span>
-          ),
         }}
         secondary={{
-          // The desktop app keeps a direct route for returning visitors who came
-          // for it specifically, and carries the version pill it used to show in
-          // the primary slot.
-          label: 'Download the app',
-          href: '/download',
+          label: 'See pricing',
+          href: '/pricing',
           variant: 'secondary',
           trailing: (
-            <span className="cta-version">v{SITE_META.softwareVersion}</span>
+            <span className="cta-version">
+              Free, or {formatInrCompact(FULL_ACCESS_PRICE.baseAmountPaise)} once
+            </span>
           ),
         }}
         spotlight

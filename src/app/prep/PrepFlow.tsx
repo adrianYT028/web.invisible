@@ -170,7 +170,13 @@ export function PrepFlow() {
         if (snapshot.run.status === 'done' || snapshot.run.status === 'failed') break;
 
         const res = await fetch(`/api/prep/${runId}`, { method: 'POST' });
-        if (!res.ok) break;
+        if (!res.ok) {
+          // A fair-use pause (or any other refusal) stops the run with the
+          // reason on screen. The run is resumable: reopening it continues.
+          const body = await res.json().catch(() => null);
+          if (!cancelled && body?.message) setError(body.message);
+          break;
+        }
         const tick = (await res.json()) as {
           remaining: number;
           runStatus: string;

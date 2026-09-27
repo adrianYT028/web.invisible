@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Unviewable</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="brand">UNVIEWABLE</span>
+      <span class="who" id="who"></span>
+    </header>
+
+    <!-- Signed out -->
+    <section id="view-connect" hidden>
+      <h1>Save jobs from any site</h1>
+      <p class="muted">
+        Connect your Unviewable account to save postings to your tracker and
+        check your resume match.
+      </p>
+      <button class="primary" id="btn-connect" type="button">Connect account</button>
+      <button class="secondary" id="btn-finish" type="button" hidden>
+        I've approved it, finish connecting
+      </button>
+      <p class="status" id="connect-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Nothing readable on this tab -->
+    <section id="view-empty" hidden>
+      <h1>Open a job posting</h1>
+      <p class="muted" id="empty-reason">
+        Open a job on LinkedIn, Naukri, Internshala, Indeed or a company careers
+        page, then click the icon again.
+      </p>
+    </section>
+
+    <!-- The job form -->
+    <form id="view-job" hidden novalidate>
+      <p class="hint" id="extract-hint"></p>
+
+      <label for="f-title">Role</label>
+      <input id="f-title" name="title" maxlength="300" required autocomplete="off" />
+
+      <label for="f-company">Company</label>
+      <input id="f-company" name="company" maxlength="300" required autocomplete="off" />
+
+      <div class="row">
+        <div class="grow">
+          <label for="f-location">Location</label>
+          <input id="f-location" name="location" maxlength="300" autocomplete="off" />
+        </div>
+        <label class="check" for="f-remote">
+          <input type="checkbox" id="f-remote" name="remote" /> Remote
+        </label>
+      </div>
+
+      <label for="f-status">Stage</label>
+      <select id="f-status" name="status">
+        <option value="saved">Saved</option>
+        <option value="applied">Applied</option>
+        <option value="interviewing">Interviewing</option>
+      </select>
+
+      <details id="desc-details">
+        <summary>Job description <span class="muted" id="desc-count"></span></summary>
+        <textarea id="f-description" name="description" rows="7" maxlength="20000"></textarea>
+        <p class="muted small">
+          Wrong text? Select the description on the page and reopen the extension.
+        </p>
+      </details>
+
+      <div id="match" class="match" hidden>
+        <div class="score"><span id="match-score">–</span><small>/100</small></div>
+        <ul id="match-subscores" class="subscores"></ul>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="btn-match" type="button">Check match</button>
+        <button class="primary" id="btn-save" type="submit">Save to tracker</button>
+      </div>
+      <p class="status" id="job-status" role="status" aria-live="polite"></p>
+    </form>
+
+    <footer class="foot">
+      <a id="link-tracker" href="#" target="_blank" rel="noopener">Open tracker</a>
+      <button class="link" id="btn-signout" type="button" hidden>Sign out</button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -65,7 +65,7 @@ export type PlatformService = (typeof PLATFORM_SERVICES)[number];
  */
 export const SERVICE_LABELS: Record<PlatformService, string> = {
   resume: 'Resume analyser',
-  jobs: 'Job openings',
+  jobs: 'Job tracker and openings',
   outreach: 'Auto-apply and cold mail',
   desktop: 'Unviewable desktop app',
 };
@@ -86,8 +86,14 @@ export const BUNDLE_PLAN = 'student_pro' as const;
  * DB edit is possible, and the safe reading of an unrecognised plan is "not
  * entitled" — failing open here would hand the whole product away for free.
  */
+// FREE GETS `jobs` (decided 2026-09). The tracker and job openings cost almost
+// nothing to run (no AI calls), and they are what the browser extension saves
+// into, so gating them turned every new extension user's first click into a
+// paywall. Free use is bounded by `feature_limits.max_tracked_jobs` (migration
+// 023: 50 saved jobs), enforced in POST /api/jobs. The AI-heavy services stay
+// paid.
 const PLAN_SERVICES: Record<string, readonly PlatformService[]> = {
-  free: [],
+  free: Object.freeze(['jobs'] as const),
   [BUNDLE_PLAN]: PLATFORM_SERVICES,
 };
 

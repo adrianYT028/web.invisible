@@ -17,7 +17,9 @@ import {
 import { ParseGateError, scoreResumeAgainstJob } from '@/lib/resume/scoring';
 import { PARSE_INTEGRITY_FLOOR } from '@/lib/resume/scoring/weights';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createSupabaseRouteClient } from '@/lib/supabase/route';
+import { resolveRequestUser } from '@/lib/auth/request-user';
+import { trackEvent } from '@/lib/analytics/track';
+import { checkFairUse, fairUseResponse } from '@/lib/plans/fair-use';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -58,11 +60,10 @@ const MAX_JD_CHARS = 20_000;
 const MIN_JD_CHARS = 80;
 
 export async function POST(request: Request) {
-  const sb = await createSupabaseRouteClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return jsonError(401, 'not_authenticated');
+  // Cookie (website) or bearer (browser extension). See src/lib/auth/request-user.ts.
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+  const user = { id: auth.userId };
 
   const body = (await request.json().catch(() => null)) as
     | { resumeId?: unknown; jdText?: unknown }
@@ -156,6 +157,10 @@ export async function POST(request: Request) {
       { status: 429 }
     );
   }
+
+  // --- fair use: a timeout for excessive use across all AI features ---------
+  const fair = await checkFairUse(admin, user.id, 'web');
+  if (!fair.allowed) return fairUseResponse(fair);
 
   // --- extraction -----------------------------------------------------------
   try {
@@ -281,6 +286,11 @@ export async function POST(request: Request) {
       overall_score: result.overallScore,
       requirements: jd.requirements.length,
       knockouts: result.report.knockouts.length,
+    });
+    await trackEvent('resume_scanned', user.id, {
+      plan,
+      via: auth.via,
+      score: result.overallScore,
     });
 
     return NextResponse.json({ ...serialiseScan(inserted), reused: false });

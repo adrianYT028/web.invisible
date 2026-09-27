@@ -125,7 +125,30 @@ export const env = {
     // Signs the WEBHOOK signature: HMAC(raw_request_body).
     return optional(process.env.RAZORPAY_WEBHOOK_SECRET) ?? '';
   },
+
+  // -----------------------------------------------------------------
+  // Lifecycle email (Resend). All optional: with no RESEND_API_KEY the app
+  // simply sends no email (src/lib/email/send.ts returns "not configured").
+  // -----------------------------------------------------------------
+  get resendApiKey() {
+    return optional(process.env.RESEND_API_KEY);
+  },
+  get emailFrom() {
+    // Must be an address on a domain verified in Resend,
+    // e.g. 'Unviewable <hello@unviewable.online>'.
+    return optional(process.env.EMAIL_FROM);
+  },
+  get emailUnsubscribeSecret() {
+    // Signs one-click unsubscribe links. Falls back to CRON_SECRET so a single
+    // secret is enough to get started; set its own value in production.
+    return optional(process.env.EMAIL_UNSUBSCRIBE_SECRET) ?? optional(process.env.CRON_SECRET);
+  },
 };
+
+/** Whether lifecycle email can be sent. */
+export function isEmailConfigured(): boolean {
+  return Boolean(env.resendApiKey && env.emailFrom && env.emailUnsubscribeSecret);
+}
 
 /**
  * Whether order creation and checkout verification can run. The webhook has its

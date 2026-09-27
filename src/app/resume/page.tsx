@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { SiteShell } from '@/components/chrome/SiteShell';
+import { SectionTabs } from '@/components/chrome/SectionTabs';
 import {
   FULL_ACCESS_PRICE,
   formatPriceDisclosure,
@@ -60,6 +61,7 @@ export default async function ResumePage() {
     <SiteShell>
       <section className="account-section">
         <div className="account-inner">
+          <SectionTabs section="resume" current="/resume" />
           <p className="eyebrow">Resume</p>
           {/* `.section-serif-em` styles a descendant `em`, so the class belongs
               on the heading rather than on the emphasised word itself. */}

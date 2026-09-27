@@ -6,6 +6,7 @@ import { checkResumeQuota, readPlan } from '@/lib/resume/quota';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 import { requireService } from '@/lib/plans/guard';
+import { checkFairUse, fairUseResponse } from '@/lib/plans/fair-use';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
   // directly.
   const gate = await requireService(user.id, 'outreach');
   if (gate) return gate;
+
+  const fair = await checkFairUse(supabaseAdmin(), user.id, 'web');
+  if (!fair.allowed) return fairUseResponse(fair);
 
   const body = (await request.json().catch(() => null)) as {
     count?: unknown;

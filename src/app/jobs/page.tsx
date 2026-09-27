@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { SiteShell } from '@/components/chrome/SiteShell';
+import { SectionTabs } from '@/components/chrome/SectionTabs';
 import { userHasService } from '@/lib/plans/guard';
+import { checkTrackerLimit, remainingOf } from '@/lib/plans/limits';
+import { readEffectivePlan } from '@/lib/plans/read-plan';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 
@@ -35,16 +38,21 @@ export default async function JobsPage() {
 
   if (!user) redirect('/login?redirectedFrom=%2Fjobs');
 
-  // The tracker itself is NOT paywalled: these are the user's own rows, and
-  // reading, editing, exporting or deleting them stays available whatever their
-  // plan. What full access buys is SAVING NEW roles and discovering them, which is
-  // gated in `/api/jobs` (POST) and `/api/jobs/discover`.
-  const entitled = await userHasService(user.id, 'jobs');
+  // The tracker is free on every plan (migration 023), up to
+  // `feature_limits.max_tracked_jobs` saved jobs on the free plan. `entitled`
+  // stays as a guard in case a future plan has no tracker at all.
+  const admin = supabaseAdmin();
+  const [entitled, plan] = await Promise.all([
+    userHasService(user.id, 'jobs'),
+    readEffectivePlan(admin, user.id),
+  ]);
+  const limit = await checkTrackerLimit(admin, user.id, plan);
+  const left = remainingOf(limit);
 
-  const { data } = await supabaseAdmin()
+  const { data } = await admin
     .from('tracked_jobs')
     .select(
-      'id, source, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, applied_at, created_at'
+      'id, source, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, follow_up_at, applied_at, created_at'
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
@@ -54,6 +62,7 @@ export default async function JobsPage() {
     <SiteShell>
       <section className="account-section">
         <div className="account-inner">
+          <SectionTabs section="jobs" current="/jobs" />
           <p className="eyebrow">Tracker</p>
           <h1 className="section-serif-em">
             Everything you are <em>pursuing</em>
@@ -65,14 +74,15 @@ export default async function JobsPage() {
 
           <JobTracker initialJobs={(data ?? []) as TrackedJob[]} />
 
-          {entitled ? null : (
+          {entitled && left !== null ? (
             <p className="download-note">
-              Your saved roles stay here, and you can still edit, export or delete
-              them. Adding new ones and{' '}
-              <a href="/jobs/discover">discovering openings</a> needs full access
-              — <a href="/pricing">see pricing</a>.
+              Free plan: {limit.used} of {limit.cap} saved jobs used.{' '}
+              {left === 0
+                ? 'Remove jobs you no longer need to save more, or '
+                : 'For unlimited saves, '}
+              <a href="/pricing">get full access</a>.
             </p>
-          )}
+          ) : null}
         </div>
       </section>
     </SiteShell>

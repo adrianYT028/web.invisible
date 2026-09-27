@@ -102,6 +102,12 @@ export async function rateLimitExchangeByIp(ip: string): Promise<RateLimitResult
   return kvFixedWindow(`rl:exchange:ip:${ip}`, 10, 60);
 }
 
+// 10 checks per hour per IP for the public, no-login ATS checker. It spends no
+// AI, but parsing a PDF is real CPU and the endpoint is anonymous.
+export async function rateLimitAtsCheckByIp(ip: string): Promise<RateLimitResult> {
+  return kvFixedWindow(`rl:atscheck:ip:${ip}`, 10, 3600);
+}
+
 export async function rateLimitRefreshByHash(hash: string): Promise<RateLimitResult> {
   return kvFixedWindow(`rl:refresh:hash:${hash}`, 60, 60);
 }

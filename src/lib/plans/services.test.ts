@@ -25,8 +25,16 @@ import {
 } from './services';
 
 describe('servicesForPlan', () => {
-  it('grants the free plan nothing', () => {
-    expect(servicesForPlan('free')).toEqual([]);
+  // Free gets the tracker and openings (capped by feature_limits.max_tracked_jobs)
+  // and none of the AI-funded services.
+  it('grants the free plan the job tracker only', () => {
+    expect([...servicesForPlan('free')]).toEqual(['jobs']);
+  });
+
+  it('does not let a caller mutate the free entitlement', () => {
+    const granted = servicesForPlan('free') as PlatformService[];
+    expect(() => granted.push('outreach')).toThrow();
+    expect([...servicesForPlan('free')]).toEqual(['jobs']);
   });
 
   it('grants the bundle every service', () => {
@@ -56,9 +64,9 @@ describe('servicesForPlan', () => {
 });
 
 describe('planUnlocks', () => {
-  it('is false for every service on the free plan', () => {
+  it('unlocks only jobs on the free plan', () => {
     for (const service of PLATFORM_SERVICES) {
-      expect(planUnlocks('free', service)).toBe(false);
+      expect(planUnlocks('free', service)).toBe(service === 'jobs');
     }
   });
 
@@ -70,9 +78,9 @@ describe('planUnlocks', () => {
 });
 
 describe('hasServiceAccess', () => {
-  it('gives a free user with no licence nothing', () => {
+  it('gives a free user with no licence only the job tracker', () => {
     for (const service of PLATFORM_SERVICES) {
-      expect(hasServiceAccess({ plan: 'free' }, service)).toBe(false);
+      expect(hasServiceAccess({ plan: 'free' }, service)).toBe(service === 'jobs');
     }
   });
 
@@ -83,7 +91,8 @@ describe('hasServiceAccess', () => {
     const ctx = { plan: 'free', downloadAccess: true };
     expect(hasServiceAccess(ctx, 'desktop')).toBe(true);
     expect(hasServiceAccess(ctx, 'resume')).toBe(false);
-    expect(hasServiceAccess(ctx, 'jobs')).toBe(false);
+    // jobs comes from the free plan itself, not from the licence.
+    expect(hasServiceAccess(ctx, 'jobs')).toBe(true);
     expect(hasServiceAccess(ctx, 'outreach')).toBe(false);
   });
 
@@ -110,8 +119,8 @@ describe('hasServiceAccess', () => {
 });
 
 describe('accessibleServices', () => {
-  it('returns nothing for a free user', () => {
-    expect(accessibleServices({ plan: 'free' })).toEqual([]);
+  it('returns only the job tracker for a free user', () => {
+    expect([...accessibleServices({ plan: 'free' })]).toEqual(['jobs']);
   });
 
   it('returns every service for a subscriber, in declaration order', () => {
@@ -120,10 +129,10 @@ describe('accessibleServices', () => {
     ]);
   });
 
-  it('returns only desktop for a legacy licence holder', () => {
+  it('adds desktop for a legacy licence holder on the free plan', () => {
     expect([
       ...accessibleServices({ plan: 'free', downloadAccess: true }),
-    ]).toEqual(['desktop']);
+    ]).toEqual(['jobs', 'desktop']);
   });
 });
 

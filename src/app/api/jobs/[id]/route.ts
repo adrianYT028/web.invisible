@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
+import { resolveRequestUser } from '@/lib/auth/request-user';
 import { jsonError, logSafe } from '@/lib/http';
-import { appliedAtFor, isJobStatus } from '@/lib/resume/job-status';
+import {
+  appliedAtFor,
+  dateInDays,
+  DEFAULT_FOLLOW_UP_DAYS,
+  isJobStatus,
+} from '@/lib/resume/job-status';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { createSupabaseRouteClient } from '@/lib/supabase/route';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,14 +16,49 @@ export const runtime = 'nodejs';
 // -----------------------------------------------------------------------------
 // /api/jobs/[id]
 //
-//   PATCH  move a job's stage, or edit its notes  -> 200 { job }
-//   DELETE remove it from the tracker             -> 200 { ok: true }
+//   GET    one job, including the saved job description -> 200 { job }
+//   PATCH  change stage, notes or follow-up date         -> 200 { job }
+//   DELETE remove it from the tracker                    -> 200 { ok: true }
+//
+// Cookie or bearer (browser extension) auth, via resolveRequestUser.
 // -----------------------------------------------------------------------------
 
 const SELECT =
-  'id, source, external_id, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, applied_at, created_at';
+  'id, source, external_id, company, job_title, location, is_remote, url, status, scan_id, match_score, notes, follow_up_at, applied_at, created_at';
 
 const MAX_NOTES = 4000;
+
+/** A calendar date the user picked, or null to clear it. Undefined = invalid. */
+function parseFollowUp(value: unknown): string | null | undefined {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const t = Date.parse(`${value}T00:00:00Z`);
+  if (Number.isNaN(t)) return undefined;
+  // Within a sane window: not years in the past or future.
+  const days = (t - Date.now()) / 86_400_000;
+  return days > -366 && days < 366 ? value : undefined;
+}
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+
+  // Not entitlement-gated: reads only the caller's own row, including the job
+  // description they saved (not_authenticated otherwise).
+  const { data, error } = await supabaseAdmin()
+    .from('tracked_jobs')
+    .select(`${SELECT}, jd_text`)
+    .eq('id', id)
+    .eq('user_id', auth.userId)
+    .maybeSingle();
+
+  if (error || !data) return jsonError(404, 'job_not_found');
+  return NextResponse.json({ job: data });
+}
 
 export async function PATCH(
   request: Request,
@@ -26,15 +66,12 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
 
-  const sb = await createSupabaseRouteClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return jsonError(401, 'not_authenticated');
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+  const user = { id: auth.userId };
 
-  // Not entitlement-gated: this edits only the caller's own rows.
-  // Full access buys creating and discovering new work, not reading back
-  // what you already have. See src/lib/plans/guard.ts.
+  // Not entitlement-gated: this edits only the caller's own rows
+  // (not_authenticated otherwise). See src/lib/plans/guard.ts.
 
   const body = (await request.json().catch(() => null)) as Record<
     string,
@@ -50,7 +87,7 @@ export async function PATCH(
   // service-role client bypasses RLS.
   const { data: existing, error: readError } = await admin
     .from('tracked_jobs')
-    .select('id, status, applied_at')
+    .select('id, status, applied_at, follow_up_at')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -70,6 +107,30 @@ export async function PATCH(
       body.status,
       existing.applied_at as string | null
     );
+
+    // Moving a job to "Applied" suggests a follow-up a week later, unless the
+    // user already set one (or is setting one in this same request). They can
+    // change or clear it in the tracker; the reminder email uses it.
+    if (
+      body.status === 'applied' &&
+      existing.status !== 'applied' &&
+      existing.follow_up_at === null &&
+      body.follow_up_at === undefined
+    ) {
+      update.follow_up_at = dateInDays(DEFAULT_FOLLOW_UP_DAYS);
+    }
+    // Closed-out jobs need no reminder.
+    if (['offer', 'rejected', 'archived'].includes(body.status)) {
+      update.follow_up_at = null;
+    }
+  }
+
+  if (body.follow_up_at !== undefined) {
+    const parsed = parseFollowUp(body.follow_up_at);
+    if (parsed === undefined) {
+      return jsonError(400, 'invalid_input', 'Pick a follow-up date within the next year.');
+    }
+    update.follow_up_at = parsed;
   }
 
   if (body.notes !== undefined) {
@@ -100,20 +161,17 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
 
-  const sb = await createSupabaseRouteClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return jsonError(401, 'not_authenticated');
+  const auth = await resolveRequestUser(request);
+  if (!auth.ok) return jsonError(401, auth.code);
+  const user = { id: auth.userId };
 
-  // Not entitlement-gated: this removes the caller's own data, which must never be withheld.
-  // Full access buys creating and discovering new work, not reading back
-  // what you already have. See src/lib/plans/guard.ts.
+  // Not entitlement-gated: this removes the caller's own data, which must
+  // never be withheld (not_authenticated otherwise).
 
   const { error } = await supabaseAdmin()
     .from('tracked_jobs')

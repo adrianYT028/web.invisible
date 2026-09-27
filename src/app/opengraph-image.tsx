@@ -13,8 +13,12 @@ import { ImageResponse } from 'next/og';
  * text, a single accent rule) so the card reads as part of the brand. No
  * external font fetch — the default sans keeps the build fast and reliable.
  */
+// Copy mirrors the homepage hero ("Everything you need to get hired"). This card
+// used to sell only the stealth overlay ("100% unviewable… bypasses every
+// screen-capture pipeline"), so every shared link contradicted the page it
+// pointed to. Keep this in step with the hero in src/app/page.tsx.
 export const alt =
-  'Unviewable — a 100% unviewable AI assistant for interviews and meetings';
+  'Unviewable — ATS resume analyser, matched job openings, tracker and outreach for students and freshers';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -74,7 +78,7 @@ export default function OpengraphImage() {
                 background: '#4DE39A',
               }}
             />
-            STEALTH ON
+            BUILT FOR FRESHERS
           </div>
         </div>
 
@@ -94,7 +98,7 @@ export default function OpengraphImage() {
               letterSpacing: -2,
             }}
           >
-            The intelligence
+            Everything you need
           </div>
           <div
             style={{
@@ -105,7 +109,7 @@ export default function OpengraphImage() {
               letterSpacing: -2,
             }}
           >
-            they can&apos;t see.
+            to get hired.
           </div>
         </div>
 
@@ -119,8 +123,8 @@ export default function OpengraphImage() {
             maxWidth: 900,
           }}
         >
-          A 100% unviewable AI assistant for high-stakes interviews and
-          meetings. Bypasses every screen-capture pipeline.
+          Score your resume against any job, fix what ATS filters reject,
+          find matched openings and draft outreach. One payment.
         </div>
       </div>
     ),

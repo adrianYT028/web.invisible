@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { SITE_META } from '@/components/constants/site-meta';
 
-import { LEGAL_LINKS, NAV_LINKS } from './nav-links';
+import { FOOTER_LINKS, LEGAL_LINKS, NAV_LINKS } from './nav-links';
 
 /**
  * Site footer.
@@ -46,7 +46,7 @@ export function Footer() {
 
       <div className="footer-inner">
         <nav className="footer-nav" aria-label="Secondary">
-          {NAV_LINKS.map(({ label, href }) => (
+          {[...NAV_LINKS, ...FOOTER_LINKS].map(({ label, href }) => (
             <Link key={href} className="footer-link" href={href}>
               {label}
             </Link>

@@ -15,6 +15,7 @@ import {
   formatInr,
 } from '@/lib/payments/pricing';
 import { checkResumeQuota } from '@/lib/resume/quota';
+import { checkAiLimit, checkTrackerLimit } from '@/lib/plans/limits';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSupabaseRouteClient } from '@/lib/supabase/route';
 
@@ -57,14 +58,14 @@ const SERVICE_ROUTES: Record<PlatformService, ServiceCard> = {
   resume: {
     href: '/resume',
     blurb:
-      'Check whether a parser can read your resume at all, then score it against a job description and get a tailored rewrite.',
-    action: 'Analyse a resume',
+      'See if software can read your resume, score it against a job, get stronger wording, and download it. Also writes your LinkedIn profile.',
+    action: 'Check my resume',
   },
   jobs: {
     href: '/jobs',
     blurb:
-      'Every role you are pursuing, with its match score, stage and your notes. Exports to a spreadsheet.',
-    action: 'Open your tracker',
+      'Find openings matched to you and track every application, with notes and follow-up reminders. Free for up to 50 saved jobs.',
+    action: 'Open my jobs',
   },
   outreach: {
     href: '/prep',
@@ -92,11 +93,14 @@ export default async function ServicesPage() {
 
   // The resume analyser is quota-bounded rather than gated (migration 011 gives
   // the free plan a deliberate one-a-day taster), so showing "locked" for it
-  // would be wrong. Show what is actually left instead.
+  // would be wrong. Show what is actually left instead. Same for the tracker
+  // (free up to 50 jobs) and interview practice (one session a day free).
   const admin = supabaseAdmin();
-  const [uploadQuota, scanQuota] = await Promise.all([
+  const [uploadQuota, scanQuota, trackerLimit, interviewLimit] = await Promise.all([
     checkResumeQuota(admin, user.id, 'upload', ctx.plan),
     checkResumeQuota(admin, user.id, 'scan', ctx.plan),
+    checkTrackerLimit(admin, user.id, ctx.plan ?? 'free'),
+    checkAiLimit(admin, user.id, 'interview', ctx.plan ?? 'free'),
   ]);
 
   const full = isBundlePlan(ctx.plan);
@@ -105,13 +109,14 @@ export default async function ServicesPage() {
     <SiteShell>
       <section className="account-section">
         <div className="account-inner account-inner--wide">
+          <p className="eyebrow">Dashboard</p>
           <h1 className="section-serif-em">
             Everything on <em>one</em> account
           </h1>
           <p className="lede">
             {full
-              ? 'You have full access. All four are unlocked.'
-              : 'Signed in as ' + (user.email ?? 'your account') + '.'}
+              ? 'You have full access. Everything is unlocked.'
+              : 'Signed in as ' + (user.email ?? 'your account') + '. The tracker, job openings and a daily resume check and interview practice are free.'}
           </p>
 
           {/* ------------------------------------------------------------------
@@ -162,6 +167,21 @@ export default async function ServicesPage() {
                         {quotaLine('Scans', scanQuota.cap, scanQuota.used)}
                       </p>
                     ) : null}
+                    {service === 'jobs' && trackerLimit.cap !== null ? (
+                      <p className="svc-row-meta">
+                        Saved jobs: {trackerLimit.used} of {trackerLimit.cap}
+                      </p>
+                    ) : null}
+                    {service === 'desktop' ? (
+                      <p className="svc-row-meta">
+                        Practise first on the website:{' '}
+                        <a href="/interview">interview practice</a>
+                        {interviewLimit.cap !== null
+                          ? ` (${Math.max(interviewLimit.cap - interviewLimit.used, 0)} of ${interviewLimit.cap} left today)`
+                          : ''}
+                        .
+                      </p>
+                    ) : null}
 
                     {open ? (
                       <a className="cta cta-primary svc-row-cta" href={card.href}>
@@ -198,7 +218,8 @@ export default async function ServicesPage() {
                 <strong>
                   One payment of {formatInr(FULL_ACCESS_PRICE.totalAmountPaise)}
                 </strong>{' '}
-                unlocks all four, permanently. No subscription.
+                unlocks everything: more resume checks, bulk applications,
+                unlimited saved jobs, more practice, and the desktop app.
               </p>
               <a className="cta cta-primary svc-upsell-cta" href="/pricing">
                 Get full access
@@ -221,14 +242,14 @@ export default async function ServicesPage() {
  */
 const SERVICE_POINTS: Record<PlatformService, readonly string[]> = {
   resume: [
-    'Parse check — whether an ATS can read the file at all',
-    'Requirement-by-requirement match against a real posting',
-    'Tailored bullet rewrites, with no invented facts',
+    'Whether an applicant tracking system can read your file',
+    'Match score against a real job, requirement by requirement',
+    'Stronger wording and a downloadable resume, nothing made up',
   ],
   jobs: [
-    'Openings pulled from company boards, not aggregators',
-    'Ranked against your parsed profile',
-    'Pipeline stages, notes, and a spreadsheet export',
+    'Openings from company job boards, ranked for you',
+    'Save jobs from any site with the browser extension',
+    'Stages, notes and a follow-up reminder by email',
   ],
   outreach: [
     'A batch of applications prepared in one action',

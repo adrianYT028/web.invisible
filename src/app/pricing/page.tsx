@@ -43,18 +43,33 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'One payment unlocks the resume analyser, job openings, auto-apply with cold mail, and the Unviewable desktop app.',
+    'Free: ATS check, daily resume match, job openings, a 50-job tracker and interview practice. Full access is one payment for more of everything plus the desktop app.',
   alternates: { canonical: '/pricing' },
 };
 
-/** One line per service, describing it in the user's terms rather than the API's. */
+/** One line per service, describing what FULL ACCESS adds, in the user's terms. */
 const SERVICE_BLURBS: Record<PlatformService, string> = {
-  resume: 'Parse check and match score against any job description, with a tailored rewrite.',
-  jobs: 'Live openings from company job boards, ranked against your resume.',
+  resume:
+    '20 uploads and 40 match scores a day, stronger wording, downloadable resume, and 10 LinkedIn rewrites a day.',
+  jobs: 'Unlimited saved jobs, on top of the free openings and tracker.',
   outreach:
     'Prepare a batch of applications at once: match, rewrite, draft the cold email, find the contact.',
-  desktop: 'The invisible overlay for Windows. Yours permanently.',
+  desktop: 'The Windows app for notes on screen during the real interview, plus 10 practice sessions a day.',
 };
+
+/**
+ * What every account gets without paying. Kept in step with the free caps in
+ * migrations 011 and 023 (1 upload + 1 scan a day, 50 saved jobs, 1 LinkedIn
+ * rewrite and 1 interview practice session a day).
+ */
+const FREE_FEATURES: readonly string[] = [
+  'Free ATS check, no sign-up needed',
+  'One resume check against a job every day, with the full report',
+  'Job openings matched to your resume',
+  'Job tracker for up to 50 jobs, with follow-up reminders',
+  'Browser extension to save jobs from any site',
+  'One interview practice session and one LinkedIn rewrite a day',
+];
 
 /**
  * Filled circle with a check. Authored SVG rather than a "✓" character: a text
@@ -149,12 +164,45 @@ export default async function PricingPage() {
               be bought — the layout is the reference, the product truth is ours.
               ------------------------------------------------------------------ */}
           <header className="pricing-head">
-            <h1 className="pricing-title">Affordable, and only once</h1>
+            <h1 className="pricing-title">Start free. Pay once for more.</h1>
             <p className="pricing-sub">
-              Every service on the platform for a single payment. No
+              Most of Unviewable is free. Full access is a single payment: no
               subscription, no renewal, no card kept on file.
             </p>
           </header>
+
+          <div className="plan">
+            <div className="plan-top">
+              <p className="plan-name">Free</p>
+              <p className="plan-price">
+                <span className="plan-price-amount">₹0</span>
+                <span className="plan-price-unit">always</span>
+              </p>
+              <p className="plan-blurb">Everything you need to start applying.</p>
+              {user ? (
+                <a className="plan-cta" href="/services">
+                  <span>Go to my dashboard</span>
+                  <ArrowBadge />
+                </a>
+              ) : (
+                <a className="plan-cta" href="/login?redirectedFrom=%2Fresume">
+                  <span>Start free</span>
+                  <ArrowBadge />
+                </a>
+              )}
+            </div>
+            <div className="plan-bottom">
+              <p className="plan-included-label">Free includes</p>
+              <ul className="plan-included">
+                {FREE_FEATURES.map((feature) => (
+                  <li key={feature}>
+                    <CheckMark />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
           <div className="plan">
             <div className="plan-top">
@@ -168,7 +216,7 @@ export default async function PricingPage() {
               </p>
 
               <p className="plan-blurb">
-                Everything below, unlocked permanently on your account.
+                Everything in Free, plus everything below, unlocked permanently.
               </p>
 
               {alreadyOwns ? (
@@ -198,7 +246,7 @@ export default async function PricingPage() {
             </div>
 
             <div className="plan-bottom">
-              <p className="plan-included-label">What&apos;s included</p>
+              <p className="plan-included-label">Full access adds</p>
               <ul className="plan-included">
                 {PLATFORM_SERVICES.map((service) => (
                   <li key={service}>
