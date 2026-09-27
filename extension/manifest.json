@@ -28,7 +28,7 @@
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://www.unviewable.online/*",
-    "http://localhost:3000/*",
+    
 
     "https://*.greenhouse.io/*",
     "https://jobs.lever.co/*",

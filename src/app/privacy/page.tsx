@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         </>
       }
       lede={`How ${b.legalName} handles your data when you use Unviewable.`}
-      lastUpdated="17 August 2026"
+      lastUpdated="27 September 2026"
     >
       <h2>1. Who we are</h2>
       <p>
@@ -91,6 +91,53 @@ export default function PrivacyPage() {
         the IP address, and the user agent — to detect licence sharing.
       </p>
 
+      <h3>Resumes, jobs and career tools</h3>
+      <p>
+        When you upload a resume we store the file privately, the text we read
+        from it, and a structured summary (skills, roles, education) used to
+        score it against jobs. Resumes and their scan reports are deleted
+        automatically after 90 days. Jobs you save to your tracker, with any
+        notes, follow-up dates and job descriptions, are kept until you delete
+        them or your account. LinkedIn drafts and interview practice questions
+        are kept for 30 days so you can come back to them. Your interview
+        answers are sent to our AI provider to generate feedback and are not
+        stored; we keep only the score.
+      </p>
+      <p>
+        The free ATS checker at /ats-checker does not store the file you check:
+        it is read in memory and discarded when the result is returned.
+      </p>
+
+      <h3 id="browser-extension">Browser extension</h3>
+      <p>
+        The Unviewable Chrome extension reads a web page only when you click its
+        icon, and only to fill in the job details (role, company, location,
+        description) in its window. It does not track your browsing, read pages
+        in the background, or collect browsing history. Job details are sent to
+        your Unviewable account only when you press <em>Save to tracker</em> or{' '}
+        <em>Check match</em>. The extension keeps a sign-in token in your
+        browser&apos;s extension storage so you stay connected; you can remove
+        it at any time with <em>Sign out</em> in the extension, or by signing
+        out every device from your account page.
+      </p>
+
+      <h3>Emails</h3>
+      <p>
+        We send a welcome email when you sign up, reminders on follow-up dates
+        you set in your tracker, and a weekly email with new jobs that match your
+        resume. Every email has a one-click unsubscribe link. Receipts for
+        payments are sent regardless, because they are records of a purchase.
+      </p>
+
+      <h3>Product analytics</h3>
+      <p>
+        We count key actions (for example: signed up, checked a resume, saved a
+        job, paid) against your account to understand how the product is used.
+        These records contain no resume text, job text or other content. Page
+        views are measured with Vercel Web Analytics, which uses no cookies and
+        does not identify you.
+      </p>
+
       <h3>What we do NOT store</h3>
       <p>
         We do not store your meeting audio, transcripts, screenshots, or AI
@@ -127,11 +174,17 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Groq</strong> — AI inference. Your prompts, audio, and images
-          are sent to Groq to generate responses, under your own API key and
-          their terms.
+          are sent to Groq to generate responses, under your own API key or
+          ours, and their terms. For the website&apos;s resume, LinkedIn and
+          interview features this includes your resume text, the job
+          description and your practice answers.
         </li>
         <li>
           <strong>Google</strong> — only if you choose Google sign-in.
+        </li>
+        <li>
+          <strong>Resend</strong> — sending account and reminder emails. They
+          receive your email address and the email content.
         </li>
       </ul>
       <p>
@@ -154,6 +207,9 @@ export default function PrivacyPage() {
         </li>
         <li>Sign-in sessions: until they expire or are revoked.</li>
         <li>Usage, activity, and download logs: up to 24 months.</li>
+        <li>Resumes and resume scan reports: 90 days, then deleted automatically.</li>
+        <li>LinkedIn drafts and interview practice sessions: 30 days.</li>
+        <li>Your job tracker: until you delete the jobs or your account.</li>
         <li>Your Groq key: until you remove it, or you delete your account.</li>
       </ul>
 
@@ -192,8 +248,8 @@ export default function PrivacyPage() {
       <h2>10. Cookies</h2>
       <p>
         We set cookies that are strictly necessary to keep you signed in and to
-        remember your theme preference. We do not use advertising or third-party
-        analytics cookies.
+        remember your theme preference. We do not use advertising or analytics
+        cookies (Vercel Web Analytics is cookieless).
       </p>
 
       <h2>11. Changes</h2>
