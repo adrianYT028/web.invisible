@@ -1,3 +1,6 @@
+// @vitest-environment node
+// Server-side route handler: run under Node, not the jsdom default. jsdom has
+// no global ReadableStream, which the streamed-forward mock below needs.
 import fc from 'fast-check';
 import {
   afterAll,
@@ -204,11 +207,47 @@ const mocks = vi.hoisted(() => {
     }
   );
 
+  // Streamed forward. Emits the configured SSE chunks through a real
+  // ReadableStream and reports usage + completion through the hooks, the same
+  // way the real implementation does as bytes pass through.
+  const streamState: {
+    chunks: string[];
+    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null;
+    lastPayload: Record<string, unknown> | null;
+  } = { chunks: [], usage: null, lastPayload: null };
+
+  const forwardStreamToProvider = vi.fn(
+    async (...args: unknown[]) => {
+      state.forwardedProvider = args[0] as string;
+      streamState.lastPayload = args[2] as Record<string, unknown>;
+      const hooks = args[5] as {
+        onUsage: (u: NonNullable<typeof streamState.usage>) => void;
+        onDone: () => void;
+      };
+      const encoder = new TextEncoder();
+      let i = 0;
+      const stream = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (i < streamState.chunks.length) {
+            controller.enqueue(encoder.encode(streamState.chunks[i++]));
+            return;
+          }
+          if (streamState.usage) hooks.onUsage(streamState.usage);
+          hooks.onDone();
+          controller.close();
+        },
+      });
+      return { kind: 'stream' as const, status: 200, stream };
+    }
+  );
+
   return {
     state,
+    streamState,
     client,
     verifyAccessToken,
     forwardToProvider,
+    forwardStreamToProvider,
     supabaseAdmin: () => client,
   };
 });
@@ -220,6 +259,7 @@ vi.mock('@/lib/auth/desktop-tokens', () => ({
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: mocks.supabaseAdmin }));
 vi.mock('@/lib/ai/upstream', () => ({
   forwardToProvider: mocks.forwardToProvider,
+  forwardStreamToProvider: mocks.forwardStreamToProvider,
 }));
 vi.mock('@/lib/env', () => ({
   env: {
@@ -301,8 +341,12 @@ function resetState() {
   s.verifyResult = { sub: 'user-1', device_id: 'dev-1', iat: 0, exp: 0 };
   s.forwardImpl = null;
   s.forwardedProvider = null;
+  mocks.streamState.chunks = [];
+  mocks.streamState.usage = null;
+  mocks.streamState.lastPayload = null;
   mocks.verifyAccessToken.mockClear();
   mocks.forwardToProvider.mockClear();
+  mocks.forwardStreamToProvider.mockClear();
   logSpy?.mockClear();
 }
 
@@ -974,12 +1018,14 @@ describe('handleAiProxy — decommissioned model remap', () => {
     expect(mocks.state.usageInserts[0].model).toBe('openai/gpt-oss-120b');
   });
 
-  it('uses include_reasoning for GPT-OSS, NOT reasoning_effort', async () => {
+  it("hides GPT-OSS reasoning and lowers its effort, never sending 'none'", async () => {
     // The parameter is model-specific and the wrong one is a 400, not a no-op:
     // `reasoning_effort` accepts 'none' only on Qwen, while GPT-OSS accepts only
-    // low/medium/high and instead honours `include_reasoning: false`. Reusing
-    // the Qwen path for the chat migration would have sent an invalid value on
-    // every request.
+    // low/medium/high and honours `include_reasoning: false` to hide it.
+    //
+    // Hiding is not enough for speed: the model still generates the reasoning
+    // before the first answer token. `reasoning_effort: 'low'` is what shortens
+    // that wait, and it is a valid value on GPT-OSS.
     resetState();
     mocks.state.keyRows = [keyRow()];
     let forwardedPayload: Record<string, unknown> | undefined;
@@ -996,7 +1042,86 @@ describe('handleAiProxy — decommissioned model remap', () => {
     expect(res.status).toBe(200);
     expect(forwardedPayload?.model).toBe('openai/gpt-oss-120b');
     expect(forwardedPayload?.include_reasoning).toBe(false);
-    expect(forwardedPayload?.reasoning_effort).toBeUndefined();
+    expect(forwardedPayload?.reasoning_effort).toBe('low');
+  });
+
+  it('keeps a reasoning_effort the client chose', async () => {
+    resetState();
+    mocks.state.keyRows = [keyRow()];
+    let forwardedPayload: Record<string, unknown> | undefined;
+    mocks.state.forwardImpl = async (...args: unknown[]) => {
+      forwardedPayload = args[1] as Record<string, unknown>;
+      return { status: 200, body: enc('{}'), usage: null };
+    };
+
+    await handleAiProxy(
+      aiReq('chat', { model: 'openai/gpt-oss-120b', reasoning_effort: 'high' }),
+      { endpoint: 'chat' }
+    );
+
+    expect(forwardedPayload?.reasoning_effort).toBe('high');
+  });
+
+  it('streams SSE through verbatim when the client sends stream: true', async () => {
+    resetState();
+    mocks.state.keyRows = [keyRow()];
+    const chunks = [
+      'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"lo"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ];
+    mocks.streamState.chunks = chunks;
+    mocks.streamState.usage = { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 };
+
+    const res = await handleAiProxy(
+      aiReq('chat', { model: 'openai/gpt-oss-120b', stream: true }),
+      { endpoint: 'chat' }
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    expect(mocks.forwardStreamToProvider).toHaveBeenCalledTimes(1);
+    expect(mocks.forwardToProvider).not.toHaveBeenCalled();
+    expect(await res.text()).toBe(chunks.join(''));
+
+    // The usage row is written once the stream ends, with its token counts.
+    await vi.waitFor(() => expect(mocks.state.usageInserts).toHaveLength(1));
+    const row = mocks.state.usageInserts[0];
+    expect(Object.keys(row).sort()).toEqual(ALLOWED_USAGE_KEYS);
+    expect(row.total_tokens).toBe(9);
+    expect(row.status_code).toBe(200);
+  });
+
+  it('applies the same model and reasoning rewrites to a streamed request', async () => {
+    resetState();
+    mocks.state.keyRows = [keyRow()];
+    mocks.streamState.chunks = ['data: [DONE]\n\n'];
+
+    const res = await handleAiProxy(
+      aiReq('chat', { model: 'llama-3.3-70b-versatile', stream: true }),
+      { endpoint: 'chat' }
+    );
+    await res.text();
+
+    const sent = mocks.streamState.lastPayload;
+    expect(sent?.model).toBe('openai/gpt-oss-120b');
+    expect(sent?.include_reasoning).toBe(false);
+    expect(sent?.reasoning_effort).toBe('low');
+    expect(sent?.stream).toBe(true);
+  });
+
+  it('never streams transcription, even if asked', async () => {
+    resetState();
+    mocks.state.keyRows = [keyRow()];
+
+    const res = await handleAiProxy(
+      aiReq('transcribe', { model: 'whisper-large-v3-turbo', stream: true }),
+      { endpoint: 'transcribe' }
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.forwardStreamToProvider).not.toHaveBeenCalled();
+    expect(mocks.forwardToProvider).toHaveBeenCalledTimes(1);
   });
 
   it("suppresses reasoning for the qwen3 vision model (reasoning_effort: 'none')", async () => {

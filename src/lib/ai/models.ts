@@ -158,6 +158,31 @@ export function getReasoningSuppression(
   return REASONING_SUPPRESSION[model] ?? null;
 }
 
+/**
+ * Reasoning effort requested for the desktop endpoints, per model.
+ *
+ * `include_reasoning: false` (above) only HIDES GPT-OSS reasoning from the
+ * response. The model still generates and bills it before the first answer
+ * token, which is the single largest delay on a desktop chat answer. Measured in
+ * src/lib/resume/ai/client.ts: the default effort spent 869 reasoning tokens,
+ * `low` spent 235. `reasoning_effort` is the control that actually shortens it.
+ *
+ * GPT-OSS accepts only low/medium/high, so `low` is the fastest valid value.
+ * Raise it here if answer quality on hard coding questions drops.
+ */
+const DESKTOP_REASONING_EFFORT: Record<string, 'low' | 'medium' | 'high'> = {
+  'openai/gpt-oss-120b': 'low',
+  'openai/gpt-oss-20b': 'low',
+};
+
+/** The `reasoning_effort` to send for this model, or `null` to leave it unset. */
+export function getReasoningEffort(
+  model: string | null | undefined
+): 'low' | 'medium' | 'high' | null {
+  if (typeof model !== 'string') return null;
+  return DESKTOP_REASONING_EFFORT[model] ?? null;
+}
+
 /** True when the model reasons by default and its reasoning should be disabled. */
 export function needsReasoningSuppression(model: string | null | undefined): boolean {
   return getReasoningSuppression(model) !== null;
