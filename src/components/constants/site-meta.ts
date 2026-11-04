@@ -30,7 +30,7 @@
 import { BUSINESS_INFO } from './business-info';
 
 export const SITE_META = {
-  softwareVersion: '2.1.0',
+  softwareVersion: '2.2.1',
   // ratingValue / ratingCount were removed: they were hardcoded (4.9 / 124)
   // while production had 4 reviews. The public rating now comes from the real
   // `reviews` table — see src/lib/reviews/aggregate.ts. Do not re-add them here.
