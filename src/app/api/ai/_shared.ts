@@ -9,6 +9,7 @@ import { KeyDecryptError } from '@/lib/crypto/key-vault';
 import { env } from '@/lib/env';
 import {
   getEndpointCapConfig,
+  getReasoningEffort,
   getReasoningSuppression,
   isPremiumModel,
   resolveModel,
@@ -28,7 +29,11 @@ import { readEffectivePlan as readPlan } from '@/lib/plans/read-plan';
 import { checkFairUse } from '@/lib/plans/fair-use';
 import { resolveProvider } from '@/lib/ai/model-routing';
 import type { ProviderId } from '@/lib/ai/providers';
-import { forwardToProvider, type UpstreamUsage } from '@/lib/ai/upstream';
+import {
+  forwardStreamToProvider,
+  forwardToProvider,
+  type UpstreamUsage,
+} from '@/lib/ai/upstream';
 import {
   listVaultedProviders,
   readProviderKey,
@@ -121,6 +126,11 @@ export async function handleAiProxy(
   let model: string | null = null;
   let usage: UpstreamUsage | null = null;
   let response: Response = jsonError(500, 'internal_error');
+  // Resolves when a streamed response has finished, so the usage row is written
+  // with the token counts from the stream's final chunk. Already resolved for
+  // every non-streamed response.
+  let streamDone: Promise<void> = Promise.resolve();
+  let streaming = false;
 
   try {
     // --- 2. Parse the body + extract the model ------------------------------
@@ -164,6 +174,25 @@ export async function handleAiProxy(
       (payload as Record<string, unknown>)[reasoningSuppression.param] =
         reasoningSuppression.value;
     }
+    // Hiding reasoning does not stop the model generating it first. Lowering the
+    // effort does, and that is most of the wait on a chat answer. See
+    // `getReasoningEffort` in src/lib/ai/models.ts.
+    const reasoningEffort = getReasoningEffort(effectiveModel);
+    if (
+      reasoningEffort &&
+      isJsonPayload &&
+      (payload as Record<string, unknown>).reasoning_effort === undefined
+    ) {
+      (payload as Record<string, unknown>).reasoning_effort = reasoningEffort;
+    }
+
+    // Streaming is opt-in by the client. Desktop builds from v2.2 send
+    // `stream: true` for chat and vision so text appears as it is generated;
+    // older builds never send it and keep getting one JSON body.
+    const wantsStream =
+      isJsonPayload &&
+      options.endpoint !== 'transcribe' &&
+      (payload as Record<string, unknown>).stream === true;
 
     // Apply the server-side prompt policy (src/lib/ai/prompt-policy.ts).
     //
@@ -199,6 +228,26 @@ export async function handleAiProxy(
     model = effectiveModel ?? null;
     const premium = model != null && isPremiumModel(model);
 
+    // Start the vaulted-provider lookup now, in parallel with the plan and cap
+    // reads below, instead of after them. Each is a separate Supabase round
+    // trip and none depends on another, so running them one after another was
+    // paid on every AI call. A gate that rejects first simply never awaits it;
+    // the no-op catch stops that abandoned promise becoming an unhandled
+    // rejection, while `await vaultedPromise` below still throws normally.
+    const vaultedPromise = premium
+      ? null
+      : listVaultedProviders(admin, userId);
+    vaultedPromise?.catch(() => {});
+
+    // Today's usage count, started in the same batch for the same reason. It
+    // only matters when the plan turns out to have a cap, but waiting for the
+    // plan and then the cap before even starting it put a third sequential
+    // database round trip in front of every capped request, transcription
+    // chunks included. Counting for an uncapped plan costs one indexed HEAD
+    // query nobody waits for. Same no-op catch as above.
+    const usedPromise = countDailyUsage(admin, userId, options.endpoint);
+    usedPromise.catch(() => {});
+
     // --- 3. Plan ------------------------------------------------------------
     const plan = await readPlan(admin, userId);
 
@@ -212,7 +261,7 @@ export async function handleAiProxy(
     const capConfig = getEndpointCapConfig(options.endpoint);
     const cap = await readCap(admin, plan, capConfig.capColumn);
     if (cap !== null) {
-      const used = await countDailyUsage(admin, userId, options.endpoint);
+      const used = await usedPromise;
       if (used >= cap) {
         response = jsonError(429, 'plan_limit_exceeded');
         return response;
@@ -286,7 +335,8 @@ export async function handleAiProxy(
       // Bring your own key. The user may now hold one key per provider, so this
       // is two steps: decide WHICH provider serves this request, then read that
       // provider's key.
-      const vaulted = await listVaultedProviders(admin, userId);
+      const vaulted = await (vaultedPromise ??
+        listVaultedProviders(admin, userId));
       const routing = resolveProvider({
         endpoint: options.endpoint,
         model: effectiveModel,
@@ -408,7 +458,53 @@ export async function handleAiProxy(
     // --- 7. Forward under a 60s timeout (Req 3.6, 3.7) ----------------------
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    // A streamed body outlives this function, so the 60s bound must too: the
+    // stream clears the timer itself when it ends.
+    let timerOwnedByStream = false;
     try {
+      if (wantsStream) {
+        let markDone: () => void = () => {};
+        const done = new Promise<void>((resolve) => {
+          markDone = resolve;
+        });
+        const streamed = await forwardStreamToProvider(
+          provider,
+          options.endpoint,
+          payload,
+          apiKey,
+          controller.signal,
+          {
+            onUsage: (u) => {
+              usage = u;
+            },
+            onDone: () => {
+              clearTimeout(timer);
+              markDone();
+            },
+          }
+        );
+        if (streamed.kind === 'stream') {
+          timerOwnedByStream = true;
+          streaming = true;
+          streamDone = done;
+          response = new NextResponse(streamed.stream, {
+            status: streamed.status,
+            headers: {
+              'content-type': 'text/event-stream; charset=utf-8',
+              'cache-control': 'no-cache, no-transform',
+              'x-accel-buffering': 'no',
+            },
+          });
+          return response;
+        }
+        usage = streamed.usage;
+        response = new NextResponse(streamed.body, {
+          status: streamed.status,
+          headers: { 'content-type': 'application/json' },
+        });
+        return response;
+      }
+
       const forwarded = await forwardToProvider(
         provider,
         options.endpoint,
@@ -430,7 +526,7 @@ export async function handleAiProxy(
       response = jsonError(502, 'upstream_unavailable');
       return response;
     } finally {
-      clearTimeout(timer);
+      if (!timerOwnedByStream) clearTimeout(timer);
     }
   } catch (err) {
     // Req 10.2 — any unhandled failure returns a generic code with no detail.
@@ -463,10 +559,15 @@ export async function handleAiProxy(
     // The latency is still measured to the moment the response was ready, not to
     // when the row was written, so the recorded number remains what the user
     // actually experienced.
+    //
+    // For a streamed response `latencyMs` is time to the first byte being ready,
+    // and the row waits for the stream to end so it carries the final token
+    // counts.
     const latencyMs = Date.now() - startedAt;
     const statusCode = response.status;
-    const write = () =>
-      insertUsage(admin, {
+    const write = async () => {
+      await streamDone;
+      await insertUsage(admin, {
         userId,
         endpoint: options.endpoint,
         model,
@@ -474,6 +575,7 @@ export async function handleAiProxy(
         latencyMs,
         statusCode,
       });
+    };
 
     try {
       after(write);
@@ -487,7 +589,16 @@ export async function handleAiProxy(
       // Deliberately NOT a bare floating promise here: unhandled, it would reject
       // into nothing, and this branch is the one running in tests where a swallowed
       // failure is exactly what hides a regression.
-      await write();
+      //
+      // The one exception is a streamed body. It is only consumed after this
+      // function returns, so awaiting `write` (which waits for the stream to end)
+      // would never finish. `insertUsage` swallows its own errors, so the
+      // floating promise cannot reject unhandled.
+      if (streaming) {
+        void write();
+      } else {
+        await write();
+      }
     }
   }
 }

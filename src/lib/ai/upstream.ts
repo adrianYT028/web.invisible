@@ -127,6 +127,123 @@ export async function forwardToProvider(
   };
 }
 
+/** Hooks for a streamed forward. Both fire at most once. */
+export interface StreamHooks {
+  /** Token usage, when the provider reports it in the stream. */
+  onUsage: (usage: UpstreamUsage) => void;
+  /** The stream ended: completed, failed, or was cancelled by the client. */
+  onDone: () => void;
+}
+
+export type StreamForwardResult =
+  | { kind: 'stream'; status: number; stream: ReadableStream<Uint8Array> }
+  | { kind: 'body'; status: number; body: ArrayBuffer; usage: UpstreamUsage | null };
+
+/**
+ * Forward a `stream: true` request and pass the provider's Server-Sent Events
+ * through byte for byte, so the client sees each token as it is generated.
+ *
+ * When the provider answers with something other than an event stream (an error
+ * JSON body, typically), the body is read in full and returned as `kind: 'body'`
+ * exactly like `forwardToProvider`, so error handling is unchanged.
+ *
+ * Usage is read from the stream as it passes: Groq reports it on the final chunk
+ * under `x_groq.usage`, OpenAI-shaped providers under `usage`. Only lines that
+ * mention "usage" are parsed, so the per-token cost is a substring check.
+ */
+export async function forwardStreamToProvider(
+  provider: ProviderId,
+  endpoint: AiEndpoint,
+  payload: unknown,
+  apiKey: string,
+  signal: AbortSignal,
+  hooks: StreamHooks
+): Promise<StreamForwardResult> {
+  const url = endpointUrl(provider, endpoint);
+  if (url === null) throw new UnsupportedEndpointError(provider, endpoint);
+
+  const { body, contentType } = buildRequestBody(payload);
+  const headers: Record<string, string> = { ...authHeaders(provider, apiKey) };
+  if (contentType) headers['Content-Type'] = contentType;
+
+  const res = await fetch(url, { method: 'POST', headers, body, signal });
+
+  const isEventStream = (res.headers.get('content-type') ?? '')
+    .toLowerCase()
+    .includes('text/event-stream');
+  if (!res.ok || !isEventStream || res.body === null) {
+    const responseBody = await res.arrayBuffer();
+    hooks.onDone();
+    return {
+      kind: 'body',
+      status: res.status,
+      body: responseBody,
+      usage: parseUsage(responseBody),
+    };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let pending = '';
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    hooks.onDone();
+  };
+  const scan = (text: string) => {
+    pending += text;
+    let nl: number;
+    while ((nl = pending.indexOf('\n')) !== -1) {
+      const line = pending.slice(0, nl).trim();
+      pending = pending.slice(nl + 1);
+      if (!line.startsWith('data:') || !line.includes('usage')) continue;
+      const usage = parseStreamUsage(line.slice(5).trim());
+      if (usage) hooks.onUsage(usage);
+    }
+  };
+
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          scan(decoder.decode() + '\n');
+          finish();
+          controller.close();
+          return;
+        }
+        scan(decoder.decode(value, { stream: true }));
+        controller.enqueue(value);
+      } catch (err) {
+        finish();
+        controller.error(err);
+      }
+    },
+    cancel(reason) {
+      finish();
+      return reader.cancel(reason);
+    },
+  });
+
+  return { kind: 'stream', status: res.status, stream };
+}
+
+/** Usage from one SSE `data:` payload, if it carries any. */
+function parseStreamUsage(data: string): UpstreamUsage | null {
+  if (data === '[DONE]') return null;
+  try {
+    const parsed = JSON.parse(data) as {
+      usage?: unknown;
+      x_groq?: { usage?: unknown };
+    };
+    const usage = parsed?.x_groq?.usage ?? parsed?.usage;
+    return toUsage(usage);
+  } catch {
+    return null;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Internal helpers
 // -----------------------------------------------------------------------------
@@ -170,29 +287,33 @@ function parseUsage(body: ArrayBuffer): UpstreamUsage | null {
     if (text.trim().length === 0) return null;
 
     const parsed = JSON.parse(text) as { usage?: unknown };
-    const usage = parsed?.usage;
-    if (!usage || typeof usage !== 'object') return null;
-
-    const u = usage as Record<string, unknown>;
-    const prompt = u.prompt_tokens;
-    const completion = u.completion_tokens;
-    const total = u.total_tokens;
-
-    // Require at least one recognisable count to consider this real usage.
-    if (
-      typeof prompt !== 'number' &&
-      typeof completion !== 'number' &&
-      typeof total !== 'number'
-    ) {
-      return null;
-    }
-
-    return {
-      prompt_tokens: typeof prompt === 'number' ? prompt : 0,
-      completion_tokens: typeof completion === 'number' ? completion : 0,
-      total_tokens: typeof total === 'number' ? total : 0,
-    };
+    return toUsage(parsed?.usage);
   } catch {
     return null;
   }
+}
+
+/** Normalise an OpenAI-shaped `usage` object. Missing counts default to 0. */
+function toUsage(usage: unknown): UpstreamUsage | null {
+  if (!usage || typeof usage !== 'object') return null;
+
+  const u = usage as Record<string, unknown>;
+  const prompt = u.prompt_tokens;
+  const completion = u.completion_tokens;
+  const total = u.total_tokens;
+
+  // Require at least one recognisable count to consider this real usage.
+  if (
+    typeof prompt !== 'number' &&
+    typeof completion !== 'number' &&
+    typeof total !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    prompt_tokens: typeof prompt === 'number' ? prompt : 0,
+    completion_tokens: typeof completion === 'number' ? completion : 0,
+    total_tokens: typeof total === 'number' ? total : 0,
+  };
 }
