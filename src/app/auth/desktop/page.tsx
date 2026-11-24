@@ -6,6 +6,7 @@ import { createSupabaseRouteClient } from '@/lib/supabase/route';
 import { isValidDeviceCode, isValidUuid } from '@/lib/auth/desktop-tokens';
 
 import { approveDesktop } from './actions';
+import ApproveButton from './ApproveButton';
 
 /**
  * `/auth/desktop?device_code=...&device_id=...`
@@ -83,9 +84,7 @@ export default async function AuthDesktopPage({ searchParams }: PageProps) {
           <form action={approveDesktop}>
             <input type="hidden" name="device_code" value={device_code} />
             <input type="hidden" name="device_id" value={device_id} />
-            <button type="submit" className="cta cta-primary">
-              Sign in the desktop app
-            </button>
+            <ApproveButton />
           </form>
         </div>
       </section>
