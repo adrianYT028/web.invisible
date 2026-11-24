@@ -40,8 +40,8 @@ export default async function OpenDesktopPage({ searchParams }: PageProps) {
           <p className="eyebrow">Desktop app</p>
           <h1>Sending you back to Unviewable…</h1>
           <p className="lede">
-            If the desktop app does not open in a few seconds, use the button
-            below, or close this tab and launch Unviewable again.
+            Click <em>Open Unviewable Desktop</em> if the app doesn&apos;t open,
+            then allow your browser to open it.
           </p>
           <RedirectToDesktop deviceCode={device_code} />
         </div>
